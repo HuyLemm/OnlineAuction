@@ -1,6 +1,7 @@
 import { Header } from "./components/layout/Header";
 import { Footer } from "./components/layout/Footer";
 import { HomePage } from "./components/home/HomePage";
+import { BrowseItemsPage } from "./components/browse/BrowseItemsPage";
 
 export default function App() {
   return (
@@ -9,9 +10,14 @@ export default function App() {
       
       {/* Main Content */}
       <main className="flex-1">
-        <div className="container mx-auto px-6 py-8">
+        {/* Toggle between HomePage and BrowseItemsPage */}
+        {/* <div className="container mx-auto px-6 py-8">
           <HomePage />
-        </div>
+        </div> */}
+        
+        {/* Browse Items Page - Full Height */}
+        <BrowseItemsPage />
+        
         <Footer />
       </main>
     </div>
