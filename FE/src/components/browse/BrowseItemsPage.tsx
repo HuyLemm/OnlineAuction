@@ -20,7 +20,11 @@ interface AuctionItem {
   watchers?: number;
 }
 
-export function BrowseItemsPage() {
+interface BrowseItemsPageProps {
+  onNavigate?: (page: "home" | "browse" | "detail") => void;
+}
+
+export function BrowseItemsPage({ onNavigate }: BrowseItemsPageProps) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -332,7 +336,7 @@ export function BrowseItemsPage() {
             {viewMode === "grid" ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
                 {currentAuctions.map((auction) => (
-                  <AuctionCard key={auction.id} {...auction} />
+                  <AuctionCard key={auction.id} {...auction} onNavigate={onNavigate} />
                 ))}
               </div>
             ) : (

@@ -14,6 +14,7 @@ interface AuctionCardProps {
   category: string;
   isHot?: boolean;
   endingSoon?: boolean;
+  onNavigate?: (page: "detail") => void;
 }
 
 export function AuctionCard({
@@ -25,9 +26,13 @@ export function AuctionCard({
   category,
   isHot = false,
   endingSoon = false,
+  onNavigate,
 }: AuctionCardProps) {
   return (
-    <Card className="group overflow-hidden border border-border/50 bg-card hover:border-border transition-all duration-300 hover:shadow-2xl hover:shadow-[#fbbf24]/10">
+    <Card 
+      onClick={() => onNavigate?.("detail")}
+      className="group overflow-hidden border border-border/50 bg-card hover:border-border transition-all duration-300 hover:shadow-2xl hover:shadow-[#fbbf24]/10 cursor-pointer"
+    >
       {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden bg-secondary/20">
         <ImageWithFallback

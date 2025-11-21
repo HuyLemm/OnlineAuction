@@ -2,35 +2,50 @@ import { Search, Bell, User, Gavel } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 
-export function Header() {
+interface HeaderProps {
+  onNavigate?: (page: "home" | "browse" | "detail") => void;
+  currentPage?: string;
+}
+
+export function Header({ onNavigate, currentPage = "home" }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-xl">
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between gap-8">
           {/* Logo */}
-          <div className="flex items-center gap-2">
+          <button
+            onClick={() => onNavigate?.("home")}
+            className="flex items-center gap-2 transition-opacity hover:opacity-80"
+          >
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#fbbf24] to-[#f59e0b]">
               <Gavel className="h-5 w-5 text-black" />
             </div>
             <span className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] bg-clip-text text-transparent">
               LuxeAuction
             </span>
-          </div>
+          </button>
 
           {/* Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <a href="#" className="text-foreground/90 hover:text-foreground transition-colors">
+            <button
+              onClick={() => onNavigate?.("browse")}
+              className={`transition-colors ${
+                currentPage === "browse"
+                  ? "text-[#fbbf24]"
+                  : "text-foreground/90 hover:text-foreground"
+              }`}
+            >
               Live Auctions
-            </a>
-            <a href="#" className="text-foreground/90 hover:text-foreground transition-colors">
+            </button>
+            <button className="text-foreground/90 hover:text-foreground transition-colors">
               Categories
-            </a>
-            <a href="#" className="text-foreground/90 hover:text-foreground transition-colors">
+            </button>
+            <button className="text-foreground/90 hover:text-foreground transition-colors">
               How It Works
-            </a>
-            <a href="#" className="text-foreground/90 hover:text-foreground transition-colors">
+            </button>
+            <button className="text-foreground/90 hover:text-foreground transition-colors">
               Sell
-            </a>
+            </button>
           </nav>
 
           {/* Search */}

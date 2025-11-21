@@ -16,7 +16,11 @@ interface AuctionItem {
   endingSoon?: boolean;
 }
 
-export function HomePage() {
+interface HomePageProps {
+  onNavigate?: (page: "home" | "browse" | "detail") => void;
+}
+
+export function HomePage({ onNavigate }: HomePageProps) {
   // Mock data for Top 5 Ending Soon
   const endingSoonAuctions: AuctionItem[] = [
     {
@@ -205,7 +209,7 @@ export function HomePage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
           {endingSoonAuctions.map((auction) => (
-            <AuctionCard key={auction.id} {...auction} />
+            <AuctionCard key={auction.id} {...auction} onNavigate={onNavigate} />
           ))}
         </div>
       </section>
@@ -229,7 +233,7 @@ export function HomePage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
           {mostBidsAuctions.map((auction) => (
-            <AuctionCard key={auction.id} {...auction} />
+            <AuctionCard key={auction.id} {...auction} onNavigate={onNavigate} />
           ))}
         </div>
       </section>
@@ -253,7 +257,7 @@ export function HomePage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
           {highestPriceAuctions.map((auction) => (
-            <AuctionCard key={auction.id} {...auction} />
+            <AuctionCard key={auction.id} {...auction} onNavigate={onNavigate} />
           ))}
         </div>
       </section>
