@@ -4,8 +4,9 @@ import { Footer } from "./components/layout/Footer";
 import { HomePage } from "./components/home/HomePage";
 import { BrowseItemsPage } from "./components/browse/BrowseItemsPage";
 import { ProductDetailPage } from "./components/detail/ProductDetailPage";
+import { DashboardPage } from "./components/dashboard/DashboardPage";
 
-type Page = "home" | "browse" | "detail";
+type Page = "home" | "browse" | "detail" | "dashboard";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>("home");
@@ -28,6 +29,10 @@ export default function App() {
         
         {currentPage === "detail" && (
           <ProductDetailPage onBack={() => setCurrentPage("browse")} />
+        )}
+        
+        {currentPage === "dashboard" && (
+          <DashboardPage />
         )}
         
         <Footer />

@@ -3,7 +3,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 
 interface HeaderProps {
-  onNavigate?: (page: "home" | "browse" | "detail") => void;
+  onNavigate?: (page: "home" | "browse" | "detail" | "dashboard") => void;
   currentPage?: string;
 }
 
@@ -68,7 +68,12 @@ export function Header({ onNavigate, currentPage = "home" }: HeaderProps) {
                 3
               </span>
             </Button>
-            <Button variant="ghost" size="icon">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onNavigate?.("dashboard")}
+              className={currentPage === "dashboard" ? "text-[#fbbf24]" : ""}
+            >
               <User className="h-5 w-5" />
             </Button>
             <Button className="hidden md:inline-flex bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90">
