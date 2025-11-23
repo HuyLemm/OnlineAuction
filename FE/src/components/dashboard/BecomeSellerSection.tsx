@@ -6,7 +6,7 @@ import { Textarea } from "../ui/textarea";
 import { Separator } from "../ui/separator";
 import { Badge } from "../ui/badge";
 
-export function BecomeSeller() {
+export function BecomeSellerSection() {
   return (
     <div className="space-y-6">
       {/* Header */}

@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Header } from "./components/layout/Header";
-import { Footer } from "./components/layout/Footer";
-import { HomePage } from "./components/home/HomePage";
-import { BrowseItemsPage } from "./components/browse/BrowseItemsPage";
-import { ProductDetailPage } from "./components/detail/ProductDetailPage";
-import { DashboardPage } from "./components/dashboard/DashboardPage";
+import { Header } from "./layouts/Header";
+import { Footer } from "./layouts/Footer";
+import { HomePage } from "./pages/HomePage";
+import { BrowseItemsPage } from "./pages/BrowseItemsPage";
+import { ProductDetailPage } from "./pages/ProductDetailPage";
+import { DashboardPage } from "./pages/DashboardPage";
+import { SellerPanelPage } from "./pages/SellerPanelPage";
 
-type Page = "home" | "browse" | "detail" | "dashboard";
+type Page = "home" | "browse" | "detail" | "dashboard" | "seller";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>("home");
@@ -33,6 +34,10 @@ export default function App() {
         
         {currentPage === "dashboard" && (
           <DashboardPage />
+        )}
+        
+        {currentPage === "seller" && (
+          <SellerPanelPage />
         )}
         
         <Footer />

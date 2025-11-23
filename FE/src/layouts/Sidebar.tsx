@@ -1,8 +1,8 @@
-import { Slider } from "../ui/slider";
-import { Checkbox } from "../ui/checkbox";
-import { Label } from "../ui/label";
-import { Separator } from "../ui/separator";
-import { Button } from "../ui/button";
+import { Slider } from "../components/ui/slider";
+import { Checkbox } from "../components/ui/checkbox";
+import { Label } from "../components/ui/label";
+import { Separator } from "../components/ui/separator";
+import { Button } from "../components/ui/button";
 import { X } from "lucide-react";
 
 interface SidebarProps {

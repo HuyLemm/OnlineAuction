@@ -18,7 +18,7 @@ interface WonAuction {
   sellerName: string;
 }
 
-export function WonAuctions() {
+export function WonAuctionsSection() {
   const [activeTab, setActiveTab] = useState("all");
 
   const wonAuctions: WonAuction[] = [

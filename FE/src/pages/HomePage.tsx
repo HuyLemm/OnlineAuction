@@ -1,8 +1,7 @@
-import { HeroBanner } from "./HeroBanner";
-import { CategoryGrid } from "./CategoryGrid";
-import { AuctionCard } from "../auction/AuctionCard";
-import { ArrowRight, Clock, TrendingUp, DollarSign } from "lucide-react";
-import { Button } from "../ui/button";
+import { HeroBanner } from "../components/home/HeroBanner";
+import { CategoryGrid } from "../components/home/CategoryGrid";
+import { HomeFeaturedSection } from "../components/home/HomeFeaturedSection";
+import { Clock, TrendingUp, DollarSign } from "lucide-react";
 
 interface AuctionItem {
   id: string;
@@ -17,7 +16,7 @@ interface AuctionItem {
 }
 
 interface HomePageProps {
-  onNavigate?: (page: "home" | "browse" | "detail") => void;
+  onNavigate?: (page: "home" | "browse" | "detail" | "dashboard" | "seller") => void;
 }
 
 export function HomePage({ onNavigate }: HomePageProps) {
@@ -191,76 +190,37 @@ export function HomePage({ onNavigate }: HomePageProps) {
       <CategoryGrid />
 
       {/* Top 5 Ending Soon */}
-      <section className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#f59e0b]/20 to-[#ef4444]/20">
-              <Clock className="h-6 w-6 text-[#f59e0b]" />
-            </div>
-            <div>
-              <h2 className="text-foreground">Ending Soon</h2>
-              <p className="text-muted-foreground">Last chance to bid on these items</p>
-            </div>
-          </div>
-          <Button variant="ghost" className="gap-2">
-            View All
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-          {endingSoonAuctions.map((auction) => (
-            <AuctionCard key={auction.id} {...auction} onNavigate={onNavigate} />
-          ))}
-        </div>
-      </section>
+      <HomeFeaturedSection
+        title="Ending Soon"
+        description="Last chance to bid on these items"
+        icon={Clock}
+        iconGradient="from-[#f59e0b]/20 to-[#ef4444]/20"
+        iconColor="text-[#f59e0b]"
+        auctions={endingSoonAuctions}
+        onNavigate={onNavigate}
+      />
 
       {/* Top 5 Most Bids */}
-      <section className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#ef4444]/20 to-[#fbbf24]/20">
-              <TrendingUp className="h-6 w-6 text-[#ef4444]" />
-            </div>
-            <div>
-              <h2 className="text-foreground">Most Popular</h2>
-              <p className="text-muted-foreground">Hot items with the most bids</p>
-            </div>
-          </div>
-          <Button variant="ghost" className="gap-2">
-            View All
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-          {mostBidsAuctions.map((auction) => (
-            <AuctionCard key={auction.id} {...auction} onNavigate={onNavigate} />
-          ))}
-        </div>
-      </section>
+      <HomeFeaturedSection
+        title="Most Popular"
+        description="Hot items with the most bids"
+        icon={TrendingUp}
+        iconGradient="from-[#ef4444]/20 to-[#fbbf24]/20"
+        iconColor="text-[#ef4444]"
+        auctions={mostBidsAuctions}
+        onNavigate={onNavigate}
+      />
 
       {/* Top 5 Highest Price */}
-      <section className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#fbbf24]/20 to-[#f59e0b]/20">
-              <DollarSign className="h-6 w-6 text-[#fbbf24]" />
-            </div>
-            <div>
-              <h2 className="text-foreground">Premium Collection</h2>
-              <p className="text-muted-foreground">Highest value items available</p>
-            </div>
-          </div>
-          <Button variant="ghost" className="gap-2">
-            View All
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-          {highestPriceAuctions.map((auction) => (
-            <AuctionCard key={auction.id} {...auction} onNavigate={onNavigate} />
-          ))}
-        </div>
-      </section>
+      <HomeFeaturedSection
+        title="Premium Collection"
+        description="Highest value items available"
+        icon={DollarSign}
+        iconGradient="from-[#fbbf24]/20 to-[#f59e0b]/20"
+        iconColor="text-[#fbbf24]"
+        auctions={highestPriceAuctions}
+        onNavigate={onNavigate}
+      />
     </div>
   );
 }

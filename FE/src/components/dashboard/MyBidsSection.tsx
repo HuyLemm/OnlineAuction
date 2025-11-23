@@ -22,7 +22,7 @@ interface Bid {
   totalBids: number;
 }
 
-export function MyBids() {
+export function MyBidsSection() {
   const [activeTab, setActiveTab] = useState("active");
 
   const activeBids: Bid[] = [

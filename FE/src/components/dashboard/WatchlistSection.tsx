@@ -19,7 +19,7 @@ interface WatchlistItem {
   addedDate: string;
 }
 
-export function Watchlist() {
+export function WatchlistSection() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [activeTab, setActiveTab] = useState("all");
 

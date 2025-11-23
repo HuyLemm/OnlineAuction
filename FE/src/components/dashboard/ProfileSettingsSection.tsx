@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Badge } from "../ui/badge";
 
-export function ProfileSettings() {
+export function ProfileSettingsSection() {
   const [activeTab, setActiveTab] = useState("profile");
 
   return (

@@ -1,9 +1,9 @@
 import { Search, Bell, User, Gavel } from "lucide-react";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 
 interface HeaderProps {
-  onNavigate?: (page: "home" | "browse" | "detail" | "dashboard") => void;
+  onNavigate?: (page: "home" | "browse" | "detail" | "dashboard" | "seller") => void;
   currentPage?: string;
 }
 
@@ -43,7 +43,14 @@ export function Header({ onNavigate, currentPage = "home" }: HeaderProps) {
             <button className="text-foreground/90 hover:text-foreground transition-colors">
               How It Works
             </button>
-            <button className="text-foreground/90 hover:text-foreground transition-colors">
+            <button
+              onClick={() => onNavigate?.("seller")}
+              className={`transition-colors ${
+                currentPage === "seller"
+                  ? "text-[#fbbf24]"
+                  : "text-foreground/90 hover:text-foreground"
+              }`}
+            >
               Sell
             </button>
           </nav>
