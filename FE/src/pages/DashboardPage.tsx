@@ -6,7 +6,11 @@ import { WonAuctionsSection } from "../components/dashboard/WonAuctionsSection";
 import { ProfileSettingsSection } from "../components/dashboard/ProfileSettingsSection";
 import { BecomeSellerSection } from "../components/dashboard/BecomeSellerSection";
 
-export function DashboardPage() {
+interface DashboardPageProps {
+  onNavigateToOrder?: (orderId: string) => void;
+}
+
+export function DashboardPage({ onNavigateToOrder }: DashboardPageProps) {
   const [activeTab, setActiveTab] = useState("my-bids");
 
   const renderContent = () => {
@@ -18,7 +22,7 @@ export function DashboardPage() {
       case "active-auctions":
         return <MyBidsSection />; // Reuse MyBidsSection component
       case "won-auctions":
-        return <WonAuctionsSection />;
+        return <WonAuctionsSection onNavigateToOrder={onNavigateToOrder} />;
       case "bid-history":
         return <MyBidsSection />; // Could create separate BidHistorySection component
       case "reviews":
