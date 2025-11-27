@@ -1,9 +1,10 @@
-import { Search, Bell, User, Gavel } from "lucide-react";
+import { Search, Bell, User, Gavel, Shield } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import { Badge } from "../components/ui/badge";
 
 interface HeaderProps {
-  onNavigate?: (page: "home" | "browse" | "detail" | "dashboard" | "seller") => void;
+  onNavigate?: (page: "home" | "browse" | "detail" | "dashboard" | "seller" | "admin") => void;
   currentPage?: string;
 }
 
@@ -14,7 +15,7 @@ export function Header({ onNavigate, currentPage = "home" }: HeaderProps) {
         <div className="flex items-center justify-between gap-8">
           {/* Logo */}
           <button
-            onClick={() => onNavigate?.("home")}
+            onClick={() => onNavigate?.(("home"))}
             className="flex items-center gap-2 transition-opacity hover:opacity-80"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#fbbf24] to-[#f59e0b]">
@@ -82,6 +83,19 @@ export function Header({ onNavigate, currentPage = "home" }: HeaderProps) {
               className={currentPage === "dashboard" ? "text-[#fbbf24]" : ""}
             >
               <User className="h-5 w-5" />
+            </Button>
+            {/* Admin Access - Only show for admin users */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onNavigate?.("admin")}
+              className={`relative ${currentPage === "admin" ? "text-[#fbbf24]" : ""}`}
+              title="Admin Panel"
+            >
+              <Shield className="h-5 w-5" />
+              {currentPage === "admin" && (
+                <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black border-0" />
+              )}
             </Button>
             <Button className="hidden md:inline-flex bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90">
               Start Bidding

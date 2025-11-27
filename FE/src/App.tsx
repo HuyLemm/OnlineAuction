@@ -8,8 +8,9 @@ import { ProductDetailPage } from "./pages/ProductDetailPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { SellerPanelPage } from "./pages/SellerPanelPage";
 import { OrderPage } from "./pages/OrderPage";
+import { AdminPage } from "./pages/AdminPage";
 
-type Page = "home" | "browse" | "detail" | "dashboard" | "seller" | "order";
+type Page = "home" | "browse" | "detail" | "dashboard" | "seller" | "order" | "admin";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>("home");
@@ -51,6 +52,10 @@ export default function App() {
         
         {currentPage === "order" && (
           <OrderPage onBack={() => setCurrentPage("dashboard")} />
+        )}
+        
+        {currentPage === "admin" && (
+          <AdminPage />
         )}
         
         <Footer />
