@@ -9,22 +9,43 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { SellerPanelPage } from "./pages/SellerPanelPage";
 import { OrderPage } from "./pages/OrderPage";
 import { AdminPage } from "./pages/AdminPage";
+import { LoginPage } from "./pages/LoginPage";
+import { RegisterPage } from "./pages/RegisterPage";
+import { OTPVerificationPage } from "./pages/OTPVerificationPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 
-type Page = "home" | "browse" | "detail" | "dashboard" | "seller" | "order" | "admin";
+type Page = "home" | "browse" | "detail" | "dashboard" | "seller" | "order" | "admin" | "login" | "register" | "otp-verification" | "forgot-password";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>("home");
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
 
   const handleNavigateToOrder = (orderId: string) => {
     setCurrentOrderId(orderId);
     setCurrentPage("order");
   };
 
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+    setCurrentPage("dashboard");
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentPage("home");
+  };
+
   return (
     <div className="dark min-h-screen bg-background">
       <Toaster theme="dark" position="top-right" />
-      <Header onNavigate={(page) => setCurrentPage(page)} currentPage={currentPage} />
+      <Header 
+        onNavigate={(page) => setCurrentPage(page)} 
+        currentPage={currentPage}
+        isAuthenticated={isAuthenticated}
+        onLogout={handleLogout}
+      />
       
       {/* Main Content */}
       <main className="flex-1">
@@ -57,8 +78,29 @@ export default function App() {
         {currentPage === "admin" && (
           <AdminPage />
         )}
+
+        {currentPage === "login" && (
+          <LoginPage onNavigate={(page) => setCurrentPage(page)} />
+        )}
+
+        {currentPage === "register" && (
+          <RegisterPage onNavigate={(page) => setCurrentPage(page)} />
+        )}
+
+        {currentPage === "otp-verification" && (
+          <OTPVerificationPage 
+            onNavigate={(page) => setCurrentPage(page)}
+            email={userEmail}
+          />
+        )}
+
+        {currentPage === "forgot-password" && (
+          <ForgotPasswordPage onNavigate={(page) => setCurrentPage(page)} />
+        )}
         
-        <Footer />
+        {!["login", "register", "otp-verification", "forgot-password"].includes(currentPage) && (
+          <Footer />
+        )}
       </main>
     </div>
   );

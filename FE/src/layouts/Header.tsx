@@ -1,21 +1,24 @@
-import { Search, Bell, User, Gavel, Shield } from "lucide-react";
+import { Search, Bell, User, Gavel, Shield, LogOut } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
 
 interface HeaderProps {
-  onNavigate?: (page: "home" | "browse" | "detail" | "dashboard" | "seller" | "admin") => void;
+  onNavigate?: (page: "home" | "browse" | "detail" | "dashboard" | "seller" | "admin" | "login" | "register") => void;
   currentPage?: string;
+  isAuthenticated?: boolean;
+  onLogout?: () => void;
 }
 
-export function Header({ onNavigate, currentPage = "home" }: HeaderProps) {
+export function Header({ onNavigate, currentPage = "home", isAuthenticated = false, onLogout }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-xl">
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between gap-8">
           {/* Logo */}
           <button
-            onClick={() => onNavigate?.(("home"))}
+            onClick={() => onNavigate?.("home")}
             className="flex items-center gap-2 transition-opacity hover:opacity-80"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#fbbf24] to-[#f59e0b]">
@@ -70,36 +73,67 @@ export function Header({ onNavigate, currentPage = "home" }: HeaderProps) {
 
           {/* Actions */}
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[#ef4444] text-[10px] flex items-center justify-center">
-                3
-              </span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onNavigate?.("dashboard")}
-              className={currentPage === "dashboard" ? "text-[#fbbf24]" : ""}
-            >
-              <User className="h-5 w-5" />
-            </Button>
-            {/* Admin Access - Only show for admin users */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onNavigate?.("admin")}
-              className={`relative ${currentPage === "admin" ? "text-[#fbbf24]" : ""}`}
-              title="Admin Panel"
-            >
-              <Shield className="h-5 w-5" />
-              {currentPage === "admin" && (
-                <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black border-0" />
-              )}
-            </Button>
-            <Button className="hidden md:inline-flex bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90">
-              Start Bidding
-            </Button>
+            {isAuthenticated ? (
+              <>
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5" />
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[#ef4444] text-[10px] flex items-center justify-center">
+                    3
+                  </span>
+                </Button>
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={currentPage === "dashboard" ? "text-[#fbbf24]" : ""}
+                    >
+                      <User className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-card border-border/50 w-48">
+                    <DropdownMenuItem onClick={() => onNavigate?.("dashboard")}>
+                      <User className="h-4 w-4 mr-2" />
+                      Dashboard
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onNavigate?.("seller")}>
+                      <Gavel className="h-4 w-4 mr-2" />
+                      Seller Panel
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onNavigate?.("admin")}>
+                      <Shield className="h-4 w-4 mr-2" />
+                      Admin Panel
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-border/50" />
+                    <DropdownMenuItem onClick={onLogout} className="text-red-500">
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                
+                <Button className="hidden md:inline-flex bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90">
+                  Start Bidding
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button 
+                  variant="ghost"
+                  onClick={() => onNavigate?.("login")}
+                  className="hidden md:inline-flex"
+                >
+                  Login
+                </Button>
+                <Button 
+                  onClick={() => onNavigate?.("register")}
+                  className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90"
+                >
+                  Sign Up
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>
