@@ -1,33 +1,120 @@
 import { useState } from "react";
-import { Clock, TrendingUp, Zap, Heart, Share2, Flag } from "lucide-react";
+import { Clock, TrendingUp, Zap, Heart, Share2, Flag, User, Star, Calendar } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { Separator } from "../ui/separator";
+import { Avatar, AvatarFallback } from "../ui/avatar";
+import { toast } from "sonner";
 
 interface BidSectionProps {
-  currentBid: number;
+  currentBid?: number;
   buyNowPrice?: number;
-  minimumBid: number;
-  totalBids: number;
-  timeLeft: string;
-  endDate: Date;
+  minimumBid?: number;
+  totalBids?: number;
+  timeLeft?: string;
+  endDate?: Date;
+  postedDate?: Date;
   isHot?: boolean;
+  seller?: {
+    name: string;
+    rating: number;
+    totalReviews: number;
+  };
+  highestBidder?: {
+    name: string;
+    rating: number;
+    totalReviews: number;
+  };
+  onPlaceBid?: (amount: number) => void;
+  onBuyNow?: () => void;
+}
+
+// Helper function to format relative time
+function getRelativeTime(date: Date): string {
+  const now = new Date();
+  const diffMs = date.getTime() - now.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+  // If less than 3 days, use relative time
+  if (diffDays < 3 && diffMs > 0) {
+    if (diffDays > 0) {
+      return `${diffDays}d ${diffHours}h left`;
+    } else if (diffHours > 0) {
+      return `${diffHours}h ${diffMinutes}m left`;
+    } else if (diffMinutes > 0) {
+      return `${diffMinutes}m left`;
+    } else {
+      return "Ending soon";
+    }
+  }
+  
+  // Otherwise, return formatted date
+  return date.toLocaleDateString('en-US', { 
+    day: '2-digit', 
+    month: '2-digit', 
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+}
+
+function formatPostedDate(date: Date): string {
+  return date.toLocaleDateString('en-US', { 
+    day: '2-digit', 
+    month: '2-digit', 
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
 }
 
 export function BidSection({
-  currentBid,
-  buyNowPrice,
-  minimumBid,
-  totalBids,
-  timeLeft,
-  isHot
+  currentBid = 15000,
+  buyNowPrice = 25000,
+  minimumBid = 15500,
+  totalBids = 47,
+  timeLeft = "2d 14h",
+  endDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000), // 2 days 14 hours from now
+  postedDate = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+  isHot = true,
+  seller = {
+    name: "Premium Watches Gallery",
+    rating: 4.8,
+    totalReviews: 342
+  },
+  highestBidder = {
+    name: "Michael Chen",
+    rating: 4.6,
+    totalReviews: 28
+  },
+  onPlaceBid,
+  onBuyNow,
 }: BidSectionProps) {
   const [bidAmount, setBidAmount] = useState(minimumBid.toString());
   const [isWatching, setIsWatching] = useState(false);
 
   const handleQuickBid = (amount: number) => {
     setBidAmount(amount.toString());
+  };
+
+  const handlePlaceBid = () => {
+    const amount = Number(bidAmount);
+    if (amount < minimumBid) {
+      toast.error(`Bid must be at least $${minimumBid.toLocaleString()}`);
+      return;
+    }
+    onPlaceBid?.(amount);
+    toast.success(`Bid of $${amount.toLocaleString()} placed successfully!`);
+  };
+
+  const handleBuyNow = () => {
+    onBuyNow?.();
+    toast.success("Purchase successful!");
   };
 
   return (
@@ -55,6 +142,81 @@ export function BidSection({
         <div className="flex items-baseline gap-2">
           <span className="text-[#fbbf24]">${currentBid.toLocaleString()}</span>
           <span className="text-muted-foreground">USD</span>
+        </div>
+      </div>
+
+      {/* Buy Now Price */}
+      {buyNowPrice && (
+        <div className="space-y-2">
+          <p className="text-muted-foreground">Buy Now Price</p>
+          <div className="flex items-baseline gap-2">
+            <span className="text-[#10b981]">${buyNowPrice.toLocaleString()}</span>
+            <span className="text-muted-foreground">USD</span>
+          </div>
+        </div>
+      )}
+
+      <Separator className="bg-border/50" />
+
+      {/* Seller Info */}
+      <div className="space-y-3">
+        <p className="text-muted-foreground">Seller</p>
+        <div className="flex items-center gap-3">
+          <Avatar className="h-10 w-10">
+            <AvatarFallback className="bg-gradient-to-br from-[#10b981]/20 to-[#10b981]/10 text-foreground">
+              {seller.name.charAt(0)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1">
+            <p className="text-foreground">{seller.name}</p>
+            <div className="flex items-center gap-1">
+              <Star className="h-3 w-3 fill-[#fbbf24] text-[#fbbf24]" />
+              <span className="text-foreground">{seller.rating.toFixed(1)}</span>
+              <span className="text-muted-foreground">({seller.totalReviews} reviews)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <Separator className="bg-border/50" />
+
+      {/* Highest Bidder Info */}
+      <div className="space-y-3">
+        <p className="text-muted-foreground">Highest Bidder</p>
+        <div className="flex items-center gap-3">
+          <Avatar className="h-10 w-10">
+            <AvatarFallback className="bg-gradient-to-br from-[#fbbf24]/20 to-[#f59e0b]/20 text-foreground">
+              {highestBidder.name.charAt(0)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1">
+            <p className="text-foreground">{highestBidder.name}</p>
+            <div className="flex items-center gap-1">
+              <Star className="h-3 w-3 fill-[#fbbf24] text-[#fbbf24]" />
+              <span className="text-foreground">{highestBidder.rating.toFixed(1)}</span>
+              <span className="text-muted-foreground">({highestBidder.totalReviews} reviews)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <Separator className="bg-border/50" />
+
+      {/* Posted Date & End Date */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Calendar className="h-4 w-4" />
+            <span>Posted</span>
+          </div>
+          <span className="text-foreground">{formatPostedDate(postedDate)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Clock className="h-4 w-4" />
+            <span>Ends</span>
+          </div>
+          <span className="text-foreground">{getRelativeTime(endDate)}</span>
         </div>
       </div>
 
@@ -112,11 +274,18 @@ export function BidSection({
 
       {/* Action Buttons */}
       <div className="space-y-2">
-        <Button className="w-full bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90">
+        <Button 
+          onClick={handlePlaceBid}
+          className="w-full bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90"
+        >
           Place Bid - ${Number(bidAmount).toLocaleString()}
         </Button>
         {buyNowPrice && (
-          <Button variant="outline" className="w-full border-[#fbbf24] text-[#fbbf24] hover:bg-[#fbbf24]/10">
+          <Button 
+            onClick={handleBuyNow}
+            variant="outline" 
+            className="w-full border-[#10b981] text-[#10b981] hover:bg-[#10b981]/10"
+          >
             <Zap className="h-4 w-4 mr-2" />
             Buy Now - ${buyNowPrice.toLocaleString()}
           </Button>

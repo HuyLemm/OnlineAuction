@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { MessageCircle, User, X } from "lucide-react";
-import { ChatMessage } from "./ChatMassage";
+import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { ScrollArea } from "../ui/scroll-area";
 import { Badge } from "../ui/badge";

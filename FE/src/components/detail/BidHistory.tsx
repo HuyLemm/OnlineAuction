@@ -12,22 +12,62 @@ interface Bid {
 }
 
 interface BidHistoryProps {
-  bids: Bid[];
+  bids?: Bid[];
 }
 
-export function BidHistory({ bids }: BidHistoryProps) {
+export function BidHistory({ bids = [] }: BidHistoryProps) {
+  // Default mock data if no bids provided
+  const defaultBids: Bid[] = [
+    {
+      id: "1",
+      bidder: "James Wilson",
+      amount: 15000,
+      time: "2 mins ago",
+      isAutoBid: true,
+      isLeading: true,
+    },
+    {
+      id: "2",
+      bidder: "Sarah Chen",
+      amount: 14800,
+      time: "15 mins ago",
+      isAutoBid: true,
+    },
+    {
+      id: "3",
+      bidder: "Michael Rodriguez",
+      amount: 14500,
+      time: "1 hour ago",
+    },
+    {
+      id: "4",
+      bidder: "Emily Taylor",
+      amount: 14200,
+      time: "2 hours ago",
+      isAutoBid: true,
+    },
+    {
+      id: "5",
+      bidder: "David Kim",
+      amount: 14000,
+      time: "3 hours ago",
+    },
+  ];
+
+  const displayBids = bids.length > 0 ? bids : defaultBids;
+
   return (
     <div className="bg-card border border-border/50 rounded-xl p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-foreground">Bid History</h3>
         <Badge variant="outline" className="border-border/50">
-          {bids.length} bids
+          {displayBids.length} bids
         </Badge>
       </div>
 
       {/* Bid List */}
       <div className="space-y-3 max-h-96 overflow-y-auto">
-        {bids.map((bid, index) => (
+        {displayBids.map((bid, index) => (
           <div
             key={bid.id}
             className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${

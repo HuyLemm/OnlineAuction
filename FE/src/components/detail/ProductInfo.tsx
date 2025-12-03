@@ -4,40 +4,49 @@ import { Separator } from "../ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 
 interface ProductInfoProps {
-  title: string;
-  category: string;
-  condition: string;
-  itemNumber: string;
-  description: string;
-  specifications: { label: string; value: string }[];
-  shipping: {
+  title?: string;
+  category?: string;
+  condition?: string;
+  itemNumber?: string;
+  description?: string;
+  specifications?: { label: string; value: string }[];
+  shipping?: {
     methods: string[];
     cost: string;
     estimatedDays: string;
   };
-  returns: string;
-  watchers: number;
+  returns?: string;
+  watchers?: number;
 }
 
 export function ProductInfo({
-  title,
-  category,
-  condition,
-  itemNumber,
-  description,
-  specifications,
-  shipping,
-  returns,
-  watchers
+  title = "Rolex Submariner Date - Stainless Steel",
+  category = "Luxury Watches",
+  condition = "Excellent - Pre-owned",
+  itemNumber = "AUC-2024-1234",
+  description = "This exquisite Rolex Submariner Date represents the pinnacle of luxury watchmaking. Featuring a robust stainless steel case and bracelet, this timepiece combines elegant design with superior functionality. The watch has been professionally serviced and comes with original box and papers. \n\nKey Features:\n• Automatic movement with date function\n• Unidirectional rotating bezel\n• Oyster bracelet with Glidelock extension system\n• Scratch-resistant sapphire crystal\n• COSC-certified chronometer\n• Water-resistant to 300 meters\n\nCondition Details:\nThe watch is in excellent pre-owned condition with minimal signs of wear. The case and bracelet show very light surface scratches consistent with careful use. The dial and hands are pristine with no visible defects. All functions are working perfectly.\n\nWhat's Included:\n• Complete set with original box and papers\n• Warranty card dated 2019\n• Original purchase receipt\n• Service records from authorized dealer\n• Additional links for bracelet sizing\n• Rolex authenticity certificate",
+  specifications = [
+    { label: "Brand", value: "Rolex" },
+    { label: "Model", value: "Submariner Date" },
+    { label: "Reference", value: "116610LN" },
+    { label: "Case Material", value: "Stainless Steel" },
+    { label: "Case Diameter", value: "40mm" },
+    { label: "Movement", value: "Automatic" },
+    { label: "Water Resistance", value: "300m" },
+    { label: "Year", value: "2019" }
+  ],
+  shipping = {
+    methods: ["FedEx Priority Overnight", "FedEx 2-Day", "UPS Ground"],
+    cost: "Free Shipping",
+    estimatedDays: "2-3 business days"
+  },
+  returns = "30-day money-back guarantee. Item must be returned in original condition with all accessories and documentation.",
+  watchers = 124
 }: ProductInfoProps) {
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header - Product Meta */}
       <div className="space-y-3">
-        <Badge variant="outline" className="border-border/50">
-          {category}
-        </Badge>
-        <h1 className="text-foreground">{title}</h1>
         <div className="flex items-center gap-4 text-muted-foreground">
           <div className="flex items-center gap-1">
             <Eye className="h-4 w-4" />
@@ -48,6 +57,10 @@ export function ProductInfo({
             <Heart className="h-4 w-4" />
             <span>{watchers} watching</span>
           </div>
+          <span>•</span>
+          <Badge variant="outline" className="border-border/50">
+            {category}
+          </Badge>
           <span>•</span>
           <span>Item #{itemNumber}</span>
         </div>
@@ -72,7 +85,7 @@ export function ProductInfo({
         {/* Description Tab */}
         <TabsContent value="description" className="space-y-4 mt-4">
           <div className="prose prose-invert max-w-none">
-            <p className="text-foreground leading-relaxed">{description}</p>
+            <p className="text-foreground leading-relaxed whitespace-pre-line">{description}</p>
           </div>
 
           {/* Condition */}

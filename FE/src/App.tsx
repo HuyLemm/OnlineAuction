@@ -10,17 +10,20 @@ import { SellerPanelPage } from "./pages/SellerPanelPage";
 import { OrderPage } from "./pages/OrderPage";
 import { AdminPage } from "./pages/AdminPage";
 import { LoginPage } from "./pages/LoginPage";
-import { RegisterPage } from "./pages/RegisterPage";
 import { OTPVerificationPage } from "./pages/OTPVerificationPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { NotificationsPage } from "./pages/NotificationsPage";
 
-type Page = "home" | "browse" | "detail" | "dashboard" | "seller" | "order" | "admin" | "login" | "register" | "otp-verification" | "forgot-password";
+type Page = "home" | "browse" | "detail" | "dashboard" | "seller" | "order" | "admin" | "login" | "otp-verification" | "forgot-password" | "notifications";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>("home");
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(true); // Set to true for demo/testing
   const [userEmail, setUserEmail] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedMainCategory, setSelectedMainCategory] = useState<string | null>(null);
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
 
   const handleNavigateToOrder = (orderId: string) => {
     setCurrentOrderId(orderId);
@@ -37,14 +40,36 @@ export default function App() {
     setCurrentPage("home");
   };
 
+  const handleCategorySelect = (category: string) => {
+    setSelectedCategory(category);
+    
+    // Parse the category string to extract main and sub categories
+    // Format: "Main Category ➡️ Sub Category"
+    const parts = category.split(" ➡️ ");
+    if (parts.length === 2) {
+      setSelectedMainCategory(parts[0].trim());
+      setSelectedSubCategory(parts[1].trim());
+    }
+    
+    setCurrentPage("browse");
+  };
+
+  const handleNavigate = (page: Page) => {
+    if (page === "browse" && !selectedCategory) {
+      setSelectedCategory(null); // Clear category when navigating to browse without a category
+    }
+    setCurrentPage(page);
+  };
+
   return (
     <div className="dark min-h-screen bg-background">
       <Toaster theme="dark" position="top-right" />
       <Header 
-        onNavigate={(page) => setCurrentPage(page)} 
+        onNavigate={handleNavigate} 
         currentPage={currentPage}
         isAuthenticated={isAuthenticated}
         onLogout={handleLogout}
+        onCategorySelect={handleCategorySelect}
       />
       
       {/* Main Content */}
@@ -56,7 +81,11 @@ export default function App() {
         )}
         
         {currentPage === "browse" && (
-          <BrowseItemsPage onNavigate={(page) => setCurrentPage(page)} />
+          <BrowseItemsPage 
+            onNavigate={(page) => setCurrentPage(page)} 
+            selectedCategory={selectedCategory}
+            onCategorySelect={handleCategorySelect}
+          />
         )}
         
         {currentPage === "detail" && (
@@ -83,10 +112,6 @@ export default function App() {
           <LoginPage onNavigate={(page) => setCurrentPage(page)} />
         )}
 
-        {currentPage === "register" && (
-          <RegisterPage onNavigate={(page) => setCurrentPage(page)} />
-        )}
-
         {currentPage === "otp-verification" && (
           <OTPVerificationPage 
             onNavigate={(page) => setCurrentPage(page)}
@@ -97,8 +122,12 @@ export default function App() {
         {currentPage === "forgot-password" && (
           <ForgotPasswordPage onNavigate={(page) => setCurrentPage(page)} />
         )}
+
+        {currentPage === "notifications" && (
+          <NotificationsPage onBack={() => setCurrentPage("home")} />
+        )}
         
-        {!["login", "register", "otp-verification", "forgot-password"].includes(currentPage) && (
+        {!["login", "otp-verification", "forgot-password"].includes(currentPage) && (
           <Footer />
         )}
       </main>

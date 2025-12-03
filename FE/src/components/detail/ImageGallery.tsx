@@ -4,11 +4,20 @@ import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 import { Button } from "../ui/button";
 
 interface ImageGalleryProps {
-  images: string[];
-  title: string;
+  images?: string[];
+  title?: string;
 }
 
-export function ImageGallery({ images, title }: ImageGalleryProps) {
+export function ImageGallery({ 
+  images = [
+    "https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=800&q=80",
+    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80",
+    "https://images.unsplash.com/photo-1614252368970-5b2f0d5a8a06?w=800&q=80",
+    "https://images.unsplash.com/photo-1584302179602-e4c3d3fd629d?w=800&q=80",
+    "https://images.unsplash.com/photo-1587836374228-4c4c1e0e8e8f?w=800&q=80"
+  ],
+  title = "Luxury Watch" 
+}: ImageGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const goToPrevious = () => {

@@ -1,4 +1,4 @@
-import { Heart, Clock, TrendingUp } from "lucide-react";
+import { Heart, Clock, TrendingUp, User } from "lucide-react";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -15,6 +15,13 @@ interface AuctionCardProps {
   isHot?: boolean;
   endingSoon?: boolean;
   onNavigate?: (page: "detail") => void;
+  onCategoryClick?: (category: string) => void;
+  highestBidder?: {
+    name: string;
+    avatar?: string;
+  };
+  buyNowPrice?: number;
+  postedDate?: string;
 }
 
 export function AuctionCard({
@@ -27,11 +34,20 @@ export function AuctionCard({
   isHot = false,
   endingSoon = false,
   onNavigate,
+  onCategoryClick,
+  highestBidder = { name: "Anonymous Bidder" },
+  buyNowPrice,
+  postedDate = "2 days ago",
 }: AuctionCardProps) {
+  const handleCategoryClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onCategoryClick?.(category);
+  };
+
   return (
     <Card 
       onClick={() => onNavigate?.("detail")}
-      className="group overflow-hidden border border-border/50 bg-card hover:border-border transition-all duration-300 hover:shadow-2xl hover:shadow-[#fbbf24]/10 cursor-pointer"
+      className="group overflow-hidden border border-border/50 bg-card hover:border-[#fbbf24]/50 transition-all duration-300 hover:shadow-2xl hover:shadow-[#fbbf24]/10 cursor-pointer"
     >
       {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden bg-secondary/20">
@@ -74,12 +90,17 @@ export function AuctionCard({
       </div>
 
       {/* Content */}
-      <div className="p-5 space-y-4">
-        {/* Category */}
+      <div className="p-5 space-y-3">
+        {/* Category & Posted Date */}
         <div className="flex items-center justify-between">
-          <Badge variant="outline" className="text-muted-foreground">
+          <Badge
+            variant="outline"
+            className="text-muted-foreground hover:bg-[#fbbf24]/10 hover:text-[#fbbf24] hover:border-[#fbbf24]/50 transition-colors cursor-pointer"
+            onClick={handleCategoryClick}
+          >
             {category}
           </Badge>
+          <span className="text-xs text-muted-foreground">{postedDate}</span>
         </div>
 
         {/* Title */}
@@ -87,18 +108,43 @@ export function AuctionCard({
           {title}
         </h3>
 
-        {/* Bid Info */}
-        <div className="space-y-2">
+        {/* Current Bid */}
+        <div className="space-y-1">
           <div className="flex items-baseline justify-between">
-            <span className="text-muted-foreground">Current Bid</span>
-            <div className="flex items-baseline gap-1">
-              <span className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] bg-clip-text text-transparent">
-                ${currentBid.toLocaleString()}
-              </span>
-            </div>
+            <span className="text-sm text-muted-foreground">Current Bid</span>
+            <span className="text-xl bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] bg-clip-text text-transparent">
+              ${currentBid.toLocaleString()}
+            </span>
           </div>
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span>{bids} bids</span>
+        </div>
+
+        {/* Highest Bidder */}
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-secondary/30 border border-border/30">
+          <div className="h-6 w-6 rounded-full bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] flex items-center justify-center">
+            <User className="h-3 w-3 text-black" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground">Highest Bidder</p>
+            <p className="text-sm text-foreground truncate">{highestBidder.name}</p>
+          </div>
+        </div>
+
+        {/* Buy Now Price (if available) */}
+        {buyNowPrice && (
+          <div className="flex items-baseline justify-between p-2 rounded-lg bg-[#10b981]/10 border border-[#10b981]/20">
+            <span className="text-sm text-[#10b981]">Buy Now Price</span>
+            <span className="text-[#10b981]">
+              ${buyNowPrice.toLocaleString()}
+            </span>
+          </div>
+        )}
+
+        {/* Bids Count & Time */}
+        <div className="flex items-center justify-between text-sm text-muted-foreground pt-2 border-t border-border/30">
+          <span>{bids} bids placed</span>
+          <div className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            <span>{timeLeft}</span>
           </div>
         </div>
 

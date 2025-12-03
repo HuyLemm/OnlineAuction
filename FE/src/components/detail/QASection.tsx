@@ -18,11 +18,50 @@ interface QA {
 }
 
 interface QASectionProps {
-  questions: QA[];
+  questions?: QA[];
 }
 
-export function QASection({ questions: initialQuestions }: QASectionProps) {
-  const [questions, setQuestions] = useState(initialQuestions);
+export function QASection({ questions: initialQuestions = [] }: QASectionProps) {
+  // Default mock data if no questions provided
+  const defaultQuestions: QA[] = [
+    {
+      id: "1",
+      question: "Does this watch come with original box and papers?",
+      asker: "Michael Chen",
+      askedTime: "2 days ago",
+      answer: "Yes, this Rolex Submariner comes with the original box, papers, warranty card, and all accessories. Everything is in excellent condition.",
+      answerer: "Premium Watches Gallery",
+      answeredTime: "2 days ago",
+      likes: 12,
+      isExpanded: false,
+    },
+    {
+      id: "2",
+      question: "Has the watch been serviced recently?",
+      asker: "Sarah Williams",
+      askedTime: "3 days ago",
+      answer: "The watch was professionally serviced by a certified Rolex technician 6 months ago. All service records are included with the purchase.",
+      answerer: "Premium Watches Gallery",
+      answeredTime: "3 days ago",
+      likes: 8,
+      isExpanded: false,
+    },
+    {
+      id: "3",
+      question: "What is your return policy for this item?",
+      asker: "David Martinez",
+      askedTime: "4 days ago",
+      answer: "We offer a 30-day money-back guarantee. The watch must be returned in the same condition with all original packaging and documentation.",
+      answerer: "Premium Watches Gallery",
+      answeredTime: "4 days ago",
+      likes: 15,
+      isExpanded: false,
+    },
+  ];
+
+  const [questions, setQuestions] = useState(
+    initialQuestions.length > 0 ? initialQuestions : defaultQuestions
+  );
   const [showQuestionForm, setShowQuestionForm] = useState(false);
   const [newQuestion, setNewQuestion] = useState("");
 

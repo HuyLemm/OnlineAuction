@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Search, SlidersHorizontal, Grid3x3, List } from "lucide-react";
+import { Search, SlidersHorizontal, Grid3x3, List, X } from "lucide-react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
 import {
   Select,
   SelectContent,
@@ -16,14 +17,18 @@ interface BrowseTopBarProps {
   onViewModeChange: (mode: "grid" | "list") => void;
   onFilterToggle?: () => void;
   showFilterToggle?: boolean;
+  selectedCategory?: string | null;
+  onClearCategory?: () => void;
 }
 
-export function BrowseTopBar({ 
-  totalItems, 
-  viewMode, 
+export function BrowseTopBar({
+  totalItems,
+  viewMode,
   onViewModeChange,
   onFilterToggle,
-  showFilterToggle = false
+  showFilterToggle = false,
+  selectedCategory,
+  onClearCategory,
 }: BrowseTopBarProps) {
   const [sortBy, setSortBy] = useState("ending-soon");
 
@@ -84,8 +89,8 @@ export function BrowseTopBar({
                 size="icon"
                 onClick={() => onViewModeChange("grid")}
                 className={`h-8 w-8 ${
-                  viewMode === "grid" 
-                    ? "bg-[#fbbf24]/10 text-[#fbbf24] hover:bg-[#fbbf24]/20 hover:text-[#fbbf24]" 
+                  viewMode === "grid"
+                    ? "bg-[#fbbf24]/10 text-[#fbbf24] hover:bg-[#fbbf24]/20 hover:text-[#fbbf24]"
                     : ""
                 }`}
               >
@@ -96,8 +101,8 @@ export function BrowseTopBar({
                 size="icon"
                 onClick={() => onViewModeChange("list")}
                 className={`h-8 w-8 ${
-                  viewMode === "list" 
-                    ? "bg-[#fbbf24]/10 text-[#fbbf24] hover:bg-[#fbbf24]/20 hover:text-[#fbbf24]" 
+                  viewMode === "list"
+                    ? "bg-[#fbbf24]/10 text-[#fbbf24] hover:bg-[#fbbf24]/20 hover:text-[#fbbf24]"
                     : ""
                 }`}
               >
@@ -106,6 +111,25 @@ export function BrowseTopBar({
             </div>
           </div>
         </div>
+
+        {/* Selected Category Badge */}
+        {selectedCategory && (
+          <div className="mt-4 flex items-center gap-2">
+            <span className="text-muted-foreground">Filtered by:</span>
+            <Badge
+              variant="outline"
+              className="border-[#fbbf24]/30 bg-[#fbbf24]/10 text-[#fbbf24] hover:bg-[#fbbf24]/20 px-3 py-1.5 gap-2"
+            >
+              {selectedCategory}
+              <button
+                onClick={onClearCategory}
+                className="ml-1 hover:text-[#f59e0b] transition-colors"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          </div>
+        )}
       </div>
     </div>
   );

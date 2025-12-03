@@ -15,17 +15,38 @@ interface AuctionItem {
   isHot?: boolean;
   endingSoon?: boolean;
   watchers?: number;
+  highestBidder?: {
+    name: string;
+    avatar?: string;
+  };
+  buyNowPrice?: number;
+  postedDate?: string;
 }
 
 interface BrowseItemsPageProps {
   onNavigate?: (page: "home" | "browse" | "detail" | "dashboard" | "seller") => void;
+  selectedCategory?: string | null;
+  onCategorySelect?: (category: string) => void;
 }
 
-export function BrowseItemsPage({ onNavigate }: BrowseItemsPageProps) {
+export function BrowseItemsPage({ onNavigate, selectedCategory, onCategorySelect }: BrowseItemsPageProps) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 24;
+
+  // Parse selected category into main and sub parts
+  const getSelectedCategories = () => {
+    if (!selectedCategory) return { main: null, sub: null };
+    
+    const parts = selectedCategory.split(" ➡️ ");
+    if (parts.length === 2) {
+      return { main: parts[0].trim(), sub: parts[1].trim() };
+    }
+    return { main: null, sub: null };
+  };
+
+  const { main: selectedMainCategory, sub: selectedSubCategory } = getSelectedCategories();
 
   // Mock data - expanded auction items
   const allAuctions: AuctionItem[] = [
@@ -38,7 +59,10 @@ export function BrowseItemsPage({ onNavigate }: BrowseItemsPageProps) {
       timeLeft: "1d 8h 30m",
       category: "Watches",
       isHot: true,
-      watchers: 456
+      watchers: 456,
+      highestBidder: { name: "John Collector" },
+      buyNowPrice: 180000,
+      postedDate: "2 days ago"
     },
     {
       id: "2",
@@ -49,7 +73,9 @@ export function BrowseItemsPage({ onNavigate }: BrowseItemsPageProps) {
       timeLeft: "2h 15m",
       category: "Vintage Cars",
       endingSoon: true,
-      watchers: 234
+      watchers: 234,
+      highestBidder: { name: "CarEnthusiast99" },
+      postedDate: "5 days ago"
     },
     {
       id: "3",
@@ -60,7 +86,10 @@ export function BrowseItemsPage({ onNavigate }: BrowseItemsPageProps) {
       timeLeft: "1d 12h 45m",
       category: "Art",
       isHot: true,
-      watchers: 389
+      watchers: 389,
+      highestBidder: { name: "ArtLover2024" },
+      buyNowPrice: 150000,
+      postedDate: "1 week ago"
     },
     {
       id: "4",
@@ -71,7 +100,10 @@ export function BrowseItemsPage({ onNavigate }: BrowseItemsPageProps) {
       timeLeft: "3h 42m",
       category: "Jewelry",
       endingSoon: true,
-      watchers: 178
+      watchers: 178,
+      highestBidder: { name: "JewelryQueen" },
+      buyNowPrice: 35000,
+      postedDate: "3 days ago"
     },
     {
       id: "5",
@@ -82,7 +114,9 @@ export function BrowseItemsPage({ onNavigate }: BrowseItemsPageProps) {
       timeLeft: "4h 20m",
       category: "Collectibles",
       endingSoon: true,
-      watchers: 92
+      watchers: 92,
+      highestBidder: { name: "VintagePhotog" },
+      postedDate: "4 days ago"
     },
     {
       id: "6",
@@ -93,7 +127,10 @@ export function BrowseItemsPage({ onNavigate }: BrowseItemsPageProps) {
       timeLeft: "5h 10m",
       category: "Fashion",
       isHot: true,
-      watchers: 267
+      watchers: 267,
+      highestBidder: { name: "FashionistaLux" },
+      buyNowPrice: 65000,
+      postedDate: "1 day ago"
     },
     {
       id: "7",
@@ -295,11 +332,21 @@ export function BrowseItemsPage({ onNavigate }: BrowseItemsPageProps) {
   const endIndex = startIndex + itemsPerPage;
   const currentAuctions = allAuctions.slice(startIndex, endIndex);
 
+  const handleClearCategory = () => {
+    setCurrentPage(1); // Reset to first page when clearing filter
+  };
+
+  // Note: In real implementation, you would filter allAuctions by selectedCategory
+  // For now, we show all auctions regardless of category
+
   return (
     <div className="flex h-[calc(100vh-73px)]">
       {/* Desktop Filter Sidebar */}
       <div className="hidden lg:block w-80 flex-shrink-0">
-        <FilterSidebar />
+        <FilterSidebar 
+          selectedMainCategory={selectedMainCategory}
+          selectedSubCategory={selectedSubCategory}
+        />
       </div>
 
       {/* Mobile Filter Overlay */}
@@ -310,7 +357,11 @@ export function BrowseItemsPage({ onNavigate }: BrowseItemsPageProps) {
             onClick={() => setShowMobileFilters(false)}
           />
           <div className="absolute left-0 top-0 bottom-0 w-80 animate-in slide-in-from-left">
-            <FilterSidebar onClose={() => setShowMobileFilters(false)} />
+            <FilterSidebar 
+              onClose={() => setShowMobileFilters(false)}
+              selectedMainCategory={selectedMainCategory}
+              selectedSubCategory={selectedSubCategory}
+            />
           </div>
         </div>
       )}
@@ -324,6 +375,8 @@ export function BrowseItemsPage({ onNavigate }: BrowseItemsPageProps) {
           onViewModeChange={setViewMode}
           onFilterToggle={() => setShowMobileFilters(true)}
           showFilterToggle={true}
+          selectedCategory={selectedCategory}
+          onClearCategory={handleClearCategory}
         />
 
         {/* Scrollable Content Area */}
@@ -338,6 +391,7 @@ export function BrowseItemsPage({ onNavigate }: BrowseItemsPageProps) {
             totalItems={totalItems}
             onPageChange={setCurrentPage}
             onNavigate={onNavigate}
+            onCategoryClick={onCategorySelect}
           />
         </div>
       </div>

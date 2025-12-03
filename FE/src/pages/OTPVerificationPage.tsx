@@ -1,9 +1,6 @@
 import { useState } from "react";
-import { Mail, CheckCircle, Gavel } from "lucide-react";
+import { Mail, ArrowLeft } from "lucide-react";
 import { OTPInput } from "../components/auth/OTPInput";
-import { AuthButton } from "../components/auth/AuthButton";
-import { ValidationMessage } from "../components/auth/ValidationMessage";
-import { Card } from "../components/ui/card";
 import { toast } from "sonner";
 
 interface OTPVerificationPageProps {
@@ -12,22 +9,17 @@ interface OTPVerificationPageProps {
 }
 
 export function OTPVerificationPage({ onNavigate, email = "user@example.com" }: OTPVerificationPageProps) {
-  const [otp, setOtp] = useState("");
-  const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState("");
-  const [isResending, setIsResending] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
 
   const handleOTPComplete = async (otpValue: string) => {
-    setOtp(otpValue);
     setError("");
     setIsVerifying(true);
 
-    // Simulate API call
     setTimeout(() => {
       setIsVerifying(false);
       
-      // Mock validation - accept "123456" as valid OTP
       if (otpValue === "123456") {
         toast.success("Email verified successfully!");
         onNavigate?.("dashboard");
@@ -41,15 +33,11 @@ export function OTPVerificationPage({ onNavigate, email = "user@example.com" }: 
   const handleResendOTP = async () => {
     if (resendTimer > 0) return;
 
-    setIsResending(true);
     setError("");
 
-    // Simulate API call
     setTimeout(() => {
-      setIsResending(false);
       toast.success("New verification code sent to your email");
       
-      // Start 60 second countdown
       setResendTimer(60);
       const interval = setInterval(() => {
         setResendTimer((prev) => {
@@ -64,91 +52,159 @@ export function OTPVerificationPage({ onNavigate, email = "user@example.com" }: 
   };
 
   return (
-    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-6 py-12 bg-gradient-to-b from-background to-background/80">
-      <Card className="w-full max-w-md p-8 bg-card border-border/50">
-        {/* Logo & Header */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#fbbf24] to-[#f59e0b]">
-              <Mail className="h-8 w-8 text-black" />
+    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-6 py-12 bg-[#1a1a1a]">
+      <style>{`
+        .otp-container {
+          position: relative;
+          width: 850px;
+          height: 550px;
+          border: 2px solid #d4a446;
+          box-shadow: 0 0 25px rgba(212, 164, 70, 0.3);
+          overflow: hidden;
+        }
+
+        .form-box-otp {
+          position: absolute;
+          top: 0;
+          width: 50%;
+          height: 100%;
+          display: flex;
+          justify-content: center;
+          flex-direction: column;
+          left: 0;
+          padding: 0 40px;
+        }
+
+        .form-box-otp .animation {
+          transform: translateX(0%);
+          transition: 0.7s;
+          opacity: 1;
+          transition-delay: calc(0.1s * var(--S));
+        }
+
+        .info-content-otp {
+          position: absolute;
+          top: 0;
+          height: 100%;
+          width: 50%;
+          display: flex;
+          justify-content: center;
+          flex-direction: column;
+          right: 0;
+          text-align: right;
+          padding: 0 40px 60px 150px;
+        }
+
+        .info-content-otp .animation {
+          transform: translateX(0);
+          transition: 0.7s ease;
+          transition-delay: calc(0.1s * var(--S));
+          opacity: 1;
+          filter: blur(0px);
+        }
+
+        .curved-shape-otp {
+          position: absolute;
+          right: 0;
+          top: -5px;
+          height: 600px;
+          width: 850px;
+          background: linear-gradient(45deg, #2d2d39, #d4a446);
+          transform: rotate(10deg) skewY(40deg);
+          transform-origin: bottom right;
+          transition: 1.5s ease;
+          transition-delay: 1.6s;
+        }
+
+        .curved-shape2-otp {
+          position: absolute;
+          left: 250px;
+          top: 100%;
+          height: 700px;
+          width: 850px;
+          background: #2d2d39;
+          border-top: 3px solid #d4a446;
+          transform: rotate(0deg) skewY(0deg);
+          transform-origin: bottom left;
+          transition: 1.5s ease;
+          transition-delay: 0.5s;
+        }
+      `}</style>
+
+      <div className="otp-container">
+        <div className="curved-shape-otp"></div>
+        <div className="curved-shape2-otp"></div>
+
+        {/* Form Panel - Left */}
+        <div className="form-box-otp">
+          <div className="w-full max-w-md mx-auto">
+            <h2 className="animation text-3xl text-center mb-8 flex items-center justify-center gap-2 text-white" style={{ '--S': 21 } as any}>
+              <Mail className="h-7 w-7 text-[#d4a446]" />
+              Verify Email
+            </h2>
+
+            <div className="text-center mb-8 animation" style={{ '--S': 22 } as any}>
+              <p className="text-sm text-gray-400 mb-2">
+                We've sent a 6-digit code to
+              </p>
+              <p className="text-[#d4a446]">{email}</p>
+            </div>
+
+            <div className="animation" style={{ '--S': 23 } as any}>
+              <OTPInput
+                length={6}
+                onComplete={handleOTPComplete}
+                error={error}
+              />
+            </div>
+
+            {isVerifying && (
+              <div className="text-center mt-4 text-sm text-gray-400 animation" style={{ '--S': 24 } as any}>
+                Verifying...
+              </div>
+            )}
+
+            <div className="text-center text-sm mt-8 animation" style={{ '--S': 25 } as any}>
+              <p className="text-gray-400 mb-2">Didn't receive the code?</p>
+              {resendTimer > 0 ? (
+                <p className="text-gray-400">
+                  Resend in <span className="text-[#d4a446]">{resendTimer}s</span>
+                </p>
+              ) : (
+                <button
+                  onClick={handleResendOTP}
+                  className="text-[#d4a446] font-semibold hover:underline"
+                >
+                  Resend verification code
+                </button>
+              )}
+            </div>
+
+            <div className="mt-8 text-center animation" style={{ '--S': 26 } as any}>
+              <button
+                onClick={() => onNavigate?.("login")}
+                className="flex items-center gap-2 text-sm text-gray-400 hover:text-[#d4a446] transition-colors mx-auto"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Login
+              </button>
             </div>
           </div>
-          <h1 className="text-foreground mb-2">Verify Your Email</h1>
-          <p className="text-muted-foreground">
-            We've sent a 6-digit verification code to
+        </div>
+
+        {/* Info Panel - Right */}
+        <div className="info-content-otp">
+          <h2 className="animation text-4xl uppercase mb-4 text-white" style={{ '--S': 20 } as any}>
+            VERIFY YOUR EMAIL
+          </h2>
+          <p className="animation text-base text-gray-300" style={{ '--S': 21 } as any}>
+            Please enter the verification code sent to your email to complete your registration. The code will expire in 10 minutes.
           </p>
-          <p className="text-[#fbbf24] mt-1">{email}</p>
+          <div className="mt-8 flex justify-end animation" style={{ '--S': 22 } as any}>
+            <Mail className="h-16 w-16 text-[#d4a446]" />
+          </div>
         </div>
-
-        {/* Info Message */}
-        <div className="mb-8">
-          <ValidationMessage
-            type="info"
-            message="Please enter the verification code to complete your registration. The code will expire in 10 minutes."
-          />
-        </div>
-
-        {/* OTP Input */}
-        <div className="mb-8">
-          <OTPInput
-            length={6}
-            onComplete={handleOTPComplete}
-            error={error}
-          />
-        </div>
-
-        {/* Verify Button */}
-        <AuthButton
-          onClick={() => otp.length === 6 && handleOTPComplete(otp)}
-          isLoading={isVerifying}
-          disabled={otp.length !== 6}
-        >
-          <span className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4" />
-            Verify Email
-          </span>
-        </AuthButton>
-
-        {/* Resend Code */}
-        <div className="mt-6 text-center">
-          <p className="text-sm text-muted-foreground mb-2">
-            Didn't receive the code?
-          </p>
-          {resendTimer > 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Resend code in <span className="text-[#fbbf24]">{resendTimer}s</span>
-            </p>
-          ) : (
-            <button
-              onClick={handleResendOTP}
-              disabled={isResending}
-              className="text-sm text-[#fbbf24] hover:text-[#f59e0b] transition-colors disabled:opacity-50"
-            >
-              {isResending ? "Sending..." : "Resend verification code"}
-            </button>
-          )}
-        </div>
-
-        {/* Help Text */}
-        <div className="mt-8 p-4 rounded-lg bg-secondary/30 border border-border/50">
-          <p className="text-sm text-muted-foreground text-center">
-            Having trouble? Check your spam folder or{" "}
-            <a href="#" className="text-[#fbbf24] hover:text-[#f59e0b]">
-              contact support
-            </a>
-          </p>
-        </div>
-
-        {/* Back to Login */}
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          <button
-            onClick={() => onNavigate?.("login")}
-            className="text-[#fbbf24] hover:text-[#f59e0b] transition-colors"
-          >
-            Back to Login
-          </button>
-        </p>
-      </Card>
+      </div>
     </div>
   );
 }

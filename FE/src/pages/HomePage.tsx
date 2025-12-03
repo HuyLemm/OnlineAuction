@@ -191,7 +191,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
 
       {/* Top 5 Ending Soon */}
       <HomeFeaturedSection
-        title="Ending Soon"
+        title="Top 5 Ending Soon"
         description="Last chance to bid on these items"
         icon={Clock}
         iconGradient="from-[#f59e0b]/20 to-[#ef4444]/20"
@@ -202,7 +202,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
 
       {/* Top 5 Most Bids */}
       <HomeFeaturedSection
-        title="Most Popular"
+        title="Top 5 Most Popular"
         description="Hot items with the most bids"
         icon={TrendingUp}
         iconGradient="from-[#ef4444]/20 to-[#fbbf24]/20"
@@ -213,7 +213,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
 
       {/* Top 5 Highest Price */}
       <HomeFeaturedSection
-        title="Premium Collection"
+        title="Top 5 Premium Collection"
         description="Highest value items available"
         icon={DollarSign}
         iconGradient="from-[#fbbf24]/20 to-[#f59e0b]/20"

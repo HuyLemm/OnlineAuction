@@ -15,6 +15,12 @@ interface AuctionItem {
   isHot?: boolean;
   endingSoon?: boolean;
   watchers?: number;
+  highestBidder?: {
+    name: string;
+    avatar?: string;
+  };
+  buyNowPrice?: number;
+  postedDate?: string;
 }
 
 interface BrowseContentSectionProps {
@@ -27,6 +33,7 @@ interface BrowseContentSectionProps {
   totalItems: number;
   onPageChange: (page: number) => void;
   onNavigate?: (page: "home" | "browse" | "detail" | "dashboard" | "seller") => void;
+  onCategoryClick?: (category: string) => void;
 }
 
 export function BrowseContentSection({
@@ -39,6 +46,7 @@ export function BrowseContentSection({
   totalItems,
   onPageChange,
   onNavigate,
+  onCategoryClick,
 }: BrowseContentSectionProps) {
   return (
     <div className="container mx-auto p-6">
@@ -46,7 +54,12 @@ export function BrowseContentSection({
       {viewMode === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
           {auctions.map((auction) => (
-            <AuctionCard key={auction.id} {...auction} onNavigate={onNavigate} />
+            <AuctionCard 
+              key={auction.id} 
+              {...auction} 
+              onNavigate={onNavigate}
+              onCategoryClick={onCategoryClick}
+            />
           ))}
         </div>
       ) : (

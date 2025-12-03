@@ -1,14 +1,10 @@
 import { useState, type FormEvent } from "react";
-import { KeyRound, Mail, Gavel, ArrowLeft, CheckCircle } from "lucide-react";
-import { AuthInput } from "../components/auth/AuthInput";
-import { AuthButton } from "../components/auth/AuthButton";
-import { ValidationMessage } from "../components/auth/ValidationMessage";
+import { KeyRound, Mail, Lock, ArrowLeft } from "lucide-react";
 import { OTPInput } from "../components/auth/OTPInput";
-import { Card } from "../components/ui/card";
 import { toast } from "sonner";
 
 interface ForgotPasswordPageProps {
-  onNavigate?: (page: "login" | "reset-password") => void;
+  onNavigate?: (page: "login") => void;
 }
 
 type Step = "email" | "otp" | "new-password";
@@ -23,7 +19,6 @@ export function ForgotPasswordPage({ onNavigate }: ForgotPasswordPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
 
-  // Step 1: Email Submission
   const handleEmailSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
@@ -40,13 +35,11 @@ export function ForgotPasswordPage({ onNavigate }: ForgotPasswordPageProps) {
     setIsLoading(true);
     setErrors({});
 
-    // Simulate API call
     setTimeout(() => {
       setIsLoading(false);
       toast.success("Verification code sent to your email");
       setCurrentStep("otp");
       
-      // Start countdown
       setResendTimer(60);
       const interval = setInterval(() => {
         setResendTimer((prev) => {
@@ -60,16 +53,13 @@ export function ForgotPasswordPage({ onNavigate }: ForgotPasswordPageProps) {
     }, 1500);
   };
 
-  // Step 2: OTP Verification
   const handleOTPComplete = async (otpValue: string) => {
     setOtp(otpValue);
     setIsLoading(true);
 
-    // Simulate API call
     setTimeout(() => {
       setIsLoading(false);
       
-      // Mock validation - accept "123456" as valid
       if (otpValue === "123456") {
         toast.success("Code verified successfully");
         setCurrentStep("new-password");
@@ -80,7 +70,6 @@ export function ForgotPasswordPage({ onNavigate }: ForgotPasswordPageProps) {
     }, 1500);
   };
 
-  // Step 3: New Password Submission
   const handlePasswordSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
@@ -90,8 +79,6 @@ export function ForgotPasswordPage({ onNavigate }: ForgotPasswordPageProps) {
       newErrors.password = "Password is required";
     } else if (newPassword.length < 8) {
       newErrors.password = "Password must be at least 8 characters";
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
-      newErrors.password = "Password must contain uppercase, lowercase, and numbers";
     }
 
     if (!confirmPassword) {
@@ -108,7 +95,6 @@ export function ForgotPasswordPage({ onNavigate }: ForgotPasswordPageProps) {
     setIsLoading(true);
     setErrors({});
 
-    // Simulate API call
     setTimeout(() => {
       setIsLoading(false);
       toast.success("Password reset successfully!");
@@ -138,189 +124,383 @@ export function ForgotPasswordPage({ onNavigate }: ForgotPasswordPageProps) {
     }, 1000);
   };
 
-  const getPasswordStrength = () => {
-    const password = newPassword;
-    if (!password) return { strength: 0, label: "", color: "" };
-
-    let strength = 0;
-    if (password.length >= 8) strength++;
-    if (password.length >= 12) strength++;
-    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
-    if (/\d/.test(password)) strength++;
-    if (/[^a-zA-Z0-9]/.test(password)) strength++;
-
-    if (strength <= 2) return { strength: 33, label: "Weak", color: "bg-red-500" };
-    if (strength <= 3) return { strength: 66, label: "Medium", color: "bg-[#f59e0b]" };
-    return { strength: 100, label: "Strong", color: "bg-green-500" };
-  };
-
-  const passwordStrength = getPasswordStrength();
-
   return (
-    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-6 py-12 bg-gradient-to-b from-background to-background/80">
-      <Card className="w-full max-w-md p-8 bg-card border-border/50">
-        {/* Logo & Header */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#fbbf24] to-[#f59e0b]">
-              <KeyRound className="h-8 w-8 text-black" />
-            </div>
-          </div>
-          <h1 className="text-foreground mb-2">
-            {currentStep === "email" && "Forgot Password?"}
-            {currentStep === "otp" && "Verify Your Email"}
-            {currentStep === "new-password" && "Create New Password"}
-          </h1>
-          <p className="text-muted-foreground">
-            {currentStep === "email" && "Enter your email to receive a verification code"}
-            {currentStep === "otp" && `Code sent to ${email}`}
-            {currentStep === "new-password" && "Enter your new password"}
-          </p>
-        </div>
+    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-6 py-12 bg-[#1a1a1a]">
+      <style>{`
+        .forgot-container {
+          position: relative;
+          width: 850px;
+          height: 600px;
+          border: 2px solid #d4a446;
+          box-shadow: 0 0 25px rgba(212, 164, 70, 0.3);
+          overflow: hidden;
+        }
 
-        {/* Step 1: Email Input */}
-        {currentStep === "email" && (
-          <form onSubmit={handleEmailSubmit} className="space-y-6">
-            <ValidationMessage
-              type="info"
-              message="We'll send a verification code to your email address to reset your password."
-            />
+        .form-box-forgot {
+          position: absolute;
+          top: 0;
+          width: 50%;
+          height: 100%;
+          display: flex;
+          justify-content: center;
+          flex-direction: column;
+          left: 0;
+          padding: 0 40px;
+        }
 
-            <AuthInput
-              label="Email Address"
-              type="email"
-              icon="email"
-              placeholder="Enter your registered email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setErrors({});
-              }}
-              error={errors.email}
-            />
+        .form-box-forgot .animation {
+          transform: translateX(0%);
+          transition: 0.7s;
+          opacity: 1;
+          transition-delay: calc(0.1s * var(--S));
+        }
 
-            <AuthButton type="submit" isLoading={isLoading}>
-              <span className="flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                Send Verification Code
-              </span>
-            </AuthButton>
-          </form>
-        )}
+        .info-content-forgot {
+          position: absolute;
+          top: 0;
+          height: 100%;
+          width: 50%;
+          display: flex;
+          justify-content: center;
+          flex-direction: column;
+          right: 0;
+          text-align: right;
+          padding: 0 40px 60px 150px;
+        }
 
-        {/* Step 2: OTP Verification */}
-        {currentStep === "otp" && (
-          <div className="space-y-6">
-            <ValidationMessage
-              type="info"
-              message="Enter the 6-digit verification code sent to your email."
-            />
+        .info-content-forgot .animation {
+          transform: translateX(0);
+          transition: 0.7s ease;
+          transition-delay: calc(0.1s * var(--S));
+          opacity: 1;
+          filter: blur(0px);
+        }
 
-            <OTPInput
-              length={6}
-              onComplete={handleOTPComplete}
-              error={errors.otp}
-            />
+        .curved-shape-forgot {
+          position: absolute;
+          right: 0;
+          top: -5px;
+          height: 700px;
+          width: 850px;
+          background: linear-gradient(45deg, #2d2d39, #d4a446);
+          transform: rotate(10deg) skewY(40deg);
+          transform-origin: bottom right;
+          transition: 1.5s ease;
+          transition-delay: 1.6s;
+        }
 
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground mb-2">
-                Didn't receive the code?
-              </p>
-              {resendTimer > 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Resend code in <span className="text-[#fbbf24]">{resendTimer}s</span>
-                </p>
-              ) : (
-                <button
-                  onClick={handleResendOTP}
-                  disabled={isLoading}
-                  className="text-sm text-[#fbbf24] hover:text-[#f59e0b] transition-colors disabled:opacity-50"
-                >
-                  Resend verification code
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+        .curved-shape2-forgot {
+          position: absolute;
+          left: 250px;
+          top: 100%;
+          height: 800px;
+          width: 850px;
+          background: #2d2d39;
+          border-top: 3px solid #d4a446;
+          transform: rotate(0deg) skewY(0deg);
+          transform-origin: bottom left;
+          transition: 1.5s ease;
+          transition-delay: 0.5s;
+        }
 
-        {/* Step 3: New Password */}
-        {currentStep === "new-password" && (
-          <form onSubmit={handlePasswordSubmit} className="space-y-6">
-            <ValidationMessage
-              type="success"
-              message="Email verified! Please create a new password for your account."
-            />
+        .floating-input {
+          position: relative;
+          width: 100%;
+          height: 50px;
+          margin-top: 25px;
+        }
 
-            <div>
-              <AuthInput
-                label="New Password"
-                type="password"
-                icon="password"
-                placeholder="Create a strong password"
-                showPasswordToggle
-                value={newPassword}
-                onChange={(e) => {
-                  setNewPassword(e.target.value);
-                  setErrors({});
-                }}
-                error={errors.password}
-              />
-              {newPassword && (
-                <div className="mt-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-muted-foreground">Password strength</span>
-                    <span className={`text-xs ${
-                      passwordStrength.label === "Weak" ? "text-red-500" :
-                      passwordStrength.label === "Medium" ? "text-[#f59e0b]" :
-                      "text-green-500"
-                    }`}>
-                      {passwordStrength.label}
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-secondary/50 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full transition-all ${passwordStrength.color}`}
-                      style={{ width: `${passwordStrength.strength}%` }}
-                    />
-                  </div>
+        .floating-input input {
+          width: 100%;
+          height: 100%;
+          background: transparent;
+          border: none;
+          outline: none;
+          font-size: 16px;
+          color: #fff;
+          font-weight: 500;
+          border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+          padding-right: 30px;
+          transition: 0.5s;
+        }
+
+        .floating-input input:focus,
+        .floating-input input:valid {
+          border-bottom: 2px solid #d4a446;
+        }
+
+        .floating-input label {
+          position: absolute;
+          top: 50%;
+          left: 0;
+          transform: translateY(-50%);
+          font-size: 16px;
+          color: rgba(255, 255, 255, 0.7);
+          pointer-events: none;
+          transition: 0.5s;
+        }
+
+        .floating-input input:focus ~ label,
+        .floating-input input:valid ~ label {
+          top: -5px;
+          color: #d4a446;
+          font-size: 13px;
+        }
+
+        .floating-input .icon {
+          position: absolute;
+          top: 50%;
+          right: 0;
+          transform: translateY(-50%);
+          color: rgba(255, 255, 255, 0.4);
+          transition: 0.5s;
+        }
+
+        .floating-input input:focus ~ .icon,
+        .floating-input input:valid ~ .icon {
+          color: #d4a446;
+        }
+
+        .gradient-btn {
+          position: relative;
+          width: 100%;
+          height: 45px;
+          background: transparent;
+          border-radius: 40px;
+          cursor: pointer;
+          font-size: 16px;
+          font-weight: 600;
+          border: 2px solid #d4a446;
+          overflow: hidden;
+          z-index: 1;
+          color: #fff;
+        }
+
+        .gradient-btn::before {
+          content: "";
+          position: absolute;
+          height: 300%;
+          width: 100%;
+          background: linear-gradient(#2d2d39, #d4a446, #2d2d39, #d4a446);
+          top: -100%;
+          left: 0;
+          z-index: -1;
+          transition: 0.5s;
+        }
+
+        .gradient-btn:hover::before {
+          top: 0;
+        }
+
+        .gradient-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        .step-content {
+          animation: fadeIn 0.5s ease-out;
+        }
+      `}</style>
+
+      <div className="forgot-container">
+        <div className="curved-shape-forgot"></div>
+        <div className="curved-shape2-forgot"></div>
+
+        {/* Form Panel - Left */}
+        <div className="form-box-forgot">
+          <div className="w-full max-w-sm mx-auto">
+            <h2 className="animation text-3xl text-center mb-6 flex items-center justify-center gap-2 text-white" style={{ '--S': 21 } as any}>
+              <KeyRound className="h-7 w-7 text-[#d4a446]" />
+              {currentStep === "email" && "Forgot Password"}
+              {currentStep === "otp" && "Verify Email"}
+              {currentStep === "new-password" && "New Password"}
+            </h2>
+
+            {/* Step 1: Email Input */}
+            {currentStep === "email" && (
+              <form onSubmit={handleEmailSubmit} className="step-content">
+                <div className="text-center mb-6 animation" style={{ '--S': 22 } as any}>
+                  <p className="text-sm text-gray-400">
+                    Enter your email to receive a verification code
+                  </p>
                 </div>
-              )}
-            </div>
 
-            <AuthInput
-              label="Confirm New Password"
-              type="password"
-              icon="password"
-              placeholder="Re-enter your password"
-              showPasswordToggle
-              value={confirmPassword}
-              onChange={(e) => {
-                setConfirmPassword(e.target.value);
-                setErrors({});
-              }}
-              error={errors.confirmPassword}
-            />
+                <div className="floating-input animation" style={{ '--S': 23 } as any}>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setErrors({});
+                    }}
+                  />
+                  <label>Email Address</label>
+                  <Mail className="icon h-5 w-5" />
+                </div>
 
-            <AuthButton type="submit" isLoading={isLoading}>
-              <span className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4" />
-                Reset Password
-              </span>
-            </AuthButton>
-          </form>
-        )}
+                {errors.email && (
+                  <div className="text-xs text-red-400 text-center mt-2 animation" style={{ '--S': 24 } as any}>
+                    {errors.email}
+                  </div>
+                )}
 
-        {/* Back to Login */}
-        <div className="mt-8 pt-6 border-t border-border/50">
-          <button
-            onClick={() => onNavigate?.("login")}
-            className="flex items-center gap-2 text-sm text-[#fbbf24] hover:text-[#f59e0b] transition-colors mx-auto"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Login
-          </button>
+                <div className="floating-input animation" style={{ '--S': 25 } as any}>
+                  <button className="gradient-btn" type="submit" disabled={isLoading}>
+                    {isLoading ? "Sending..." : "Send Code"}
+                  </button>
+                </div>
+
+                <div className="mt-6 text-center animation" style={{ '--S': 26 } as any}>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate?.("login")}
+                    className="flex items-center gap-2 text-sm text-gray-400 hover:text-[#d4a446] transition-colors mx-auto"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to Login
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Step 2: OTP Verification */}
+            {currentStep === "otp" && (
+              <div className="step-content">
+                <div className="text-center mb-6 animation" style={{ '--S': 22 } as any}>
+                  <p className="text-sm text-gray-400">
+                    Enter the 6-digit code sent to
+                  </p>
+                  <p className="text-[#d4a446] text-sm mt-1">{email}</p>
+                </div>
+
+                <div className="animation" style={{ '--S': 23 } as any}>
+                  <OTPInput
+                    length={6}
+                    onComplete={handleOTPComplete}
+                    error={errors.otp}
+                  />
+                </div>
+
+                <div className="text-center text-sm mt-6 animation" style={{ '--S': 24 } as any}>
+                  <p className="text-gray-400 mb-2">Didn't receive the code?</p>
+                  {resendTimer > 0 ? (
+                    <p className="text-gray-400">
+                      Resend in <span className="text-[#d4a446]">{resendTimer}s</span>
+                    </p>
+                  ) : (
+                    <button
+                      onClick={handleResendOTP}
+                      disabled={isLoading}
+                      className="text-[#d4a446] font-semibold hover:underline"
+                    >
+                      Resend Code
+                    </button>
+                  )}
+                </div>
+
+                <div className="mt-6 text-center animation" style={{ '--S': 25 } as any}>
+                  <button
+                    onClick={() => onNavigate?.("login")}
+                    className="flex items-center gap-2 text-sm text-gray-400 hover:text-[#d4a446] transition-colors mx-auto"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to Login
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: New Password */}
+            {currentStep === "new-password" && (
+              <form onSubmit={handlePasswordSubmit} className="step-content">
+                <div className="text-center mb-6 animation" style={{ '--S': 22 } as any}>
+                  <p className="text-sm text-green-400">
+                    ✓ Email verified! Create a new password
+                  </p>
+                </div>
+
+                <div className="floating-input animation" style={{ '--S': 23 } as any}>
+                  <input
+                    type="password"
+                    required
+                    value={newPassword}
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      setErrors({});
+                    }}
+                  />
+                  <label>New Password</label>
+                  <Lock className="icon h-5 w-5" />
+                </div>
+
+                <div className="floating-input animation" style={{ '--S': 24 } as any}>
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      setErrors({});
+                    }}
+                  />
+                  <label>Confirm New Password</label>
+                  <Lock className="icon h-5 w-5" />
+                </div>
+
+                {(errors.password || errors.confirmPassword) && (
+                  <div className="text-xs text-red-400 text-center mt-2 animation" style={{ '--S': 25 } as any}>
+                    {errors.password || errors.confirmPassword}
+                  </div>
+                )}
+
+                <div className="floating-input animation" style={{ '--S': 26 } as any}>
+                  <button className="gradient-btn" type="submit" disabled={isLoading}>
+                    {isLoading ? "Resetting..." : "Reset Password"}
+                  </button>
+                </div>
+
+                <div className="mt-6 text-center animation" style={{ '--S': 27 } as any}>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate?.("login")}
+                    className="flex items-center gap-2 text-sm text-gray-400 hover:text-[#d4a446] transition-colors mx-auto"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to Login
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
-      </Card>
+
+        {/* Info Panel - Right */}
+        <div className="info-content-forgot">
+          <h2 className="animation text-4xl uppercase mb-4 text-white" style={{ '--S': 20 } as any}>
+            RESET PASSWORD
+          </h2>
+          <p className="animation text-base text-gray-300" style={{ '--S': 21 } as any}>
+            {currentStep === "email" && "Don't worry! Enter your email and we'll send you a code to reset your password."}
+            {currentStep === "otp" && "We've sent a verification code to your email. Please check your inbox."}
+            {currentStep === "new-password" && "Almost done! Choose a strong password to secure your account."}
+          </p>
+          <div className="mt-8 flex justify-end animation" style={{ '--S': 22 } as any}>
+            <KeyRound className="h-16 w-16 text-[#d4a446]" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
