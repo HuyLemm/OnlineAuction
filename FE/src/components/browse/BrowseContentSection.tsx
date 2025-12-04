@@ -2,6 +2,8 @@ import { AuctionCard } from "../auction/AuctionCard";
 import { AuctionListItem } from "./AuctionListItem";
 import { Button } from "../ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { SkeletonCard } from "../state/SkeletonCard";
+import { EmptyState } from "../state/EmptyState";
 
 interface AuctionItem {
   id: string;

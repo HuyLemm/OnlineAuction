@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Toaster } from "sonner";
 import { Header } from "./layouts/Header";
 import { Footer } from "./layouts/Footer";
@@ -13,8 +13,11 @@ import { LoginPage } from "./pages/LoginPage";
 import { OTPVerificationPage } from "./pages/OTPVerificationPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
+import SearchResultsPage from "./pages/SearchResultsPage";
+import { StateExamplesPage } from "./pages/StateExamplesPage";
+import { DevTools } from "./components/dev/DevTools";
 
-type Page = "home" | "browse" | "detail" | "dashboard" | "seller" | "order" | "admin" | "login" | "otp-verification" | "forgot-password" | "notifications";
+type Page = "home" | "browse" | "detail" | "dashboard" | "seller" | "order" | "admin" | "login" | "otp-verification" | "forgot-password" | "notifications" | "search" | "state-examples";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>("home");
@@ -24,6 +27,16 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedMainCategory, setSelectedMainCategory] = useState<string | null>(null);
   const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Scroll to top on page navigation
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'instant' // Instant scroll, no animation
+    });
+  }, [currentPage]); // Trigger on every page change
 
   const handleNavigateToOrder = (orderId: string) => {
     setCurrentOrderId(orderId);
@@ -61,6 +74,11 @@ export default function App() {
     setCurrentPage(page);
   };
 
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    setCurrentPage("search");
+  };
+
   return (
     <div className="dark min-h-screen bg-background">
       <Toaster theme="dark" position="top-right" />
@@ -70,13 +88,19 @@ export default function App() {
         isAuthenticated={isAuthenticated}
         onLogout={handleLogout}
         onCategorySelect={handleCategorySelect}
+        onSearch={handleSearch}
+        currentSearchQuery={currentPage === "search" ? searchQuery : ""}
       />
       
       {/* Main Content */}
       <main className="flex-1">
         {currentPage === "home" && (
           <div className="container mx-auto px-6 py-8">
-            <HomePage onNavigate={(page) => setCurrentPage(page)} />
+            <HomePage 
+              onNavigate={(page) => setCurrentPage(page)} 
+              onSearch={handleSearch}
+              onCategorySelect={handleCategorySelect}
+            />
           </div>
         )}
         
@@ -127,10 +151,24 @@ export default function App() {
           <NotificationsPage onBack={() => setCurrentPage("home")} />
         )}
         
+        {currentPage === "search" && (
+          <SearchResultsPage 
+            initialQuery={searchQuery}
+            onNavigate={(page) => setCurrentPage(page)}
+          />
+        )}
+        
+        {currentPage === "state-examples" && (
+          <StateExamplesPage />
+        )}
+        
         {!["login", "otp-verification", "forgot-password"].includes(currentPage) && (
           <Footer />
         )}
       </main>
+      
+      {/* Dev Tools - Floating button to access demo pages */}
+      <DevTools onNavigate={(page) => setCurrentPage(page as Page)} />
     </div>
   );
 }

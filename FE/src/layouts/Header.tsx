@@ -1,24 +1,62 @@
-import { Search, Bell, User, Gavel, Shield, LogOut, ChevronRight } from "lucide-react";
+import {
+  Search,
+  Bell,
+  User,
+  Gavel,
+  Shield,
+  LogOut,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 import { useState } from "react";
 import { NotificationDropdown } from "../components/notifications/NotificationDropdown";
 import { type Notification } from "../components/notifications/NotificationCard";
 import { toast } from "sonner";
 
 interface HeaderProps {
-  onNavigate?: (page: "home" | "browse" | "detail" | "dashboard" | "seller" | "admin" | "login" | "notifications") => void;
+  onNavigate?: (
+    page:
+      | "home"
+      | "browse"
+      | "detail"
+      | "dashboard"
+      | "seller"
+      | "admin"
+      | "login"
+      | "notifications"
+      | "search"
+  ) => void;
   currentPage?: string;
   isAuthenticated?: boolean;
   onLogout?: () => void;
   onCategorySelect?: (category: string) => void;
+  onSearch?: (query: string) => void;
+  currentSearchQuery?: string;
 }
 
-export function Header({ onNavigate, currentPage = "home", isAuthenticated = false, onLogout, onCategorySelect }: HeaderProps) {
-  const [selectedMainCategory, setSelectedMainCategory] = useState<string | null>(null);
-  
+export function Header({
+  onNavigate,
+  currentPage = "home",
+  isAuthenticated = false,
+  onLogout,
+  onCategorySelect,
+  onSearch,
+  currentSearchQuery = "",
+}: HeaderProps) {
+  const [selectedMainCategory, setSelectedMainCategory] = useState<
+    string | null
+  >(null);
+  const [searchValue, setSearchValue] = useState("");
+
   // Mock notifications data
   const [notifications, setNotifications] = useState<Notification[]>([
     {
@@ -84,28 +122,33 @@ export function Header({ onNavigate, currentPage = "home", isAuthenticated = fal
   const menuCategories = [
     {
       main: "Electronic Devices",
-      subcategories: ["Smartphones", "Laptops", "Tablets", "Accessories"]
+      subcategories: ["Smartphones", "Laptops", "Tablets", "Accessories"],
     },
     {
       main: "Fashion & Accessories",
-      subcategories: ["Watches", "Handbags", "Shoes", "Clothing"]
+      subcategories: ["Watches", "Handbags", "Shoes", "Clothing"],
     },
     {
       main: "Art & Collectibles",
-      subcategories: ["Paintings", "Sculptures", "Photography", "Antiques"]
+      subcategories: ["Paintings", "Sculptures", "Photography", "Antiques"],
     },
     {
       main: "Vehicles",
-      subcategories: ["Vintage Cars", "Sports Cars", "Motorcycles", "Auto Parts"]
+      subcategories: [
+        "Vintage Cars",
+        "Sports Cars",
+        "Motorcycles",
+        "Auto Parts",
+      ],
     },
     {
       main: "Jewelry",
-      subcategories: ["Rings", "Necklaces", "Bracelets", "Earrings"]
+      subcategories: ["Rings", "Necklaces", "Bracelets", "Earrings"],
     },
     {
       main: "Collectibles",
-      subcategories: ["Stamps", "Coins", "Toys", "Sports Memorabilia"]
-    }
+      subcategories: ["Stamps", "Coins", "Toys", "Sports Memorabilia"],
+    },
   ];
 
   const handleCategoryClick = (mainCategory: string, subcategory: string) => {
@@ -126,7 +169,7 @@ export function Header({ onNavigate, currentPage = "home", isAuthenticated = fal
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#fbbf24] to-[#f59e0b]">
               <Gavel className="h-5 w-5 text-black" />
             </div>
-            <span className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-2xl bg-clip-text text-transparent">
               LuxeAuction
             </span>
           </button>
@@ -135,7 +178,7 @@ export function Header({ onNavigate, currentPage = "home", isAuthenticated = fal
           <nav className="hidden md:flex items-center gap-8">
             <button
               onClick={() => onNavigate?.("browse")}
-              className={`transition-colors ${
+              className={`transition-colors text-lg ${
                 currentPage === "browse"
                   ? "text-[#fbbf24]"
                   : "text-foreground/90 hover:text-foreground"
@@ -143,16 +186,18 @@ export function Header({ onNavigate, currentPage = "home", isAuthenticated = fal
             >
               Live Auctions
             </button>
-            
+
             {/* Hierarchical Menu Dropdown */}
-            <DropdownMenu onOpenChange={(open) => !open && setSelectedMainCategory(null)}>
+            <DropdownMenu
+              onOpenChange={(open) => !open && setSelectedMainCategory(null)}
+            >
               <DropdownMenuTrigger asChild>
-                <button className="text-foreground/90 hover:text-foreground transition-colors flex items-center gap-1">
+                <button className="text-foreground/90 hover:text-foreground text-lg transition-colors flex items-center gap-1">
                   Menu
                   <ChevronRight className="h-3 w-3 rotate-90" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent 
+              <DropdownMenuContent
                 className="w-[650px] bg-[#1a1a1a] border-[#fbbf24]/20 p-0 shadow-2xl"
                 align="start"
                 sideOffset={8}
@@ -168,7 +213,9 @@ export function Header({ onNavigate, currentPage = "home", isAuthenticated = fal
                       {menuCategories.map((category) => (
                         <button
                           key={category.main}
-                          onMouseEnter={() => setSelectedMainCategory(category.main)}
+                          onMouseEnter={() =>
+                            setSelectedMainCategory(category.main)
+                          }
                           onClick={() => {
                             setSelectedMainCategory(category.main);
                             onNavigate?.("browse");
@@ -180,11 +227,13 @@ export function Header({ onNavigate, currentPage = "home", isAuthenticated = fal
                           }`}
                         >
                           <span className="flex-1">{category.main}</span>
-                          <ChevronRight className={`h-4 w-4 transition-transform ${
-                            selectedMainCategory === category.main 
-                              ? "text-[#fbbf24] translate-x-1" 
-                              : "text-gray-500 group-hover:translate-x-0.5 group-hover:text-gray-400"
-                          }`} />
+                          <ChevronRight
+                            className={`h-4 w-4 transition-transform ${
+                              selectedMainCategory === category.main
+                                ? "text-[#fbbf24] translate-x-1"
+                                : "text-gray-500 group-hover:translate-x-0.5 group-hover:text-gray-400"
+                            }`}
+                          />
                         </button>
                       ))}
                     </div>
@@ -198,23 +247,31 @@ export function Header({ onNavigate, currentPage = "home", isAuthenticated = fal
                       </p>
                     </div>
                     <div className="max-h-[420px] overflow-y-auto py-2 scrollbar-thin scrollbar-thumb-[#fbbf24]/20 scrollbar-track-transparent">
-                      {selectedMainCategory && menuCategories
-                        .find(cat => cat.main === selectedMainCategory)
-                        ?.subcategories.map((subcategory) => (
-                          <button
-                            key={subcategory}
-                            onClick={() => handleCategoryClick(selectedMainCategory, subcategory)}
-                            className="w-full px-5 py-3 text-left text-gray-300 hover:bg-[#fbbf24]/10 hover:text-[#fbbf24] transition-all flex items-center gap-3 group"
-                          >
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#fbbf24]/40 group-hover:bg-[#fbbf24] transition-colors" />
-                            <span className="flex-1">{subcategory}</span>
-                            <ChevronRight className="h-3 w-3 text-[#fbbf24]/0 group-hover:text-[#fbbf24]/60 transition-colors" />
-                          </button>
-                        ))}
+                      {selectedMainCategory &&
+                        menuCategories
+                          .find((cat) => cat.main === selectedMainCategory)
+                          ?.subcategories.map((subcategory) => (
+                            <button
+                              key={subcategory}
+                              onClick={() =>
+                                handleCategoryClick(
+                                  selectedMainCategory,
+                                  subcategory
+                                )
+                              }
+                              className="w-full px-5 py-3 text-left text-gray-300 hover:bg-[#fbbf24]/10 hover:text-[#fbbf24] transition-all flex items-center gap-3 group"
+                            >
+                              <div className="w-1.5 h-1.5 rounded-full bg-[#fbbf24]/40 group-hover:bg-[#fbbf24] transition-colors" />
+                              <span className="flex-1">{subcategory}</span>
+                              <ChevronRight className="h-3 w-3 text-[#fbbf24]/0 group-hover:text-[#fbbf24]/60 transition-colors" />
+                            </button>
+                          ))}
                       {!selectedMainCategory && (
                         <div className="p-12 text-center text-gray-400">
                           <p className="text-sm">Hover over a category</p>
-                          <p className="text-sm mt-1 opacity-60">to view subcategories</p>
+                          <p className="text-sm mt-1 opacity-60">
+                            to view subcategories
+                          </p>
                         </div>
                       )}
                     </div>
@@ -223,12 +280,12 @@ export function Header({ onNavigate, currentPage = "home", isAuthenticated = fal
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <button className="text-foreground/90 hover:text-foreground transition-colors">
+            <button className="text-foreground/90 hover:text-foreground text-lg transition-colors">
               How It Works
             </button>
             <button
               onClick={() => onNavigate?.("seller")}
-              className={`transition-colors ${
+              className={`transition-colors text-lg ${
                 currentPage === "seller"
                   ? "text-[#fbbf24]"
                   : "text-foreground/90 hover:text-foreground"
@@ -245,7 +302,16 @@ export function Header({ onNavigate, currentPage = "home", isAuthenticated = fal
               <Input
                 type="search"
                 placeholder="Search auctions..."
-                className="pl-10 bg-secondary/50 border-border/50"
+                className="pl-10 bg-secondary/50 border-border/50 "
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && searchValue.trim() && onSearch) {
+                    onSearch(searchValue);
+                    onNavigate?.("search");
+                    setSearchValue(""); // Clear input after search
+                  }
+                }}
               />
             </div>
           </div>
@@ -263,12 +329,14 @@ export function Header({ onNavigate, currentPage = "home", isAuthenticated = fal
                   onViewAll={() => onNavigate?.("notifications")}
                   onNotificationClick={handleNotificationClick}
                 />
-                
+
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => onNavigate?.("dashboard")}
-                  className={currentPage === "dashboard" ? "text-[#fbbf24]" : ""}
+                  className={
+                    currentPage === "dashboard" ? "text-[#fbbf24]" : ""
+                  }
                 >
                   <User className="h-5 w-5" />
                 </Button>
@@ -277,15 +345,17 @@ export function Header({ onNavigate, currentPage = "home", isAuthenticated = fal
                   variant="ghost"
                   size="icon"
                   onClick={() => onNavigate?.("admin")}
-                  className={`relative ${currentPage === "admin" ? "text-[#fbbf24]" : ""}`}
+                  className={`relative ${
+                    currentPage === "admin" ? "text-[#fbbf24]" : ""
+                  }`}
                   title="Admin Panel"
                 >
                   <Shield className="h-5 w-5" />
                 </Button>
-                
-                <Button 
+
+                <Button
                   onClick={() => onNavigate?.("login")}
-                  className="hidden md:inline-flex bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90"
+                  className="hidden md:inline-flex bg-gradient-to-r from-[#fbbf24] text-sm to-[#f59e0b] text-black hover:opacity-90"
                 >
                   Start Bidding
                 </Button>
@@ -311,8 +381,8 @@ export function Header({ onNavigate, currentPage = "home", isAuthenticated = fal
                 >
                   <Shield className="h-5 w-5" />
                 </Button>
-                
-                <Button 
+
+                <Button
                   onClick={() => onNavigate?.("login")}
                   className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90"
                 >

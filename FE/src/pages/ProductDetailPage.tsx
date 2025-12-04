@@ -298,3 +298,4 @@ export function ProductDetailPage({ onBack }: ProductDetailPageProps) {
     </div>
   );
 }
+

@@ -3,6 +3,8 @@ import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { ImageWithFallback } from "../check/ImageWithFallback";
+import { RelativeTimeCompact } from "../ui/RelativeTimeDisplay";
+import { NewBadge } from "../ui/NewBadge";
 
 interface AuctionCardProps {
   id: string;
@@ -21,7 +23,7 @@ interface AuctionCardProps {
     avatar?: string;
   };
   buyNowPrice?: number;
-  postedDate?: string;
+  postedDate?: Date | string; // Accept both Date and string
 }
 
 export function AuctionCard({
@@ -37,11 +39,34 @@ export function AuctionCard({
   onCategoryClick,
   highestBidder = { name: "Anonymous Bidder" },
   buyNowPrice,
-  postedDate = "2 days ago",
+  postedDate,
 }: AuctionCardProps) {
   const handleCategoryClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onCategoryClick?.(category);
+  };
+
+  // Calculate days since posted for display
+  const getDaysAgo = (date?: Date | string): string => {
+    if (!date) return "Recently posted";
+    
+    // Ensure we have a valid Date object
+    const dateObj = date instanceof Date ? date : new Date(date);
+    if (isNaN(dateObj.getTime())) return "Recently posted";
+    
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - dateObj.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
+    }
+    const months = Math.floor(diffDays / 30);
+    return `${months} month${months > 1 ? 's' : ''} ago`;
   };
 
   return (
@@ -57,35 +82,35 @@ export function AuctionCard({
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
         
-        {/* Badges */}
-        <div className="absolute top-3 left-3 flex gap-2">
+        {/* Badges - Top Left */}
+        <div className="absolute top-2 left-2 flex gap-1.5">
           {isHot && (
-            <Badge className="bg-[#ef4444]/90 text-white border-0 backdrop-blur-sm">
-              <TrendingUp className="mr-1 h-3 w-3" />
+            <Badge className="bg-[#ef4444]/90 text-white border-0 backdrop-blur-sm text-[10px] px-1.5 py-0.5">
+              <TrendingUp className="mr-0.5 h-2.5 w-2.5" />
               Hot
             </Badge>
           )}
           {endingSoon && (
-            <Badge className="bg-[#f59e0b]/90 text-white border-0 backdrop-blur-sm">
-              <Clock className="mr-1 h-3 w-3" />
+            <Badge className="bg-[#f59e0b]/90 text-white border-0 backdrop-blur-sm text-[10px] px-1.5 py-0.5">
+              <Clock className="mr-0.5 h-2.5 w-2.5" />
               Ending Soon
             </Badge>
           )}
         </div>
 
-        {/* Favorite */}
-        <button className="absolute top-3 right-3 h-9 w-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:bg-black/60 transition-colors">
-          <Heart className="h-4 w-4 text-white" />
+        {/* Favorite - Top Right */}
+        <button className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:bg-black/60 transition-colors">
+          <Heart className="h-3.5 w-3.5 text-white" />
         </button>
 
-        {/* Time Left */}
-        <div className="absolute bottom-3 left-3 right-3">
-          <div className="rounded-lg bg-black/60 backdrop-blur-md px-3 py-2 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-white">
-              <Clock className="h-4 w-4" />
-              <span className="text-sm">{timeLeft}</span>
-            </div>
+        {/* Bottom Overlay - Time Left + NEW Badge */}
+        <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+          <div className="flex-shrink-0 rounded-md bg-black/60 backdrop-blur-md px-1.5 py-0.5">
+            <RelativeTimeCompact timeLeft={timeLeft} />
           </div>
+          {postedDate && (
+            <NewBadge postedDate={postedDate} daysThreshold={7} variant="minimal" />
+          )}
         </div>
       </div>
 
@@ -100,7 +125,7 @@ export function AuctionCard({
           >
             {category}
           </Badge>
-          <span className="text-xs text-muted-foreground">{postedDate}</span>
+          <span className="text-xs text-muted-foreground">{getDaysAgo(postedDate)}</span>
         </div>
 
         {/* Title */}
@@ -142,10 +167,7 @@ export function AuctionCard({
         {/* Bids Count & Time */}
         <div className="flex items-center justify-between text-sm text-muted-foreground pt-2 border-t border-border/30">
           <span>{bids} bids placed</span>
-          <div className="flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            <span>{timeLeft}</span>
-          </div>
+          <RelativeTimeCompact timeLeft={timeLeft} className="text-sm" />
         </div>
 
         {/* Action Button */}

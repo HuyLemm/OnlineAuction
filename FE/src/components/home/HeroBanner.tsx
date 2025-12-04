@@ -1,8 +1,33 @@
 import { Search, Sparkles } from "lucide-react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
+import { useState } from "react";
 
-export function HeroBanner() {
+interface HeroBannerProps {
+  onSearch?: (query: string) => void;
+}
+
+export function HeroBanner({ onSearch }: HeroBannerProps) {
+  const [searchValue, setSearchValue] = useState("");
+
+  const handleSearch = () => {
+    if (searchValue.trim() && onSearch) {
+      onSearch(searchValue.trim());
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
+
+  const handlePopularClick = (term: string) => {
+    if (onSearch) {
+      onSearch(term);
+    }
+  };
+
   return (
     <section className="relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-card via-card to-secondary/20 p-12 lg:p-20">
       {/* Background decoration */}
@@ -34,10 +59,16 @@ export function HeroBanner() {
               <Input
                 type="search"
                 placeholder="Search for watches, art, cars, jewelry..."
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                onKeyDown={handleKeyDown}
                 className="h-14 pl-12 pr-4 bg-background/50 backdrop-blur-sm border-border/50 rounded-xl"
               />
             </div>
-            <Button className="h-14 px-8 bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90 rounded-xl">
+            <Button 
+              onClick={handleSearch}
+              className="h-14 px-8 bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90 rounded-xl"
+            >
               Search
             </Button>
           </div>
@@ -45,11 +76,12 @@ export function HeroBanner() {
 
         {/* Popular Searches */}
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <span className="text-muted-foreground">Popular:</span>
-          {["Rolex", "Vintage Cars", "Modern Art", "Diamond Jewelry"].map((term) => (
+          <span className="text-sm text-gray-300">Popular:</span>
+          {["Rolex", "Vintage Cars", "Modern Art", "Diamond Jewelry", "Camera", "Guitar", "Watches", "Handbag"].map((term) => (
             <button
               key={term}
-              className="rounded-lg border border-border/50 bg-secondary/30 hover:bg-secondary/50 px-3 py-1.5 transition-colors"
+              onClick={() => handlePopularClick(term)}
+              className="rounded-lg border border-[#fbbf24]/30 bg-[#1a1a1a]/50 hover:bg-[#fbbf24]/20 hover:border-[#fbbf24]/50 px-3 py-1.5 text-sm text-gray-200 hover:text-[#fbbf24] transition-all"
             >
               {term}
             </button>

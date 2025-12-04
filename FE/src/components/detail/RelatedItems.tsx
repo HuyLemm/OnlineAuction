@@ -17,9 +17,10 @@ interface AuctionItem {
 
 interface RelatedItemsProps {
   items?: AuctionItem[];
+  onItemClick?: () => void; // Callback when clicking on a related item
 }
 
-export function RelatedItems({ items = [] }: RelatedItemsProps) {
+export function RelatedItems({ items = [], onItemClick }: RelatedItemsProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Default mock data - 5 related products
@@ -124,7 +125,18 @@ export function RelatedItems({ items = [] }: RelatedItemsProps) {
       >
         {displayItems.map((item) => (
           <div key={item.id} className="flex-shrink-0 w-[300px] snap-start">
-            <AuctionCard {...item} />
+            <AuctionCard 
+              {...item} 
+              onNavigate={() => {
+                // Scroll to top when clicking related item
+                window.scrollTo({
+                  top: 0,
+                  left: 0,
+                  behavior: 'instant'
+                });
+                onItemClick?.();
+              }} 
+            />
           </div>
         ))}
       </div>

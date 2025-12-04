@@ -1,4 +1,4 @@
-import { Watch, Palette, Car, Gem, Camera, ShoppingBag, Armchair, Trophy } from "lucide-react";
+import { Watch, Palette, Car, Gem, Camera, ShoppingBag, Armchair, Smartphone } from "lucide-react";
 import { ImageWithFallback } from "../check/ImageWithFallback";
 
 interface Category {
@@ -8,7 +8,11 @@ interface Category {
   count: number;
 }
 
-export function CategoryGrid() {
+interface CategoryGridProps {
+  onCategoryClick?: (category: string) => void;
+}
+
+export function CategoryGrid({ onCategoryClick }: CategoryGridProps) {
   const categories: Category[] = [
     {
       name: "Watches",
@@ -17,13 +21,13 @@ export function CategoryGrid() {
       count: 234
     },
     {
-      name: "Art",
+      name: "Art & Collectibles",
       icon: <Palette className="h-6 w-6" />,
       image: "https://images.unsplash.com/photo-1558522195-e1201b090344?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBhcnR8ZW58MXx8fHwxNzYzMzc4ODkxfDA&ixlib=rb-4.1.0&q=80&w=1080",
       count: 189
     },
     {
-      name: "Vintage Cars",
+      name: "Vehicles",
       icon: <Car className="h-6 w-6" />,
       image: "https://images.unsplash.com/photo-1604940500627-d3f44d1d21c6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aW50YWdlJTIwY2FyfGVufDF8fHx8MTc2MzM5MDY2Nnww&ixlib=rb-4.1.0&q=80&w=1080",
       count: 67
@@ -41,22 +45,22 @@ export function CategoryGrid() {
       count: 312
     },
     {
-      name: "Fashion",
+      name: "Fashion & Accessories",
       icon: <ShoppingBag className="h-6 w-6" />,
       image: "https://images.unsplash.com/photo-1591348278863-a8fb3887e2aa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBoYW5kYmFnfGVufDF8fHx8MTc2MzMwNTk3N3ww&ixlib=rb-4.1.0&q=80&w=1080",
       count: 428
+    },
+    {
+      name: "Electronic Devices",
+      icon: <Smartphone className="h-6 w-6" />,
+      image: "https://images.unsplash.com/photo-1761641466573-f240b6e446de?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbGVjdHJvbmljJTIwZGV2aWNlcyUyMHNtYXJ0cGhvbmV8ZW58MXx8fHwxNzY0ODU0NDM4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      count: 312
     },
     {
       name: "Furniture",
       icon: <Armchair className="h-6 w-6" />,
       image: "https://images.unsplash.com/photo-1544691560-fc2053d97726?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhbnRpcXVlJTIwZnVybml0dXJlfGVufDF8fHx8MTc2MzM5MTA2N3ww&ixlib=rb-4.1.0&q=80&w=1080",
       count: 145
-    },
-    {
-      name: "Sports",
-      icon: <Trophy className="h-6 w-6" />,
-      image: "https://images.unsplash.com/photo-1512144825472-b4d1e4cdeb68?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzcG9ydHMlMjBtZW1vcmFiaWxpYXxlbnwxfHx8fDE3NjMzOTEwNjh8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      count: 98
     }
   ];
 
@@ -73,6 +77,7 @@ export function CategoryGrid() {
         {categories.map((category) => (
           <button
             key={category.name}
+            onClick={() => onCategoryClick?.(category.name)}
             className="group relative overflow-hidden rounded-xl border border-border/50 bg-card/50 hover:border-[#fbbf24]/30 transition-all duration-300 hover:shadow-xl hover:shadow-[#fbbf24]/10 hover:bg-card"
           >
             {/* Background Image */}

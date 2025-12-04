@@ -22,6 +22,7 @@ interface HomeFeaturedSectionProps {
   iconColor: string;
   auctions: AuctionItem[];
   onNavigate?: (page: "home" | "browse" | "detail" | "dashboard" | "seller") => void;
+  onViewAll?: () => void;
 }
 
 export function HomeFeaturedSection({
@@ -31,7 +32,8 @@ export function HomeFeaturedSection({
   iconGradient,
   iconColor,
   auctions,
-  onNavigate
+  onNavigate,
+  onViewAll
 }: HomeFeaturedSectionProps) {
   return (
     <section className="space-y-6">
@@ -45,7 +47,11 @@ export function HomeFeaturedSection({
             <p className="text-muted-foreground">{description}</p>
           </div>
         </div>
-        <Button variant="ghost" className="gap-2">
+        <Button 
+          variant="ghost" 
+          className="gap-2 hover:text-[#fbbf24] transition-colors"
+          onClick={onViewAll}
+        >
           View All
           <ArrowRight className="h-4 w-4" />
         </Button>

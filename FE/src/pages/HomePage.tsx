@@ -1,7 +1,9 @@
 import { HeroBanner } from "../components/home/HeroBanner";
 import { CategoryGrid } from "../components/home/CategoryGrid";
 import { HomeFeaturedSection } from "../components/home/HomeFeaturedSection";
-import { Clock, TrendingUp, DollarSign } from "lucide-react";
+import { Clock, TrendingUp, DollarSign, Code } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
 
 interface AuctionItem {
   id: string;
@@ -13,13 +15,23 @@ interface AuctionItem {
   category: string;
   isHot?: boolean;
   endingSoon?: boolean;
+  postedDate?: Date; // Add postedDate field
 }
 
 interface HomePageProps {
-  onNavigate?: (page: "home" | "browse" | "detail" | "dashboard" | "seller") => void;
+  onNavigate?: (page: "home" | "browse" | "detail" | "dashboard" | "seller" | "search") => void;
+  onSearch?: (query: string) => void;
+  onCategorySelect?: (category: string) => void;
 }
 
-export function HomePage({ onNavigate }: HomePageProps) {
+export function HomePage({ onNavigate, onSearch, onCategorySelect }: HomePageProps) {
+  // Helper to create dates relative to now
+  const daysAgo = (days: number) => {
+    const date = new Date();
+    date.setDate(date.getDate() - days);
+    return date;
+  };
+
   // Mock data for Top 5 Ending Soon
   const endingSoonAuctions: AuctionItem[] = [
     {
@@ -29,8 +41,9 @@ export function HomePage({ onNavigate }: HomePageProps) {
       currentBid: 75000,
       bids: 89,
       timeLeft: "2h 15m",
-      category: "Vintage Cars",
-      endingSoon: true
+      category: "Vehicles",
+      endingSoon: true,
+      postedDate: daysAgo(2)
     },
     {
       id: "es2",
@@ -40,7 +53,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
       bids: 67,
       timeLeft: "3h 42m",
       category: "Jewelry",
-      endingSoon: true
+      endingSoon: true,
+      postedDate: daysAgo(5)
     },
     {
       id: "es3",
@@ -50,7 +64,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
       bids: 34,
       timeLeft: "4h 20m",
       category: "Collectibles",
-      endingSoon: true
+      endingSoon: true,
+      postedDate: daysAgo(1)
     },
     {
       id: "es4",
@@ -59,8 +74,9 @@ export function HomePage({ onNavigate }: HomePageProps) {
       currentBid: 52000,
       bids: 78,
       timeLeft: "5h 10m",
-      category: "Fashion",
-      endingSoon: true
+      category: "Fashion & Accessories",
+      endingSoon: true,
+      postedDate: daysAgo(15)
     },
     {
       id: "es5",
@@ -70,7 +86,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
       bids: 56,
       timeLeft: "6h 05m",
       category: "Jewelry",
-      endingSoon: true
+      endingSoon: true,
+      postedDate: daysAgo(8)
     }
   ];
 
@@ -84,7 +101,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
       bids: 234,
       timeLeft: "1d 8h 30m",
       category: "Watches",
-      isHot: true
+      isHot: true,
+      postedDate: daysAgo(3)
     },
     {
       id: "mb2",
@@ -94,7 +112,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
       bids: 189,
       timeLeft: "2d 4h 15m",
       category: "Watches",
-      isHot: true
+      isHot: true,
+      postedDate: daysAgo(6)
     },
     {
       id: "mb3",
@@ -103,8 +122,9 @@ export function HomePage({ onNavigate }: HomePageProps) {
       currentBid: 125000,
       bids: 167,
       timeLeft: "1d 12h 45m",
-      category: "Art",
-      isHot: true
+      category: "Art & Collectibles",
+      isHot: true,
+      postedDate: daysAgo(4)
     },
     {
       id: "mb4",
@@ -113,8 +133,9 @@ export function HomePage({ onNavigate }: HomePageProps) {
       currentBid: 8500,
       bids: 145,
       timeLeft: "3d 6h 20m",
-      category: "Fashion",
-      isHot: true
+      category: "Fashion & Accessories",
+      isHot: true,
+      postedDate: daysAgo(10)
     },
     {
       id: "mb5",
@@ -124,7 +145,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
       bids: 134,
       timeLeft: "2d 18h 50m",
       category: "Collectibles",
-      isHot: true
+      isHot: true,
+      postedDate: daysAgo(12)
     }
   ];
 
@@ -137,8 +159,9 @@ export function HomePage({ onNavigate }: HomePageProps) {
       currentBid: 2850000,
       bids: 12,
       timeLeft: "5d 12h 00m",
-      category: "Vintage Cars",
-      isHot: true
+      category: "Vehicles",
+      isHot: true,
+      postedDate: daysAgo(20)
     },
     {
       id: "hp2",
@@ -148,7 +171,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
       bids: 45,
       timeLeft: "3d 8h 30m",
       category: "Watches",
-      isHot: true
+      isHot: true,
+      postedDate: daysAgo(14)
     },
     {
       id: "hp3",
@@ -157,8 +181,9 @@ export function HomePage({ onNavigate }: HomePageProps) {
       currentBid: 385000,
       bids: 23,
       timeLeft: "4d 16h 20m",
-      category: "Art",
-      isHot: true
+      category: "Art & Collectibles",
+      isHot: true,
+      postedDate: daysAgo(18)
     },
     {
       id: "hp4",
@@ -168,7 +193,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
       bids: 34,
       timeLeft: "2d 22h 40m",
       category: "Jewelry",
-      isHot: true
+      isHot: true,
+      postedDate: daysAgo(25)
     },
     {
       id: "hp5",
@@ -177,17 +203,21 @@ export function HomePage({ onNavigate }: HomePageProps) {
       currentBid: 215000,
       bids: 56,
       timeLeft: "6d 4h 10m",
-      category: "Watches"
+      category: "Watches",
+      postedDate: daysAgo(30)
     }
   ];
 
   return (
     <div className="space-y-16">
       {/* Hero Banner */}
-      <HeroBanner />
+      <HeroBanner onSearch={onSearch} />
 
       {/* Category Grid */}
-      <CategoryGrid />
+      <CategoryGrid onCategoryClick={(category) => {
+        onCategorySelect?.(category);
+        onNavigate?.("browse");
+      }} />
 
       {/* Top 5 Ending Soon */}
       <HomeFeaturedSection
@@ -198,6 +228,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
         iconColor="text-[#f59e0b]"
         auctions={endingSoonAuctions}
         onNavigate={onNavigate}
+        onViewAll={() => onNavigate?.("browse")}
       />
 
       {/* Top 5 Most Bids */}
@@ -209,17 +240,19 @@ export function HomePage({ onNavigate }: HomePageProps) {
         iconColor="text-[#ef4444]"
         auctions={mostBidsAuctions}
         onNavigate={onNavigate}
+        onViewAll={() => onNavigate?.("browse")}
       />
 
       {/* Top 5 Highest Price */}
       <HomeFeaturedSection
-        title="Top 5 Premium Collection"
-        description="Highest value items available"
+        title="Top 5 Highest Price"
+        description="Premium luxury items"
         icon={DollarSign}
         iconGradient="from-[#fbbf24]/20 to-[#f59e0b]/20"
         iconColor="text-[#fbbf24]"
         auctions={highestPriceAuctions}
         onNavigate={onNavigate}
+        onViewAll={() => onNavigate?.("browse")}
       />
     </div>
   );
