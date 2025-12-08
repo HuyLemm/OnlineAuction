@@ -2,7 +2,6 @@ import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { ImageGallery } from "../components/detail/ImageGallery";
-import { BidSection } from "../components/detail/BidSection";
 import { ProductInfo } from "../components/detail/ProductInfo";
 import { SellerInfo } from "../components/detail/SellerInfo";
 import { BidHistory } from "../components/detail/BidHistory";
@@ -16,6 +15,7 @@ import { BidStatusIndicator } from "../components/detail/BidStatusIndicator";
 interface ProductDetailPageProps {
   onBack?: () => void;
 }
+
 
 export function ProductDetailPage({ onBack }: ProductDetailPageProps) {
   // Auction state
@@ -204,11 +204,6 @@ export function ProductDetailPage({ onBack }: ProductDetailPageProps) {
     }
   };
 
-  const handlePlaceBid = (amount: number) => {
-    setCurrentBid(amount);
-    setTotalBids(totalBids + 1);
-  };
-
   const highestMaxBid = Math.max(...bidders.map((b) => b.maxBid));
   const isUserWinning = bidders.find((b) => b.isYou)?.isWinning || false;
 
@@ -240,12 +235,6 @@ export function ProductDetailPage({ onBack }: ProductDetailPageProps) {
 
         {/* Right Column - Bid Section & Auto Bid */}
         <div className="space-y-6">
-          <BidSection
-            currentBid={currentBid}
-            minimumBid={currentBid + 500}
-            totalBids={totalBids}
-            onPlaceBid={handlePlaceBid}
-          />
           <AutoBidPanel
             currentBid={currentBid}
             minimumBid={currentBid + 500}
@@ -298,4 +287,5 @@ export function ProductDetailPage({ onBack }: ProductDetailPageProps) {
     </div>
   );
 }
+
 

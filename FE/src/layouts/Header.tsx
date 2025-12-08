@@ -17,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NotificationDropdown } from "../components/notifications/NotificationDropdown";
 import { type Notification } from "../components/notifications/NotificationCard";
 import { toast } from "sonner";
@@ -57,6 +57,25 @@ export function Header({
   >(null);
   const [searchValue, setSearchValue] = useState("");
 
+  const [menuCategories, setMenuCategories] = useState<
+    { main: string; subcategories: string[] }[]
+  >([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch(
+          "http://localhost:3000/categories/get-categories-for-menu"
+        );
+        const json = await res.json();
+        setMenuCategories(json.data ?? []);
+      } catch (err) {
+        console.error("❌ Failed to load categories:", err);
+      }
+    };
+
+    fetchCategories();
+  }, []);
   // Mock notifications data
   const [notifications, setNotifications] = useState<Notification[]>([
     {
@@ -117,39 +136,6 @@ export function Header({
       onNavigate?.("detail");
     }
   };
-
-  // Hierarchical menu structure
-  const menuCategories = [
-    {
-      main: "Electronic Devices",
-      subcategories: ["Smartphones", "Laptops", "Tablets", "Accessories"],
-    },
-    {
-      main: "Fashion & Accessories",
-      subcategories: ["Watches", "Handbags", "Shoes", "Clothing"],
-    },
-    {
-      main: "Art & Collectibles",
-      subcategories: ["Paintings", "Sculptures", "Photography", "Antiques"],
-    },
-    {
-      main: "Vehicles",
-      subcategories: [
-        "Vintage Cars",
-        "Sports Cars",
-        "Motorcycles",
-        "Auto Parts",
-      ],
-    },
-    {
-      main: "Jewelry",
-      subcategories: ["Rings", "Necklaces", "Bracelets", "Earrings"],
-    },
-    {
-      main: "Collectibles",
-      subcategories: ["Stamps", "Coins", "Toys", "Sports Memorabilia"],
-    },
-  ];
 
   const handleCategoryClick = (mainCategory: string, subcategory: string) => {
     const fullCategory = `${mainCategory} ➡️ ${subcategory}`;
