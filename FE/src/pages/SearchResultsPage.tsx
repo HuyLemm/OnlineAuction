@@ -19,7 +19,7 @@ interface SearchResultsPageProps {
   onNavigate?: (page: "home" | "browse" | "detail") => void;
 }
 
-export default function SearchResultsPage({ initialQuery = "", onNavigate }: SearchResultsPageProps) {
+export function SearchResultsPage({ initialQuery = "", onNavigate }: SearchResultsPageProps) {
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>("ending_soon");

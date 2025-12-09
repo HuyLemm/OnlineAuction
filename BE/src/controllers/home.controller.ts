@@ -27,8 +27,8 @@ function formatItem(item: any) {
     highestBidderId: item.highestBidderId ?? null,
     highestBidderName: item.highestBidderName ?? null,
 
-    isHot: Number(item.bids) > 10,
-    endingSoon: diffYears < 3,
+    isHot: Number(item.bids) > 7,
+    endingSoon: diffYears < 10,
   };
 }
 
@@ -52,7 +52,10 @@ export async function getTop5MostBidsController(req: Request, res: Response) {
   }
 }
 
-export async function getTop5HighestPriceController(req: Request, res: Response) {
+export async function getTop5HighestPriceController(
+  req: Request,
+  res: Response
+) {
   try {
     const result = await getTop5HighestPriceService();
     res.json({ success: true, data: result.map(formatItem) });

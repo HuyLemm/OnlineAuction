@@ -138,7 +138,7 @@ export function AuctionCard({
             className="text-xl bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] 
                            bg-clip-text text-transparent"
           >
-            ${currentBid.toLocaleString()}
+            ${(currentBid ?? 0).toLocaleString()}
           </span>
         </div>
 
@@ -150,7 +150,9 @@ export function AuctionCard({
           >
             <User className="h-3 w-3 text-black" />
           </div>
-          <span className="text-sm truncate">{highestBidderName ?? "No bid yet"}</span>
+          <span className="text-sm truncate">
+            {highestBidderName ?? "No bid yet"}
+          </span>
         </div>
 
         {/* Buy Now Reserved Slot */}

@@ -10,79 +10,62 @@ import { type CategoryTree } from "../../types/dto";
 
 interface FilterSidebarProps {
   onClose?: () => void;
+  categories: CategoryTree[];
   selectedMainCategory?: string | null;
   selectedSubCategory?: string | null;
+
+  selectedCategories?: string[];
+  priceRange?: [number, number];
+
+  onApplyFilters: (filters: {
+    categories: string[];
+    price: [number, number];
+  }) => void;
 }
 
 export function FilterSidebar({
   onClose,
+  onApplyFilters,
+  categories,
   selectedMainCategory,
   selectedSubCategory,
+  selectedCategories: externalSelected = [],
+  priceRange: externalPrice = [0, 10000],
 }: FilterSidebarProps) {
-  const [priceRange, setPriceRange] = useState([0, 100000]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] =
+    useState<string[]>(externalSelected);
+  const [priceRange, setPriceRange] = useState<[number, number]>(externalPrice);
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
-  const [selectedRating, setSelectedRating] = useState<string[]>([]);
-  const [categoryHierarchy, setCategoryHierarchy] = useState<CategoryTree[]>(
-    []
-  );
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadCategories() {
-      try {
-        const res = await fetch(
-          "http://localhost:3000/categories/get-categories-for-sidebar"
-        );
-        const data = await res.json();
-        if (data.success) setCategoryHierarchy(data.data);
-      } catch (err) {
-        console.error("❌ Error loading categories:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadCategories();
-  }, []);
+    const selected: string[] = [...externalSelected];
+    const expanded: string[] = [];
 
-  // Auto-select and expand categories when menu selection changes
-  useEffect(() => {
-    if (!categoryHierarchy.length) return;
-
-    const newSelected: string[] = [];
-    const newExpanded: string[] = [];
-
-    categoryHierarchy.forEach((main) => {
+    categories.forEach((main) => {
       if (main.label === selectedMainCategory) {
-        newSelected.push(String(main.id));
-        newExpanded.push(String(main.id));
+        selected.push(String(main.id));
+        expanded.push(String(main.id));
       }
 
       main.subcategories.forEach((sub) => {
         if (sub.label === selectedSubCategory) {
-          newSelected.push(String(sub.id));
-          newExpanded.push(String(main.id));
+          selected.push(String(sub.id));
+          expanded.push(String(main.id));
         }
       });
     });
 
-    setSelectedCategories(newSelected);
-    setExpandedCategories(newExpanded);
-  }, [selectedMainCategory, selectedSubCategory, categoryHierarchy]);
+    setSelectedCategories([...new Set(selected)]);
+    if (expanded.length > 0) setExpandedCategories(expanded);
+  }, [selectedMainCategory, selectedSubCategory, categories]);
 
-  const statusOptions = [
-    { id: "live", label: "Live Auction", count: 456 },
-    { id: "ending-soon", label: "Ending Soon", count: 89 },
-    { id: "hot", label: "Hot Items", count: 123 },
-    { id: "new", label: "New Listings", count: 234 },
-  ];
+  useEffect(() => {
+    setSelectedCategories(externalSelected);
+  }, [externalSelected]);
 
-  const ratingOptions = [
-    { id: "5", label: "5 Stars", count: 234 },
-    { id: "4", label: "4+ Stars", count: 567 },
-    { id: "3", label: "3+ Stars", count: 890 },
-  ];
+  useEffect(() => {
+    setPriceRange(externalPrice);
+  }, [externalPrice]);
 
   // Tick logic updates
   const toggleCategory = (id: string, isParent = false, parentId?: string) => {
@@ -90,39 +73,29 @@ export function FilterSidebar({
       let updated = [...prev];
 
       if (isParent) {
-        const parent = categoryHierarchy.find((c) => String(c.id) === id);
+        const parent = categories.find((c) => String(c.id) === id);
         if (!parent) return prev;
 
         const subIds = parent.subcategories.map((s) => String(s.id));
-        const isSelecting = !subIds.every((sid) => prev.includes(sid));
+        const includeAll = !subIds.every((sid) => prev.includes(sid));
 
-        if (isSelecting) {
-          updated = [...new Set([...updated, id, ...subIds])];
-        } else {
-          updated = updated.filter((x) => x !== id && !subIds.includes(x));
-        }
+        updated = includeAll
+          ? [...new Set([...updated, id, ...subIds])]
+          : updated.filter((x) => x !== id && !subIds.includes(x));
       } else {
-        if (updated.includes(id)) {
-          updated = updated.filter((x) => x !== id);
-        } else {
-          updated.push(id);
-        }
+        updated = updated.includes(id)
+          ? updated.filter((x) => x !== id)
+          : [...updated, id];
 
         if (parentId) {
-          const parent = categoryHierarchy.find(
-            (c) => String(c.id) === parentId
-          );
+          const parent = categories.find((c) => String(c.id) === parentId);
           if (parent) {
             const subIds = parent.subcategories.map((s) => String(s.id));
-            const allChildrenSelected = subIds.every((sid) =>
-              updated.includes(sid)
-            );
+            const allSelected = subIds.every((sid) => updated.includes(sid));
 
-            if (allChildrenSelected) {
-              updated.push(parentId);
-            } else {
-              updated = updated.filter((x) => x !== parentId);
-            }
+            updated = allSelected
+              ? [...new Set([...updated, parentId])]
+              : updated.filter((x) => x !== parentId);
           }
         }
       }
@@ -137,28 +110,14 @@ export function FilterSidebar({
     );
   };
 
-  const toggleStatus = (id: string) => {
-    setSelectedStatus((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-    );
-  };
-
-  const toggleRating = (id: string) => {
-    setSelectedRating((prev) =>
-      prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]
-    );
-  };
-
   const clearAllFilters = () => {
     setSelectedCategories([]);
-    setExpandedCategories([]);
-    setSelectedStatus([]);
-    setSelectedRating([]);
     setPriceRange([0, 100000]);
   };
 
   const activeFiltersCount =
-    selectedCategories.length + selectedStatus.length + selectedRating.length;
+    selectedCategories.length +
+    (priceRange[0] !== 0 || priceRange[1] !== 10000 ? 1 : 0);
 
   return (
     <aside className="h-full flex flex-col bg-card border-r border-border">
@@ -175,7 +134,7 @@ export function FilterSidebar({
             </Button>
           )}
         </div>
-        {/* Always reserve space for active filters - use opacity instead of conditional rendering */}
+
         <div
           className={`flex items-center justify-between mt-3 transition-opacity duration-200 ${
             activeFiltersCount > 0
@@ -206,95 +165,89 @@ export function FilterSidebar({
         <div className="space-y-4">
           <h4 className="text-foreground">Categories</h4>
 
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
-          ) : (
-            <div className="space-y-1">
-              {categoryHierarchy.map((category) => {
-                const categoryId = category.id.toString();
-                const isSelected = selectedCategories.includes(categoryId);
-                const isExpanded = expandedCategories.includes(categoryId);
+          <div className="space-y-1">
+            {categories.map((category) => {
+              const id = category.id.toString();
+              const selected = selectedCategories.includes(id);
+              const expanded = expandedCategories.includes(id);
 
-                return (
-                  <div key={category.id}>
-                    {/* Parent Category */}
-                    <div className="flex items-center justify-between group hover:bg-secondary/30 rounded-lg px-2 py-1.5 transition-colors">
-                      <div className="flex items-center gap-2 flex-1">
-                        <Checkbox
-                          id={`cat-${category.id}`}
-                          checked={isSelected}
-                          onCheckedChange={() =>
-                            toggleCategory(categoryId, true)
-                          }
-                          className="data-[state=checked]:bg-[#fbbf24] data-[state=checked]:border-[#fbbf24]"
-                        />
+              return (
+                <div key={category.id}>
+                  {/* Parent Category */}
+                  <div className="flex items-center justify-between group hover:bg-secondary/30 rounded-lg px-2 py-1.5 transition-colors">
+                    <div className="flex items-center gap-2 flex-1">
+                      <Checkbox
+                        id={`cat-${category.id}`}
+                        checked={selected}
+                        onCheckedChange={() => toggleCategory(id, true)}
+                        className="data-[state=checked]:bg-[#fbbf24] data-[state=checked]:border-[#fbbf24]"
+                      />
 
-                        <Label
-                          htmlFor={`cat-${category.id}`}
-                          className="flex-1 cursor-pointer text-foreground/90 hover:text-foreground transition-colors"
-                        >
-                          {category.label}
-                        </Label>
-                      </div>
-
-                      <button
-                        onClick={() => toggleExpand(categoryId)}
-                        className="p-1 rounded hover:bg-[#fbbf24]/10 text-foreground transition-all"
+                      <Label
+                        htmlFor={`cat-${category.id}`}
+                        className="flex-1 cursor-pointer text-foreground/90 hover:text-foreground transition-colors"
                       >
-                        {isExpanded ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
-                        )}
-                      </button>
-
-                      <span className="text-muted-foreground text-sm">
-                        {category.count}
-                      </span>
+                        {category.label}
+                      </Label>
                     </div>
 
-                    {/* Subcategories */}
-                    {isExpanded && category.subcategories?.length > 0 && (
-                      <div className="ml-8 mt-1 space-y-1 animate-in slide-in-from-top-2 duration-200">
-                        {category.subcategories.map((subcategory) => (
-                          <div
-                            key={subcategory.id}
-                            className="flex items-center justify-between group hover:bg-secondary/30 rounded-lg px-2 py-1.5 transition-colors"
-                          >
-                            <div className="flex items-center gap-2 flex-1">
-                              <Checkbox
-                                id={`sub-${subcategory.id}`}
-                                checked={selectedCategories.includes(
-                                  subcategory.id.toString()
-                                )}
-                                onCheckedChange={() =>
-                                  toggleCategory(
-                                    subcategory.id.toString(),
-                                    false,
-                                    categoryId
-                                  )
-                                }
-                              />
-                              <Label
-                                htmlFor={`subcat-${subcategory.id}`}
-                                className="flex-1 cursor-pointer text-foreground/80 hover:text-foreground transition-colors text-sm"
-                              >
-                                {subcategory.label}
-                              </Label>
-                            </div>
+                    <button
+                      onClick={() => toggleExpand(id)}
+                      className="p-1 rounded hover:bg-[#fbbf24]/10 text-foreground transition-all"
+                    >
+                      {expanded ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </button>
 
-                            <span className="text-muted-foreground text-sm">
-                              {subcategory.count}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <span className="text-muted-foreground text-sm">
+                      {category.count}
+                    </span>
                   </div>
-                );
-              })}
-            </div>
-          )}
+
+                  {/* Subcategories */}
+                  {expanded && category.subcategories?.length > 0 && (
+                    <div className="ml-8 mt-1 space-y-1 animate-in slide-in-from-top-2 duration-200">
+                      {category.subcategories.map((subcategory) => (
+                        <div
+                          key={subcategory.id}
+                          className="flex items-center justify-between group hover:bg-secondary/30 rounded-lg px-2 py-1.5 transition-colors"
+                        >
+                          <div className="flex items-center gap-2 flex-1">
+                            <Checkbox
+                              id={`sub-${subcategory.id}`}
+                              checked={selectedCategories.includes(
+                                subcategory.id.toString()
+                              )}
+                              onCheckedChange={() =>
+                                toggleCategory(
+                                  subcategory.id.toString(),
+                                  false,
+                                  id
+                                )
+                              }
+                            />
+                            <Label
+                              htmlFor={`subcat-${subcategory.id}`}
+                              className="flex-1 cursor-pointer text-foreground/80 hover:text-foreground transition-colors text-sm"
+                            >
+                              {subcategory.label}
+                            </Label>
+                          </div>
+
+                          <span className="text-muted-foreground text-sm">
+                            {subcategory.count}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <Separator className="bg-border/50" />
@@ -305,10 +258,10 @@ export function FilterSidebar({
           <div className="space-y-4">
             <Slider
               min={0}
-              max={100000}
+              max={10000}
               step={1000}
               value={priceRange}
-              onValueChange={setPriceRange}
+              onValueChange={(v) => setPriceRange(v as [number, number])}
               className="w-full"
             />
             <div className="flex items-center justify-between gap-2">
@@ -328,71 +281,19 @@ export function FilterSidebar({
             </div>
           </div>
         </div>
-
-        <Separator className="bg-border/50" />
-
-        {/* Auction Status */}
-        <div className="space-y-4">
-          <h4 className="text-foreground">Auction Status</h4>
-          <div className="space-y-3">
-            {statusOptions.map((status) => (
-              <div
-                key={status.id}
-                className="flex items-center justify-between"
-              >
-                <div className="flex items-center gap-2 flex-1">
-                  <Checkbox
-                    id={status.id}
-                    checked={selectedStatus.includes(status.id)}
-                    onCheckedChange={() => toggleStatus(status.id)}
-                  />
-                  <Label
-                    htmlFor={status.id}
-                    className="flex-1 cursor-pointer text-foreground/90 hover:text-foreground transition-colors"
-                  >
-                    {status.label}
-                  </Label>
-                </div>
-                <span className="text-muted-foreground">{status.count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <Separator className="bg-border/50" />
-
-        {/* Seller Rating */}
-        <div className="space-y-4">
-          <h4 className="text-foreground">Seller Rating</h4>
-          <div className="space-y-3">
-            {ratingOptions.map((rating) => (
-              <div
-                key={rating.id}
-                className="flex items-center justify-between"
-              >
-                <div className="flex items-center gap-2 flex-1">
-                  <Checkbox
-                    id={`rating-${rating.id}`}
-                    checked={selectedRating.includes(rating.id)}
-                    onCheckedChange={() => toggleRating(rating.id)}
-                  />
-                  <Label
-                    htmlFor={`rating-${rating.id}`}
-                    className="flex-1 cursor-pointer text-foreground/90 hover:text-foreground transition-colors"
-                  >
-                    {rating.label}
-                  </Label>
-                </div>
-                <span className="text-muted-foreground">{rating.count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* Footer */}
       <div className="p-6 border-t border-border">
-        <Button className="w-full bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90">
+        <Button
+          onClick={() =>
+            onApplyFilters({
+              categories: selectedCategories,
+              price: priceRange,
+            })
+          }
+          className="w-full bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90"
+        >
           Apply Filters
         </Button>
       </div>

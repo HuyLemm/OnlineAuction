@@ -2,28 +2,8 @@ import { AuctionCard } from "../auction/AuctionCard";
 import { AuctionListItem } from "./AuctionListItem";
 import { Button } from "../ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { SkeletonCard } from "../state/SkeletonCard";
-import { EmptyState } from "../state/EmptyState";
-
-interface AuctionItem {
-  id: string;
-  title: string;
-  image: string;
-  currentBid: number;
-  bids: number;
-  timeLeft: string;
-  category: string;
-  description?: string;
-  isHot?: boolean;
-  endingSoon?: boolean;
-  watchers?: number;
-  highestBidder?: {
-    name: string;
-    avatar?: string;
-  };
-  buyNowPrice?: number;
-  postedDate?: string;
-}
+import { type AuctionItem } from "../../types/dto";
+import { calculateTimeLeft } from "../../components/utils/timeUtils";
 
 interface BrowseContentSectionProps {
   auctions: AuctionItem[];
@@ -34,7 +14,9 @@ interface BrowseContentSectionProps {
   endIndex: number;
   totalItems: number;
   onPageChange: (page: number) => void;
-  onNavigate?: (page: "home" | "browse" | "detail" | "dashboard" | "seller") => void;
+  onNavigate?: (
+    page: "detail" | "browse" | "home" | "dashboard" | "seller"
+  ) => void;
   onCategoryClick?: (category: string) => void;
 }
 
@@ -56,9 +38,22 @@ export function BrowseContentSection({
       {viewMode === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
           {auctions.map((auction) => (
-            <AuctionCard 
-              key={auction.id} 
-              {...auction} 
+            <AuctionCard
+              key={auction.id}
+              id={auction.id}
+              title={auction.title}
+              image={auction.image}
+              currentBid={auction.currentBid}
+              bids={auction.bids}
+              end_time={auction.end_time}
+              category={auction.category}
+              auctionType={auction.auctionType}
+              isHot={auction.isHot}
+              endingSoon={auction.endingSoon}
+              highestBidderId={auction.highestBidderId}
+              highestBidderName={auction.highestBidderName}
+              buyNowPrice={auction.buyNowPrice}
+              postedDate={auction.postedDate}
               onNavigate={onNavigate}
               onCategoryClick={onCategoryClick}
             />
@@ -67,7 +62,19 @@ export function BrowseContentSection({
       ) : (
         <div className="space-y-4">
           {auctions.map((auction) => (
-            <AuctionListItem key={auction.id} {...auction} />
+            <AuctionListItem
+              key={auction.id}
+              id={auction.id}
+              title={auction.title}
+              image={auction.image}
+              currentBid={auction.currentBid}
+              bids={auction.bids}
+              timeLeft={calculateTimeLeft(auction.end_time)}
+              description={auction.description}
+              category={auction.category}
+              isHot={auction.isHot}
+              endingSoon={auction.endingSoon}
+            />
           ))}
         </div>
       )}
@@ -85,7 +92,6 @@ export function BrowseContentSection({
 
         <div className="flex items-center gap-1">
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-            // Show first page, last page, current page, and pages around current
             if (
               page === 1 ||
               page === totalPages ||
@@ -106,11 +112,12 @@ export function BrowseContentSection({
                   {page}
                 </Button>
               );
-            } else if (
-              page === currentPage - 2 ||
-              page === currentPage + 2
-            ) {
-              return <span key={page} className="px-2 text-muted-foreground">...</span>;
+            } else if (page === currentPage - 2 || page === currentPage + 2) {
+              return (
+                <span key={page} className="px-2 text-muted-foreground">
+                  ...
+                </span>
+              );
             }
             return null;
           })}
@@ -126,9 +133,9 @@ export function BrowseContentSection({
         </Button>
       </div>
 
-      {/* Results Info */}
       <p className="text-center text-muted-foreground mb-6">
-        Showing {startIndex + 1}-{Math.min(endIndex, totalItems)} of {totalItems} items
+        Showing {startIndex + 1}-{Math.min(endIndex, totalItems)} of{" "}
+        {totalItems} items
       </p>
     </div>
   );

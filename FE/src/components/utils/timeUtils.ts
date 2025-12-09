@@ -130,3 +130,13 @@ export function calculateTimeLeft(endTime: string | Date): string {
   // Only minutes left
   return `${mins} ${minLabel}`;
 }
+
+export const normalizeDate = (value: string | Date | null | undefined): number => {
+  if (!value) return 0;
+
+  const str = value.toString();
+  const normalized = str.includes("T") ? str : str.replace(" ", "T") + "Z";
+
+  const time = new Date(normalized).getTime();
+  return isNaN(time) ? 0 : time;
+};

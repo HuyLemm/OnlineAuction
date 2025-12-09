@@ -9,6 +9,7 @@ export interface AuctionItem {
 
   end_time: string; 
   postedDate: string;
+  description: string;
 
   auctionType: "traditional" | "buy_now";
 

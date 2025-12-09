@@ -1,4 +1,4 @@
-import { Clock, Users, TrendingUp, Eye } from "lucide-react";
+import { Clock, Users, TrendingUp} from "lucide-react";
 import { ImageWithFallback } from "../check/ImageWithFallback";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -14,7 +14,6 @@ interface AuctionListItemProps {
   description?: string;
   isHot?: boolean;
   endingSoon?: boolean;
-  watchers?: number;
 }
 
 export function AuctionListItem({
@@ -24,10 +23,9 @@ export function AuctionListItem({
   bids,
   timeLeft,
   category,
-  description = "Premium authentic item in excellent condition. Verified and authenticated by our experts.",
+  description,
   isHot,
   endingSoon,
-  watchers = 45
 }: AuctionListItemProps) {
   return (
     <div className="group bg-card border border-border/50 rounded-xl overflow-hidden hover:border-border transition-all duration-300 hover:shadow-xl hover:shadow-[#fbbf24]/5">
@@ -40,7 +38,7 @@ export function AuctionListItem({
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-          
+
           {/* Badges */}
           <div className="absolute top-2 left-2 flex flex-wrap gap-1">
             {isHot && (
@@ -64,7 +62,10 @@ export function AuctionListItem({
           <div className="space-y-2">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <Badge variant="outline" className="mb-2 border-border/50 text-muted-foreground">
+                <Badge
+                  variant="outline"
+                  className="mb-2 border-border/50 text-muted-foreground"
+                >
                   {category}
                 </Badge>
                 <h3 className="text-foreground group-hover:text-[#fbbf24] transition-colors line-clamp-1">
@@ -72,9 +73,7 @@ export function AuctionListItem({
                 </h3>
               </div>
             </div>
-            <p className="text-muted-foreground line-clamp-2">
-              {description}
-            </p>
+            <p className="text-muted-foreground line-clamp-2">{description}</p>
           </div>
 
           {/* Bottom Section */}
@@ -89,10 +88,6 @@ export function AuctionListItem({
                 <div className="flex items-center gap-1">
                   <Users className="h-4 w-4" />
                   <span>{bids} bids</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Eye className="h-4 w-4" />
-                  <span>{watchers}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Clock className="h-4 w-4" />
