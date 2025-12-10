@@ -68,33 +68,58 @@ export function BrowseTopBar({
     <div className="bg-card border-b border-border">
       <div className="p-6">
         <div className="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
-          {/* Mobile filter toggle */}
-          <div className="flex items-center gap-3 flex-1 max-w-2xl">
-            {showFilterToggle && (
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={onFilterToggle}
-                className="lg:hidden"
-              >
-                <SlidersHorizontal className="h-4 w-4" />
-              </Button>
-            )}
+          {hasActiveFilters && (
+            <div className="mt-4 flex flex-wrap gap-3 items-center">
+              <span className="text-muted-foreground font-medium">
+                Active filters:
+              </span>
 
-            {/* Search Bar */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search auctions..."
-                className="pl-10 bg-secondary/50 border-border/50"
-              />
+              {/* Category Badges (Name visible) */}
+              {selectedCategories
+                .filter((catId) => {
+                  // Loại category cha, chỉ hiển thị con
+                  const isParent = categories.some(
+                    (c) => String(c.id) === catId
+                  );
+                  return !isParent;
+                })
+                .map((catId) => (
+                  <Badge
+                    key={catId}
+                    variant="outline"
+                    className="border-[#fbbf24]/30 bg-[#fbbf24]/10 text-[#fbbf24] px-3 py-1.5 gap-2 text-sm"
+                  >
+                    {getCategoryName(catId)}
+                    <button
+                      onClick={() => onRemoveCategory?.(catId)}
+                      className="ml-1 hover:text-[#f59e0b]"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              {/* Price range badge */}
+              {hasActivePrice && (
+                <Badge
+                  variant="outline"
+                  className="border-[#fbbf24]/30 bg-[#fbbf24]/10 text-[#fbbf24] px-3 py-1.5 gap-2 text-sm"
+                >
+                  ${priceRange[0].toLocaleString()} – $
+                  {priceRange[1].toLocaleString()}
+                  <button
+                    onClick={onResetPrice}
+                    className="ml-1 hover:text-blue-200"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
             </div>
-          </div>
+          )}
 
           {/* Sort + View Mode */}
-          <div className="flex items-center gap-4">
-            <span className="hidden sm:flex text-muted-foreground">
+          <div className="flex items-center gap-4 ml-auto">
+            <span className="text-muted-foreground whitespace-nowrap">
               {totalItems.toLocaleString()} items
             </span>
 
@@ -143,49 +168,6 @@ export function BrowseTopBar({
             </div>
           </div>
         </div>
-
-        {/* 🔥 Active Filters */}
-        {hasActiveFilters && (
-          <div className="mt-4 flex flex-wrap gap-3 items-center">
-            <span className="text-muted-foreground font-medium">
-              Active filters:
-            </span>
-
-            {/* Category Badges (Name visible) */}
-            {selectedCategories.map((catId) => (
-              <Badge
-                key={catId}
-                variant="outline"
-                className="border-[#fbbf24]/30 bg-[#fbbf24]/10 text-[#fbbf24] px-3 py-1.5 gap-2 text-sm"
-              >
-                {getCategoryName(catId)}
-                <button
-                  onClick={() => onRemoveCategory?.(catId)}
-                  className="ml-1 hover:text-[#f59e0b]"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            ))}
-
-            {/* Price range badge */}
-            {hasActivePrice && (
-              <Badge
-                variant="outline"
-                className="border-[#fbbf24]/30 bg-[#fbbf24]/10 text-[#fbbf24] px-3 py-1.5 gap-2 text-sm"
-              >
-                ${priceRange[0].toLocaleString()} – $
-                {priceRange[1].toLocaleString()}
-                <button
-                  onClick={onResetPrice}
-                  className="ml-1 hover:text-blue-200"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

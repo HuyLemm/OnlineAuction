@@ -4,16 +4,17 @@ import { BrowseTopBar } from "../components/browse/BrowseTopBar";
 import { BrowseContentSection } from "../components/browse/BrowseContentSection";
 import { type AuctionItem, type CategoryTree } from "../types/dto";
 import { LoadingSpinner } from "../components/state";
-
-const API_URL = "http://localhost:3000/products/get-browse-product";
-const CAT_URL = "http://localhost:3000/categories/get-categories-for-sidebar";
+import {
+  GET_BROWSE_PRODUCT_API,
+  GET_CATEGORIES_FOR_SIDEBAR_API,
+} from "../components/utils/api";
 
 interface BrowseItemsPageProps {
   onNavigate?: (
     page: "home" | "browse" | "detail" | "dashboard" | "seller"
   ) => void;
   selectedCategory?: string | null;
-  onCategorySelect?: (category: string) => void;
+  onCategorySelect?: (category: string | null) => void;
 }
 
 export function BrowseItemsPage({
@@ -34,12 +35,16 @@ export function BrowseItemsPage({
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState("default");
 
-  // ⭐ Filters state (persisting state)
+  const [expanded, setExpanded] = useState<string[]>([]);
+
+  const [overrideCategory, setOverrideCategory] = useState<string | null>(null);
+  const effectiveCategory = overrideCategory ?? selectedCategory ?? null;
+
   const [filters, setFilters] = useState<{
     categories: string[];
     price: [number, number];
   }>({
-    categories: [],
+    categories: effectiveCategory ? [effectiveCategory] : [],
     price: [0, 10000],
   });
 
@@ -56,7 +61,7 @@ export function BrowseItemsPage({
     const priceQuery = `&minPrice=${filters.price[0]}&maxPrice=${filters.price[1]}`;
 
     const res = await fetch(
-      `${API_URL}?page=${currentPage}&limit=${itemsPerPage}${sortQuery}${catQuery}${priceQuery}`
+      `${GET_BROWSE_PRODUCT_API}?page=${currentPage}&limit=${itemsPerPage}${sortQuery}${catQuery}${priceQuery}`
     );
     const json = await res.json();
 
@@ -68,17 +73,45 @@ export function BrowseItemsPage({
 
   const fetchCategories = async () => {
     setLoadingCategories(true);
-    const res = await fetch(CAT_URL);
+    const res = await fetch(GET_CATEGORIES_FOR_SIDEBAR_API);
     const json = await res.json();
     setCategories(json.data ?? []);
     setLoadingCategories(false);
   };
 
   useEffect(() => {
-    fetchProducts();
     fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
   }, [fetchProducts]);
 
+  useEffect(() => {
+    if (!effectiveCategory || categories.length === 0) return;
+
+    const cat = categories.find((c) => String(c.id) === effectiveCategory);
+
+    if (cat) {
+      if (cat.subcategories?.length > 0) {
+        setFilters({
+          categories: [
+            effectiveCategory,
+            ...cat.subcategories.map((s) => String(s.id)),
+          ],
+          price: filters.price,
+        });
+      } else {
+        setFilters({
+          categories: [effectiveCategory],
+          price: filters.price,
+        });
+      }
+
+      setExpanded([String(cat.id)]); // auto expand main
+      setCurrentPage(1);
+    }
+  }, [effectiveCategory, categories]);
 
   const handleSort = (sort: string) => {
     setSortBy(sort);
@@ -90,8 +123,17 @@ export function BrowseItemsPage({
     price: [number, number];
   }) => {
     setFilters(newFilters);
+    setOverrideCategory(null);
     setCurrentPage(1);
     setShowMobileFilters(false);
+  };
+
+  const handleClearFilters = () => {
+    setFilters({ categories: [], price: [0, 10000] });
+    setExpanded([]);
+    setOverrideCategory(null);
+    setCurrentPage(1);
+    onCategorySelect?.(null);
   };
 
   if (loadingProducts || loadingCategories) {
@@ -112,6 +154,9 @@ export function BrowseItemsPage({
           selectedMainCategory={selectedCategory ?? undefined}
           selectedCategories={filters.categories}
           priceRange={filters.price}
+          expandedCategories={expanded}
+          onExpandedChange={setExpanded}
+          onClearAll={handleClearFilters}
         />
       </div>
 
@@ -129,10 +174,13 @@ export function BrowseItemsPage({
               categories={categories}
               selectedCategories={filters.categories}
               priceRange={filters.price}
+              expandedCategories={expanded}
+              onExpandedChange={setExpanded}
               onApplyFilters={(f) => {
                 handleApplyFilters(f);
                 setShowMobileFilters(false);
               }}
+              onClearAll={handleClearFilters}
             />
           </div>
         </div>

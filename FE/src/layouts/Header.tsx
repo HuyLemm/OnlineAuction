@@ -58,7 +58,11 @@ export function Header({
   const [searchValue, setSearchValue] = useState("");
 
   const [menuCategories, setMenuCategories] = useState<
-    { main: string; subcategories: string[] }[]
+    {
+      id: number;
+      main: string;
+      subcategories: { id: number; label: string }[];
+    }[]
   >([]);
 
   useEffect(() => {
@@ -137,9 +141,15 @@ export function Header({
     }
   };
 
-  const handleCategoryClick = (mainCategory: string, subcategory: string) => {
-    const fullCategory = `${mainCategory} ➡️ ${subcategory}`;
-    onCategorySelect?.(fullCategory);
+  const handleCategoryClick = (
+    mainCategoryId: number,
+    subcategoryId?: number
+  ) => {
+    if (subcategoryId) {
+      onCategorySelect?.(subcategoryId.toString());
+    } else {
+      onCategorySelect?.(mainCategoryId.toString());
+    }
     onNavigate?.("browse");
   };
 
@@ -202,10 +212,7 @@ export function Header({
                           onMouseEnter={() =>
                             setSelectedMainCategory(category.main)
                           }
-                          onClick={() => {
-                            setSelectedMainCategory(category.main);
-                            onNavigate?.("browse");
-                          }}
+                          onClick={() => handleCategoryClick(category.id)}
                           className={`w-full px-5 py-3.5 text-left transition-all flex items-center gap-3 group ${
                             selectedMainCategory === category.main
                               ? "bg-gradient-to-r from-[#fbbf24]/20 to-transparent text-[#fbbf24] border-l-2 border-[#fbbf24]"
@@ -238,17 +245,21 @@ export function Header({
                           .find((cat) => cat.main === selectedMainCategory)
                           ?.subcategories.map((subcategory) => (
                             <button
-                              key={subcategory}
+                              key={subcategory.id}
                               onClick={() =>
                                 handleCategoryClick(
-                                  selectedMainCategory,
-                                  subcategory
+                                  menuCategories.find(
+                                    (c) => c.main === selectedMainCategory
+                                  )?.id!,
+                                  subcategory.id
                                 )
                               }
                               className="w-full px-5 py-3 text-left text-gray-300 hover:bg-[#fbbf24]/10 hover:text-[#fbbf24] transition-all flex items-center gap-3 group"
                             >
                               <div className="w-1.5 h-1.5 rounded-full bg-[#fbbf24]/40 group-hover:bg-[#fbbf24] transition-colors" />
-                              <span className="flex-1">{subcategory}</span>
+                              <span className="flex-1">
+                                {subcategory.label}
+                              </span>
                               <ChevronRight className="h-3 w-3 text-[#fbbf24]/0 group-hover:text-[#fbbf24]/60 transition-colors" />
                             </button>
                           ))}

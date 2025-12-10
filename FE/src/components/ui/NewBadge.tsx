@@ -4,6 +4,7 @@ import { isNewItem } from "../utils/timeUtils";
 interface NewBadgeProps {
   postedDate: Date | string;
   daysThreshold?: number; // Default: 7 days
+  minutesThreshold?: number;
   variant?: "default" | "compact" | "minimal";
   className?: string;
 }
@@ -15,6 +16,7 @@ interface NewBadgeProps {
 export function NewBadge({ 
   postedDate, 
   daysThreshold = 7,
+  minutesThreshold,
   variant = "default",
   className = "" 
 }: NewBadgeProps) {
@@ -22,7 +24,7 @@ export function NewBadge({
   const dateObj = postedDate instanceof Date ? postedDate : new Date(postedDate);
   if (isNaN(dateObj.getTime())) return null;
   
-  const isNew = isNewItem(dateObj, daysThreshold);
+  const isNew = isNewItem(dateObj, daysThreshold, minutesThreshold);
 
   if (!isNew) return null;
 
@@ -64,13 +66,14 @@ export function NewBadge({
 export function NewBadgeCorner({ 
   postedDate, 
   daysThreshold = 7,
+  minutesThreshold,
   className = "" 
 }: Omit<NewBadgeProps, 'variant'>) {
   // Ensure we have a valid Date object
   const dateObj = postedDate instanceof Date ? postedDate : new Date(postedDate);
   if (isNaN(dateObj.getTime())) return null;
   
-  const isNew = isNewItem(dateObj, daysThreshold);
+  const isNew = isNewItem(dateObj, daysThreshold, minutesThreshold);
 
   if (!isNew) return null;
 

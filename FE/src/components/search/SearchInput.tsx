@@ -9,18 +9,18 @@ interface SearchInputProps {
   autoFocus?: boolean;
 }
 
-export function SearchInput({ 
-  value, 
-  onChange, 
-  onClear, 
+export function SearchInput({
+  value,
+  onChange,
+  onClear,
   placeholder = "Search auctions...",
-  autoFocus = false 
+  autoFocus = true,
 }: SearchInputProps) {
   return (
     <div className="relative w-full">
       <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#fbbf24]" />
       <Input
-        type="search"
+        type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}

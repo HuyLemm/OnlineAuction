@@ -17,10 +17,15 @@ interface FilterSidebarProps {
   selectedCategories?: string[];
   priceRange?: [number, number];
 
+  expandedCategories: string[];
+  onExpandedChange: (expanded: string[]) => void;
+
   onApplyFilters: (filters: {
     categories: string[];
     price: [number, number];
   }) => void;
+
+  onClearAll?: () => void;
 }
 
 export function FilterSidebar({
@@ -29,45 +34,55 @@ export function FilterSidebar({
   categories,
   selectedMainCategory,
   selectedSubCategory,
+  expandedCategories,
+  onExpandedChange,
+  onClearAll,
   selectedCategories: externalSelected = [],
   priceRange: externalPrice = [0, 10000],
 }: FilterSidebarProps) {
   const [selectedCategories, setSelectedCategories] =
     useState<string[]>(externalSelected);
   const [priceRange, setPriceRange] = useState<[number, number]>(externalPrice);
-  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
   useEffect(() => {
-    const selected: string[] = [...externalSelected];
-    const expanded: string[] = [];
+    setSelectedCategories(externalSelected);
+    setPriceRange(externalPrice);
+  }, [externalSelected, externalPrice]);
+
+  useEffect(() => {
+    if (!selectedMainCategory) return;
+
+    let newSel = [...selectedCategories];
+    let newExp = [...expandedCategories];
 
     categories.forEach((main) => {
-      if (main.label === selectedMainCategory) {
-        selected.push(String(main.id));
-        expanded.push(String(main.id));
+      const mainId = String(main.id);
+
+      if (mainId === selectedMainCategory) {
+        const subIds = main.subcategories.map((s) => String(s.id));
+        newSel.push(mainId);
+        newSel.push(...subIds);
+        newExp.push(mainId);
       }
 
       main.subcategories.forEach((sub) => {
-        if (sub.label === selectedSubCategory) {
-          selected.push(String(sub.id));
-          expanded.push(String(main.id));
+        const subId = String(sub.id);
+        if (subId === selectedMainCategory) {
+          newSel.push(subId);
+          newExp.push(mainId);
+
+          const allChecked = main.subcategories.every((s) =>
+            newSel.includes(String(s.id))
+          );
+          if (allChecked) newSel.push(mainId);
         }
       });
     });
 
-    setSelectedCategories([...new Set(selected)]);
-    if (expanded.length > 0) setExpandedCategories(expanded);
-  }, [selectedMainCategory, selectedSubCategory, categories]);
+    setSelectedCategories([...new Set(newSel)]);
+    onExpandedChange([...new Set(newExp)]);
+  }, [selectedMainCategory]);
 
-  useEffect(() => {
-    setSelectedCategories(externalSelected);
-  }, [externalSelected]);
-
-  useEffect(() => {
-    setPriceRange(externalPrice);
-  }, [externalPrice]);
-
-  // Tick logic updates
   const toggleCategory = (id: string, isParent = false, parentId?: string) => {
     setSelectedCategories((prev) => {
       let updated = [...prev];
@@ -82,6 +97,10 @@ export function FilterSidebar({
         updated = includeAll
           ? [...new Set([...updated, id, ...subIds])]
           : updated.filter((x) => x !== id && !subIds.includes(x));
+
+        if (!expandedCategories.includes(id)) {
+          onExpandedChange([...expandedCategories, id]);
+        }
       } else {
         updated = updated.includes(id)
           ? updated.filter((x) => x !== id)
@@ -96,23 +115,30 @@ export function FilterSidebar({
             updated = allSelected
               ? [...new Set([...updated, parentId])]
               : updated.filter((x) => x !== parentId);
+
+            if (!expandedCategories.includes(parentId)) {
+              onExpandedChange([...expandedCategories, parentId]);
+            }
           }
         }
       }
-
       return [...new Set(updated)];
     });
   };
 
   const toggleExpand = (id: string) => {
-    setExpandedCategories((prev) =>
-      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
-    );
+    const updated = expandedCategories.includes(id)
+      ? expandedCategories.filter((x) => x !== id)
+      : [...expandedCategories, id];
+
+    onExpandedChange(updated);
   };
 
   const clearAllFilters = () => {
     setSelectedCategories([]);
-    setPriceRange([0, 100000]);
+    setPriceRange([0, 10000]);
+    onExpandedChange([]);
+    onClearAll?.();
   };
 
   const activeFiltersCount =

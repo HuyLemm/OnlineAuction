@@ -56,12 +56,21 @@ export function getRelativeTime(
  */
 export function isNewItem(
   postedDate?: Date,
-  daysThreshold: number = 7
+  daysThreshold: number = 7,
+  minutesThreshold?: number // ⬅️ NEW
 ): boolean {
   if (!postedDate) return false;
   const now = new Date();
-  const diff = now.getTime() - postedDate.getTime();
-  const diffDays = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const diffMs = now.getTime() - postedDate.getTime();
+
+  // ⬅️ Ưu tiên xét theo phút nếu có truyền
+  if (minutesThreshold !== undefined) {
+    const diffMinutes = diffMs / (1000 * 60);
+    return diffMinutes <= minutesThreshold;
+  }
+
+  // fallback: xét theo ngày như cũ
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   return diffDays <= daysThreshold;
 }
 
@@ -131,7 +140,9 @@ export function calculateTimeLeft(endTime: string | Date): string {
   return `${mins} ${minLabel}`;
 }
 
-export const normalizeDate = (value: string | Date | null | undefined): number => {
+export const normalizeDate = (
+  value: string | Date | null | undefined
+): number => {
   if (!value) return 0;
 
   const str = value.toString();

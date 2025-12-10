@@ -33,12 +33,14 @@ export function HeroBanner({ onSearch }: HeroBannerProps) {
       {/* Background decoration */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#fbbf24]/10 to-[#f59e0b]/5 rounded-full blur-3xl" />
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-[#fbbf24]/5 to-transparent rounded-full blur-3xl" />
-      
+
       <div className="relative z-10 max-w-3xl mx-auto text-center space-y-8">
         {/* Badge */}
         <div className="inline-flex items-center gap-2 rounded-full border border-border/50 bg-secondary/30 backdrop-blur-sm px-4 py-2">
           <Sparkles className="h-4 w-4 text-[#fbbf24]" />
-          <span className="text-muted-foreground">Discover Rare & Exclusive Items</span>
+          <span className="text-muted-foreground">
+            Discover Rare & Exclusive Items
+          </span>
         </div>
 
         {/* Heading */}
@@ -47,7 +49,8 @@ export function HeroBanner({ onSearch }: HeroBannerProps) {
             Bid on the World's Most Coveted Items
           </h1>
           <p className="text-muted-foreground mx-auto max-w-2xl">
-            Join thousands of collectors and enthusiasts in live auctions. Find luxury watches, rare art, vintage cars, and exclusive collectibles.
+            Join thousands of collectors and enthusiasts in live auctions. Find
+            luxury watches, rare art, vintage cars, and exclusive collectibles.
           </p>
         </div>
 
@@ -58,14 +61,14 @@ export function HeroBanner({ onSearch }: HeroBannerProps) {
               <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Search for watches, art, cars, jewelry..."
+                placeholder="Search for watches, arts, cars and more..."
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 className="h-14 pl-12 pr-4 bg-background/50 backdrop-blur-sm border-border/50 rounded-xl"
               />
             </div>
-            <Button 
+            <Button
               onClick={handleSearch}
               className="h-14 px-8 bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90 rounded-xl"
             >
@@ -77,7 +80,14 @@ export function HeroBanner({ onSearch }: HeroBannerProps) {
         {/* Popular Searches */}
         <div className="flex flex-wrap items-center justify-center gap-2">
           <span className="text-sm text-gray-300">Popular:</span>
-          {["Rolex", "Vintage Cars", "Modern Art", "Diamond Jewelry", "Camera", "Guitar", "Watches", "Handbag"].map((term) => (
+          {[
+            "Rolex",
+            "Modern Art",
+            "Diamond Jewelry",
+            "Camera",
+            "Watches",
+            "Clothing",
+          ].map((term) => (
             <button
               key={term}
               onClick={() => handlePopularClick(term)}

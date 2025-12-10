@@ -13,7 +13,11 @@ interface FilterChipsProps {
   onClearAll: () => void;
 }
 
-export function FilterChips({ filters, onRemoveFilter, onClearAll }: FilterChipsProps) {
+export function FilterChips({
+  filters,
+  onRemoveFilter,
+  onClearAll,
+}: FilterChipsProps) {
   if (filters.length === 0) return null;
 
   return (
@@ -31,7 +35,7 @@ export function FilterChips({ filters, onRemoveFilter, onClearAll }: FilterChips
       {filters.length > 1 && (
         <button
           onClick={onClearAll}
-          className="ml-2 text-sm text-gray-400 hover:text-[#fbbf24] underline transition-colors"
+          className="border-[#fbbf24]/30 bg-[#fbbf24]/10 text-[#fbbf24] px-3 py-1.5 gap-2 text-sm"
         >
           Clear All
         </button>

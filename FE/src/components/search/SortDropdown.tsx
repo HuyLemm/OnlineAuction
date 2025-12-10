@@ -7,7 +7,13 @@ import {
 } from "../ui/dropdown-menu";
 import { Button } from "../ui/button";
 
-export type SortOption = "ending_soon" | "price_asc" | "price_desc" | "newest" | "oldest";
+export type SortOption =
+  | "default"
+  | "ending_soon"
+  | "price_asc"
+  | "price_desc"
+  | "newest"
+  | "oldest";
 
 interface SortDropdownProps {
   value: SortOption;
@@ -15,6 +21,7 @@ interface SortDropdownProps {
 }
 
 const sortOptions: { value: SortOption; label: string; icon: any }[] = [
+  { value: "default", label: "Default", icon: ArrowUpDown },
   { value: "ending_soon", label: "Ending Soon", icon: Clock },
   { value: "price_asc", label: "Price: Low to High", icon: DollarSign },
   { value: "price_desc", label: "Price: High to Low", icon: DollarSign },
@@ -37,8 +44,8 @@ export function SortDropdown({ value, onChange }: SortDropdownProps) {
           {currentOption?.label || "Sort By"}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent 
-        align="end" 
+      <DropdownMenuContent
+        align="end"
         className="bg-[#1a1a1a] border-[#fbbf24]/20 text-white min-w-[200px]"
       >
         {sortOptions.map((option) => {

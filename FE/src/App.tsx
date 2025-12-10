@@ -44,7 +44,13 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [currentPage]);
 
-  const handleNavigate = (page: Page) => setCurrentPage(page);
+  const handleNavigate = (page: Page) => {
+    if (page !== "browse") {
+      setSelectedCategory(null);
+    }
+    setCurrentPage(page);
+  };
+
   const handleLogout = () => {
     setIsAuthenticated(false);
     setCurrentPage("home");
@@ -59,9 +65,10 @@ export default function App() {
     setCurrentPage("order");
   };
 
-  const handleCategorySelect = (category: string) => {
-    setSelectedCategory(category);
-    setCurrentPage("browse");
+  const handleCategorySelect = (categoryId: string | null) => {
+    setSelectedCategory(categoryId);
+    if (categoryId === null) return; 
+    handleNavigate("browse");
   };
 
   const handleSearch = (query: string) => {

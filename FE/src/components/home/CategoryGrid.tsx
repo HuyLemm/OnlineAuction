@@ -12,8 +12,7 @@ import {
 } from "lucide-react";
 import { ImageWithFallback } from "../check/ImageWithFallback";
 import { type Category } from "../../types/dto";
-
-const API_BASE = "http://localhost:3000/categories/get-main-categories";
+import { GET_MAIN_CATEGORIES_API } from "../utils/api";
 
 const categoryIcons: Record<string, React.ReactNode> = {
   Watches: <Watch className="h-6 w-6" />,
@@ -48,7 +47,7 @@ export function CategoryGrid({ onCategoryClick }: CategoryGridProps) {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch(API_BASE);
+        const res = await fetch(GET_MAIN_CATEGORIES_API);
         const json = await res.json();
 
         const formatted: Category[] = json.data.map((cat: Category) => ({

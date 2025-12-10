@@ -5,8 +5,11 @@ import { HomeFeaturedSection } from "../components/home/HomeFeaturedSection";
 import { Clock, TrendingUp, DollarSign } from "lucide-react";
 import { type AuctionItem } from "../types/dto";
 import { LoadingSpinner } from "../components/state";
-
-const API_BASE = "http://localhost:3000/home";
+import {
+  GET_TOP_5_ENDING_SOON_API,
+  GET_TOP_5_MOST_BIDS_API,
+  GET_TOP_5_HIGHEST_PRICE_API,
+} from "../components/utils/api";
 
 interface HomePageProps {
   onNavigate?: (
@@ -26,9 +29,9 @@ export function HomePage({
   const [highestPrice, setHighestPrice] = useState<AuctionItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async (path: string) => {
+  const fetchData = useCallback(async (url: string) => {
     try {
-      const res = await fetch(API_BASE + path);
+      const res = await fetch(url);
       const json = await res.json();
       return json.data ?? [];
     } catch (err) {
@@ -57,9 +60,9 @@ export function HomePage({
 
   useEffect(() => {
     const loadAll = async () => {
-      const ending = await fetchData("/top-5-ending-soon");
-      const most = await fetchData("/top-5-most-bids");
-      const high = await fetchData("/top-5-highest-price");
+      const ending = await fetchData(GET_TOP_5_ENDING_SOON_API);
+      const most = await fetchData(GET_TOP_5_MOST_BIDS_API);
+      const high = await fetchData(GET_TOP_5_HIGHEST_PRICE_API);
 
       setEndingSoon(ending.map(mapItem));
       setMostBids(most.map(mapItem));

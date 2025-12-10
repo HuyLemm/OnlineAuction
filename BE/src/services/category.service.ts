@@ -22,10 +22,14 @@ export async function getCategoryForMenuService() {
   const mainCategories = categories.filter((c) => c.parent_id === null);
 
   return mainCategories.map((main) => ({
+    id: main.id,
     main: main.name,
     subcategories: categories
       .filter((sub) => sub.parent_id === main.id)
-      .map((sub) => sub.name),
+      .map((sub) => ({
+        id: sub.id,
+        label: sub.name,
+      })),
   }));
 }
 
@@ -40,7 +44,7 @@ export async function getCategoryForSidebarService() {
   const countMap: Record<string, number> = {};
   productCounts.forEach((row) => {
     const key = String(row.category_id ?? "");
-    if (!key) return; 
+    if (!key) return;
     countMap[key] = Number(row.count);
   });
 

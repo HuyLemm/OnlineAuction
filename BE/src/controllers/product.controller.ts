@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
-import { getBrowseProductsService } from "../services/product.service";
+import {
+  getBrowseProductsService,
+  searchProductsService,
+} from "../services/product.service";
 import dayjs from "dayjs";
 
 function formatBrowseItem(item: any) {
@@ -64,5 +67,36 @@ export async function getBrowseProductsController(req: Request, res: Response) {
   } catch (error) {
     console.error("❌ getBrowseProducts Error:", error);
     res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+}
+
+export async function searchProductsController(req: Request, res: Response) {
+  try {
+    const keyword = (req.query.keyword as string) || "";
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Number(req.query.limit) || 12, 48);
+    const sort = (req.query.sort as string) || "default";
+    const newMinutes = req.query.newMinutes ? Number(req.query.newMinutes) : 60;
+
+    const categoryIds = req.query.categoryIds
+      ? (req.query.categoryIds as string).split(",").map(Number)
+      : undefined;
+
+    const result = await searchProductsService({
+      keyword,
+      categoryIds,
+      page,
+      limit,
+      sort,
+      newMinutes,
+    });
+
+    return res.json(result);
+  } catch (error) {
+    console.error("❌ searchProductsController error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 }
