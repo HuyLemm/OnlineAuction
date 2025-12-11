@@ -21,7 +21,7 @@ import { useState, useEffect } from "react";
 import { NotificationDropdown } from "../components/notifications/NotificationDropdown";
 import { type Notification } from "../components/notifications/NotificationCard";
 import { toast } from "sonner";
-
+import { GET_CATEGORIES_FOR_MENU_API } from "../components/utils/api";
 interface HeaderProps {
   onNavigate?: (
     page:
@@ -68,9 +68,7 @@ export function Header({
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch(
-          "http://localhost:3000/categories/get-categories-for-menu"
-        );
+        const res = await fetch(GET_CATEGORIES_FOR_MENU_API);
         const json = await res.json();
         setMenuCategories(json.data ?? []);
       } catch (err) {

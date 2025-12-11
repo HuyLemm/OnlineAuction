@@ -48,6 +48,30 @@ function baseQuery() {
     .groupBy("p.id", "pi.image_url", "c.name", "u.full_name");
 }
 
+// --------------------------------------------------
+// 🔥 Full Text Search utilities: AND + OR fallback
+// --------------------------------------------------
+
+function buildTsQueryAND(keyword: string): string {
+  return keyword
+    .trim()
+    .split(/\s+/)
+    .map((w) => `${w}:*`)
+    .join(" & ");
+}
+
+function buildTsQueryOR(keyword: string): string {
+  return keyword
+    .trim()
+    .split(/\s+/)
+    .map((w) => `${w}:*`)
+    .join(" | ");
+}
+
+// --------------------------------------------------
+// 🔥 Browse (no keyword search)
+// --------------------------------------------------
+
 export async function getBrowseProductsService({
   page,
   limit,
@@ -67,38 +91,34 @@ export async function getBrowseProductsService({
 
   let query = baseQuery();
 
-  // Category Filter
   if (categories && categories.length > 0) {
-    const catIds = categories.map(Number); // chuyển string → number array
+    const catIds = categories.map(Number);
     query = query.whereIn("p.category_id", catIds);
   }
 
-  // PRICE FILTER using HAVING for aggregated expression
   query = query.havingRaw(
     `COALESCE(p.current_price, p.start_price)::int BETWEEN ? AND ?`,
     [minPrice, maxPrice]
   );
 
-  // Clone before sorting/pagination
   const filtered = await query.clone();
   const total = filtered.length;
 
-  // Sort
   switch (sort) {
     case "ending-soon":
-      query = query.orderBy("p.end_time", "asc");
+      query.orderBy("p.end_time", "asc");
       break;
     case "newly-listed":
-      query = query.orderBy("p.created_at", "desc");
+      query.orderBy("p.created_at", "desc");
       break;
     case "price-low":
-      query = query.orderBy("currentBid", "asc");
+      query.orderBy("currentBid", "asc");
       break;
     case "price-high":
-      query = query.orderBy("currentBid", "desc");
+      query.orderBy("currentBid", "desc");
       break;
     case "most-bids":
-      query = query.orderBy("currentBid", "desc");
+      query.orderBy("currentBid", "desc");
       break;
   }
 
@@ -107,7 +127,6 @@ export async function getBrowseProductsService({
   return { data, total };
 }
 
-// 🔥 Full-Text Search + Prefix + Ranking + Category Filter + Sorting + Pagination
 export async function searchProductsService({
   keyword,
   categoryIds,
@@ -126,35 +145,50 @@ export async function searchProductsService({
   const offset = (page - 1) * limit;
   const hasKeyword = keyword.trim() !== "";
 
-  const formattedKeyword = hasKeyword
-    ? keyword.trim().replace(/\s+/g, " & ") + ":*"
-    : "";
-
-  const searchVector = `to_tsvector('english', p.title || ' ' || c.name)`;
-  const searchQuery = `to_tsquery('english', ?)`;
+  const searchVector = "p.search_vector";
+  const queryAND = buildTsQueryAND(keyword);
+  const queryOR = buildTsQueryOR(keyword);
 
   let query = baseQuery();
 
-  // Category filter (parent + children)
+  // Category filter
   if (categoryIds && categoryIds.length > 0) {
     const allCats = await getDescendantCategories(categoryIds);
     query.whereIn("p.category_id", allCats);
   }
 
-  // Full-text search chỉ chạy khi có keyword
   if (hasKeyword) {
     query
       .select(
-        db.raw(`ts_rank(${searchVector}, ${searchQuery}) AS rank`, [
-          formattedKeyword,
+        db.raw(`ts_rank(${searchVector}, to_tsquery('english', ?)) AS rank`, [
+          queryAND,
         ])
       )
-      .whereRaw(`${searchVector} @@ ${searchQuery}`, [formattedKeyword]);
+      .whereRaw(`${searchVector} @@ to_tsquery('english', ?)`, [queryAND]);
+  }
+
+  let total = (await query.clone()).length;
+
+  if (hasKeyword && total === 0) {
+    query = baseQuery();
+
+    if (categoryIds && categoryIds.length > 0) {
+      const allCats = await getDescendantCategories(categoryIds);
+      query.whereIn("p.category_id", allCats);
+    }
+
+    query
+      .select(
+        db.raw(`ts_rank(${searchVector}, to_tsquery('english', ?)) AS rank`, [
+          queryOR,
+        ])
+      )
+      .whereRaw(`${searchVector} @@ to_tsquery('english', ?)`, [queryOR]);
+
+    total = (await query.clone()).length;
   }
 
   if (hasKeyword) {
-    query.orderBy("rank", "desc"); // luôn ưu tiên rank
-
     switch (sort) {
       case "price_asc":
         query.orderBy("currentBid", "asc");
@@ -171,10 +205,8 @@ export async function searchProductsService({
       case "ending_soon":
         query.orderBy("p.end_time", "asc");
         break;
-      case "default":
-      default:
-        break; // không sort thêm khi default
     }
+    query.orderBy("rank", "desc");
   } else {
     switch (sort) {
       case "price_asc":
@@ -192,13 +224,9 @@ export async function searchProductsService({
       case "ending_soon":
         query.orderBy("p.end_time", "asc");
         break;
-      case "default":
-      default:
-        break; // ❌ không sort gì hết
     }
   }
 
-  const total = (await query.clone()).length;
   const data = await query.limit(limit).offset(offset);
 
   return {

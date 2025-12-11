@@ -80,7 +80,7 @@ export function CategoryGrid({ onCategoryClick }: CategoryGridProps) {
         {categories.map((category) => (
           <button
             key={category.id}
-            onClick={() => onCategoryClick?.(category.name)}
+            onClick={() => onCategoryClick?.(String(category.id))}
             className="group relative overflow-hidden rounded-xl border border-border/50 bg-card/50 
                        hover:border-[#fbbf24]/30 transition-all duration-300 hover:shadow-xl 
                        hover:shadow-[#fbbf24]/10 hover:bg-card"

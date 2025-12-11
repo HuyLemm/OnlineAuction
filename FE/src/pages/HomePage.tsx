@@ -45,6 +45,7 @@ export function HomePage({
     title: item.title,
     image: item.image,
     category: item.category,
+    categoryId: item.categoryId,
     currentBid: Number(item.currentBid),
     bids: Number(item.bids),
     end_time: item.end_time,
@@ -103,6 +104,10 @@ export function HomePage({
         auctions={endingSoon}
         onNavigate={onNavigate}
         onViewAll={() => onNavigate?.("browse")}
+        onCategoryClick={(categoryId) => {
+          onCategorySelect?.(categoryId);
+          onNavigate?.("browse");
+        }}
       />
 
       {/* MOST BIDS — shows Hot badge */}
@@ -115,6 +120,10 @@ export function HomePage({
         auctions={mostBids}
         onNavigate={onNavigate}
         onViewAll={() => onNavigate?.("browse")}
+        onCategoryClick={(categoryId) => {
+          onCategorySelect?.(categoryId);
+          onNavigate?.("browse");
+        }}
       />
 
       {/* HIGHEST PRICE — also considered hot */}
@@ -127,6 +136,10 @@ export function HomePage({
         auctions={highestPrice}
         onNavigate={onNavigate}
         onViewAll={() => onNavigate?.("browse")}
+        onCategoryClick={(categoryId) => {
+          onCategorySelect?.(categoryId);
+          onNavigate?.("browse");
+        }}
       />
     </div>
   );

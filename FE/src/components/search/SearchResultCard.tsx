@@ -40,7 +40,13 @@ export function SearchResultCard({
 
   const highlightText = (text: string) => {
     if (!searchKeyword) return text;
-    const regex = new RegExp(`(${searchKeyword})`, "gi");
+
+    // Escape special regex characters
+    const escaped = searchKeyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    // Only highlight whole text content, not inside HTML tags
+    const regex = new RegExp(`(${escaped})`, "gi");
+
     return text.replace(
       regex,
       `<mark class='px-1 rounded bg-[#fbbf24]/30 text-[#fbbf24] font-semibold'>$1</mark>`
@@ -100,6 +106,7 @@ export function SearchResultCard({
               </Badge>
 
               <h3
+                key={item.id + searchKeyword}
                 className="font-medium group-hover:text-[#fbbf24] text-lg text-white line-clamp-1"
                 dangerouslySetInnerHTML={{ __html: highlightText(item.title) }}
               />

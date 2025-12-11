@@ -3,6 +3,7 @@ export interface AuctionItem {
   title: string;
   image: string;
   category: string;
+  categoryId: string;
 
   currentBid: number;
   bids: number;

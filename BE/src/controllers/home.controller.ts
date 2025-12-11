@@ -15,6 +15,7 @@ function formatItem(item: any) {
     id: item.id,
     title: item.title,
     category: item.category,
+    categoryId: item.categoryId,
     image: item.image,
     postedDate: item.postedDate,
     auctionType: item.auctionType,

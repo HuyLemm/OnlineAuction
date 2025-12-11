@@ -11,7 +11,7 @@ import {
 import { SearchResultCard } from "../components/search/SearchResultCard";
 import { SearchPagination } from "../components/search/SearchPagination";
 import { SearchEmptyState } from "../components/search/SearchEmptyState";
-import { Filter, Grid, List } from "lucide-react";
+import { Filter, Grid, List, SunMedium } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
   DropdownMenu,
@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
-
+import { LoadingSpinner } from "../components/state";
 import {
   SEARCH_PRODUCTS_API,
   GET_MAIN_CATEGORIES_API,
@@ -40,16 +40,24 @@ export function SearchResultsPage({
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
+  const [submittedQuery, setSubmittedQuery] = useState(initialQuery);
+
   const [results, setResults] = useState<any[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
   const [categories, setCategories] = useState<any[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [loadingResults, setLoadingResults] = useState(false);
+
   const limit = 20;
+
+    const globalLoading = loadingCategories || loadingResults;
 
   // 🔹 Fetch Category Data
   const fetchCategories = async () => {
     try {
+      setLoadingCategories(true);
       const res = await fetch(GET_MAIN_CATEGORIES_API);
       const json = await res.json();
       if (json.success) {
@@ -57,6 +65,9 @@ export function SearchResultsPage({
       }
     } catch (err) {
       console.error("❌ Fetch categories error:", err);
+    }
+    finally {
+      setLoadingCategories(false);
     }
   };
 
@@ -67,13 +78,14 @@ export function SearchResultsPage({
   // 🔹 Fetch Product Search Results
   const fetchResults = async () => {
     try {
+      setLoadingResults(true);
       const selectedCategories = activeFilters
         .filter((f) => f.type === "category")
         .map((f) => f.value)
         .join(",");
 
       const url = `${SEARCH_PRODUCTS_API}?keyword=${encodeURIComponent(
-        searchQuery
+        submittedQuery
       )}&page=${currentPage}&limit=${limit}&sort=${sortBy}${
         selectedCategories ? `&categoryIds=${selectedCategories}` : ""
       }`;
@@ -98,11 +110,14 @@ export function SearchResultsPage({
     } catch (err) {
       console.error("❌ Search API error:", err);
     }
+    finally {
+      setLoadingResults(false);
+    }
   };
 
   useEffect(() => {
     fetchResults();
-  }, [searchQuery, activeFilters, sortBy, currentPage]);
+  }, [submittedQuery, activeFilters, sortBy, currentPage]);
 
   // 🔹 Filter Handling
   const handleRemoveFilter = (id: string) => {
@@ -143,6 +158,16 @@ export function SearchResultsPage({
     setCurrentPage(1);
   };
 
+  if (globalLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-6 py-20 flex justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-6 py-8">
@@ -152,7 +177,8 @@ export function SearchResultsPage({
             Search Results
           </h1>
           <p className="text-gray-400">
-            {totalItems} items found {searchQuery && `for "${searchQuery}"`}
+            {totalItems} items found{" "}
+            {submittedQuery && `for "${submittedQuery}"`}
           </p>
         </div>
 
@@ -161,8 +187,15 @@ export function SearchResultsPage({
           <SearchInput
             value={searchQuery}
             onChange={setSearchQuery}
-            onClear={handleClearSearch}
-            autoFocus
+            onClear={() => {
+              setSearchQuery("");
+              setSubmittedQuery("");
+              setCurrentPage(1);
+            }}
+            onSubmit={(val) => {
+              setSubmittedQuery(val);
+              setCurrentPage(1);
+            }}
           />
         </div>
 
@@ -254,7 +287,7 @@ export function SearchResultsPage({
                 <SearchResultCard
                   key={item.id}
                   item={item}
-                  searchKeyword={searchQuery}
+                  searchKeyword={submittedQuery}
                   viewMode={viewMode}
                   onClick={() => onNavigate?.("detail")}
                 />

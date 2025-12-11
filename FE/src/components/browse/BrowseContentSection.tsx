@@ -47,6 +47,7 @@ export function BrowseContentSection({
               bids={auction.bids}
               end_time={auction.end_time}
               category={auction.category}
+              categoryId={auction.categoryId}
               auctionType={auction.auctionType}
               isHot={auction.isHot}
               endingSoon={auction.endingSoon}
@@ -56,6 +57,7 @@ export function BrowseContentSection({
               postedDate={auction.postedDate}
               onNavigate={onNavigate}
               onCategoryClick={onCategoryClick}
+              showCategory={false}
             />
           ))}
         </div>

@@ -38,13 +38,13 @@ export function HeroBanner({ onSearch }: HeroBannerProps) {
         {/* Badge */}
         <div className="inline-flex items-center gap-2 rounded-full border border-border/50 bg-secondary/30 backdrop-blur-sm px-4 py-2">
           <Sparkles className="h-4 w-4 text-[#fbbf24]" />
-          <span className="text-muted-foreground">
+          <span className="text-muted-foreground text-lg">
             Discover Rare & Exclusive Items
           </span>
         </div>
 
         {/* Heading */}
-        <div className="space-y-4">
+        <div className="space-y-4 text-lg">
           <h1 className="bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent">
             Bid on the World's Most Coveted Items
           </h1>

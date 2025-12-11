@@ -1,4 +1,4 @@
-import { Clock, Users, TrendingUp} from "lucide-react";
+import { Clock, Users, TrendingUp } from "lucide-react";
 import { ImageWithFallback } from "../check/ImageWithFallback";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";

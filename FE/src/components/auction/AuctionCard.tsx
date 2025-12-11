@@ -18,6 +18,7 @@ interface AuctionCardProps {
   bids: number;
   end_time: string;
   category: string;
+  categoryId?: string;
 
   auctionType?: "traditional" | "buy_now";
   isHot?: boolean;
@@ -30,6 +31,8 @@ interface AuctionCardProps {
 
   onNavigate?: (page: "detail") => void;
   onCategoryClick?: (category: string) => void;
+
+  showCategory?: boolean;
 }
 
 export function AuctionCard({
@@ -39,6 +42,7 @@ export function AuctionCard({
   bids,
   end_time,
   category,
+  categoryId,
   auctionType = "traditional",
   isHot = false,
   endingSoon = false,
@@ -48,6 +52,7 @@ export function AuctionCard({
   highestBidderName,
   buyNowPrice,
   postedDate,
+  showCategory = true,
 }: AuctionCardProps) {
   const isNew = isNewItem(postedDate ? new Date(postedDate) : undefined, 7);
 
@@ -56,7 +61,9 @@ export function AuctionCard({
 
   const handleCategoryClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onCategoryClick?.(category);
+    if (categoryId) {
+      onCategoryClick?.(String(categoryId));
+    }
   };
 
   return (
@@ -116,13 +123,15 @@ export function AuctionCard({
       <div className="p-5 flex flex-col flex-1 gap-3">
         {/* Category & Posted */}
         <div className="flex items-center justify-between">
-          <Badge
-            variant="outline"
-            className="cursor-pointer text-muted-foreground hover:bg-[#fbbf24]/10 hover:text-[#fbbf24]"
-            onClick={handleCategoryClick}
-          >
-            {category}
-          </Badge>
+          {showCategory && (
+            <Badge
+              variant="outline"
+              className="cursor-pointer text-muted-foreground hover:bg-[#fbbf24]/10 hover:text-[#fbbf24]"
+              onClick={handleCategoryClick}
+            >
+              {category}
+            </Badge>
+          )}
           <span className="text-xs text-muted-foreground">{postedAt}</span>
         </div>
 

@@ -22,11 +22,12 @@ function baseQuery() {
       "p.created_at as postedDate",
       "p.end_time as end_time",
       "c.name as category",
+      "c.id as categoryId",
       db.raw(`COALESCE(MAX(b.bid_amount), p.start_price) AS "currentBid"`),
       db.raw(`COUNT(b.id) AS "bids"`),
       db.raw(`COALESCE(pi.image_url, '') AS "image"`)
     )
-    .groupBy("p.id", "pi.image_url", "c.name", "u.full_name");
+    .groupBy("p.id", "pi.image_url", "c.name", "c.id", "u.full_name");
 }
 
 export async function getTop5EndingSoonService() {

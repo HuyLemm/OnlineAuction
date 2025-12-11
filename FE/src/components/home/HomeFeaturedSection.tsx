@@ -18,6 +18,8 @@ interface HomeFeaturedSectionProps {
     page: "home" | "browse" | "detail" | "dashboard" | "seller"
   ) => void;
   onViewAll?: () => void;
+
+  onCategoryClick?: (category: string) => void;
 }
 
 export function HomeFeaturedSection({
@@ -27,6 +29,7 @@ export function HomeFeaturedSection({
   iconGradient,
   iconColor,
   auctions,
+  onCategoryClick,
   onNavigate,
   onViewAll,
 }: HomeFeaturedSectionProps) {
@@ -68,6 +71,7 @@ export function HomeFeaturedSection({
             bids={auction.bids}
             end_time={auction.end_time}
             category={auction.category}
+            categoryId={auction.categoryId}
             highestBidderId={auction.highestBidderId}
             highestBidderName={auction.highestBidderName}
             buyNowPrice={auction.buyNowPrice}
@@ -75,7 +79,9 @@ export function HomeFeaturedSection({
             auctionType={auction.auctionType}
             isHot={auction.isHot}
             endingSoon={auction.endingSoon}
+            onCategoryClick={onCategoryClick}
             onNavigate={() => onNavigate?.("detail")}
+            showCategory={true}
           />
         ))}
       </div>
