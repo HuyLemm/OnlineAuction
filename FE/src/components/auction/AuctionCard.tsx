@@ -12,11 +12,13 @@ import {
 
 interface AuctionCardProps {
   id: string;
+
   title: string;
   image: string;
   currentBid: number;
   bids: number;
   end_time: string;
+
   category: string;
   categoryId?: string;
 
@@ -29,13 +31,15 @@ interface AuctionCardProps {
   buyNowPrice?: number | null;
   postedDate?: Date | string;
 
-  onNavigate?: (page: "detail") => void;
+  /** 🔴 truyền page + productId */
+  onNavigate?: (page: "detail", productId: string) => void;
   onCategoryClick?: (category: string) => void;
 
   showCategory?: boolean;
 }
 
 export function AuctionCard({
+  id,
   title,
   image,
   currentBid,
@@ -48,7 +52,6 @@ export function AuctionCard({
   endingSoon = false,
   onNavigate,
   onCategoryClick,
-  highestBidderId,
   highestBidderName,
   buyNowPrice,
   postedDate,
@@ -60,7 +63,7 @@ export function AuctionCard({
   const postedAt = formatPostedDate(postedDate);
 
   const handleCategoryClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+    e.stopPropagation(); // ❗ không trigger click card
     if (categoryId) {
       onCategoryClick?.(String(categoryId));
     }
@@ -68,9 +71,11 @@ export function AuctionCard({
 
   return (
     <Card
-      onClick={() => onNavigate?.("detail")}
-      className="group overflow-hidden border border-border/50 bg-card hover:border-[#fbbf24]/50 
-                 transition-all duration-300 hover:shadow-2xl hover:shadow-[#fbbf24]/10 
+      /** 🔴 CLICK CARD → TRUYỀN productId */
+      onClick={() => onNavigate?.("detail", id)}
+      className="group overflow-hidden border border-border/50 bg-card
+                 hover:border-[#fbbf24]/50 transition-all duration-300
+                 hover:shadow-2xl hover:shadow-[#fbbf24]/10
                  cursor-pointer flex flex-col"
     >
       {/* Image */}
@@ -78,7 +83,8 @@ export function AuctionCard({
         <ImageWithFallback
           src={image}
           alt={title}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+          className="h-full w-full object-cover transition-transform
+                     duration-500 group-hover:scale-110"
         />
 
         {/* Top Badges */}
@@ -96,19 +102,25 @@ export function AuctionCard({
         </div>
 
         {/* Favorite */}
-        <button className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/40 flex items-center justify-center hover:bg-black/60">
+        <button
+          className="absolute top-2 right-2 h-7 w-7 rounded-full
+                     bg-black/40 flex items-center justify-center
+                     hover:bg-black/60"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Heart className="h-3.5 w-3.5 text-white" />
         </button>
 
-        {/* Bottom Overlay - Time Left + New */}
+        {/* Bottom Overlay */}
         <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
-          {/* Time Left */}
-          <div className="flex items-center gap-1 whitespace-nowrap rounded bg-black/60 backdrop-blur-md px-2 py-0.5 text-white text-xs shadow-sm">
-            <Clock className="h-3 w-3 opacity-90 flex-shrink-0" />
+          <div
+            className="flex items-center gap-1 rounded bg-black/60 px-2 py-0.5
+                          text-white text-xs"
+          >
+            <Clock className="h-3 w-3" />
             <span>{timeLeft}</span>
           </div>
 
-          {/* New Badge */}
           {isNew && postedDate && (
             <NewBadge
               postedDate={new Date(postedDate)}
@@ -126,7 +138,8 @@ export function AuctionCard({
           {showCategory && (
             <Badge
               variant="outline"
-              className="cursor-pointer text-muted-foreground hover:bg-[#fbbf24]/10 hover:text-[#fbbf24]"
+              className="cursor-pointer text-muted-foreground
+                         hover:bg-[#fbbf24]/10 hover:text-[#fbbf24]"
               onClick={handleCategoryClick}
             >
               {category}
@@ -136,7 +149,10 @@ export function AuctionCard({
         </div>
 
         {/* Title */}
-        <h3 className="line-clamp-2 min-h-[3rem] group-hover:text-[#fbbf24] transition-colors">
+        <h3
+          className="line-clamp-2 min-h-[3rem]
+                       group-hover:text-[#fbbf24] transition-colors"
+        >
           {title}
         </h3>
 
@@ -144,7 +160,7 @@ export function AuctionCard({
         <div className="flex items-baseline justify-between">
           <span className="text-sm text-muted-foreground">Current Bid</span>
           <span
-            className="text-xl bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] 
+            className="text-xl bg-gradient-to-r from-[#fbbf24] to-[#f59e0b]
                            bg-clip-text text-transparent"
           >
             ${(currentBid ?? 0).toLocaleString()}
@@ -152,10 +168,14 @@ export function AuctionCard({
         </div>
 
         {/* Highest Bidder */}
-        <div className="flex items-center gap-2 p-2 rounded-lg bg-secondary/30 border border-border/30">
+        <div
+          className="flex items-center gap-2 p-2 rounded-lg
+                        bg-secondary/30 border border-border/30"
+        >
           <div
-            className="h-6 w-6 rounded-full bg-gradient-to-br from-[#fbbf24] 
-                          to-[#f59e0b] flex items-center justify-center"
+            className="h-6 w-6 rounded-full bg-gradient-to-br
+                          from-[#fbbf24] to-[#f59e0b]
+                          flex items-center justify-center"
           >
             <User className="h-3 w-3 text-black" />
           </div>
@@ -164,11 +184,11 @@ export function AuctionCard({
           </span>
         </div>
 
-        {/* Buy Now Reserved Slot */}
+        {/* Buy Now */}
         <div className="min-h-[42px]">
           {auctionType === "buy_now" && buyNowPrice && (
             <div
-              className="flex items-baseline justify-between p-2 rounded-lg 
+              className="flex justify-between p-2 rounded-lg
                             bg-[#10b981]/10 border border-[#10b981]/20"
             >
               <span className="text-sm text-[#10b981]">Buy Now Price</span>
@@ -179,22 +199,25 @@ export function AuctionCard({
           )}
         </div>
 
-        {/* Bids section - sticks above button */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground pt-2 border-t border-border/30 mt-auto">
+        {/* Footer */}
+        <div
+          className="flex justify-between text-sm text-muted-foreground
+                        pt-2 border-t border-border/30 mt-auto"
+        >
           <span>{bids} bids placed</span>
-
-          <div className="flex items-center gap-1 whitespace-nowrap">
-            <Clock className="h-3 w-3 opacity-70 flex-shrink-0" />
+          <div className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
             <span>{timeLeft}</span>
           </div>
         </div>
 
-        {/* Action */}
+        {/* Auto-bid only (không manual bid) */}
         <Button
-          className="w-full bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] 
-                     text-black hover:opacity-90 cursor-pointer mt-3"
+          onClick={(e) => e.stopPropagation()}
+          className="w-full bg-gradient-to-r from-[#fbbf24] to-[#f59e0b]
+                     text-black hover:opacity-90 mt-3"
         >
-          Place Bid
+          View Details
         </Button>
       </div>
     </Card>

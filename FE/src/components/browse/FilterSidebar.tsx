@@ -6,11 +6,11 @@ import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
 import { Badge } from "../ui/badge";
 import { X, Filter, ChevronDown, ChevronRight } from "lucide-react";
-import { type CategoryTree } from "../../types/dto";
+import { type CategoryTreeDTO } from "../../types/dto";
 
 interface FilterSidebarProps {
   onClose?: () => void;
-  categories: CategoryTree[];
+  categories: CategoryTreeDTO[];
   selectedMainCategory?: string | null;
   selectedSubCategory?: string | null;
 

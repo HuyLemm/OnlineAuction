@@ -240,3 +240,154 @@ export async function searchProductsService({
     data,
   };
 }
+
+export async function getProductDetailService(productId: string) {
+  // ----------------------------
+  // Product core info
+  // ----------------------------
+  const product = await db("products as p")
+    .leftJoin("categories as c", "c.id", "p.category_id")
+    .select(
+      "p.id",
+      "p.title",
+      "p.description",
+      "p.created_at as postedDate",
+      "p.end_time as endTime",
+      "p.auction_type as auctionType",
+      "p.buy_now_price as buyNowPrice",
+      "p.category_id as categoryId",
+      "c.name as categoryName",
+      db.raw(`COALESCE(p.current_price, p.start_price)::int AS "currentBid"`)
+    )
+    .where("p.id", productId)
+    .first();
+
+  if (!product) throw new Error("Product not found");
+
+  // ----------------------------
+  // Images
+  // ----------------------------
+  const images = await db("product_images")
+    .select("image_url", "is_main")
+    .where("product_id", productId);
+
+  // ----------------------------
+  // Seller
+  // ----------------------------
+  const seller = await db("users")
+    .select("id", "full_name")
+    .where("id", db("products").select("seller_id").where("id", productId))
+    .first();
+
+  if (!seller) throw new Error("Seller not found");
+
+  // ----------------------------
+  // Seller rating (SUM score)
+  // ----------------------------
+  const sellerRatingRaw = (await db
+    .select(
+      db.raw("COALESCE(SUM(score), 0) AS score"),
+      db.raw("COUNT(*) AS total")
+    )
+    .from("ratings")
+    .where("to_user", seller.id)
+    .first()) as { score: number; total: number } | undefined;
+
+  const sellerRating = {
+    score: Number(sellerRatingRaw?.score ?? 0),
+    total: Number(sellerRatingRaw?.total ?? 0),
+  };
+
+  // ----------------------------
+  // Highest bid
+  // ----------------------------
+  const highestBid = await db("bids")
+    .where("product_id", productId)
+    .orderBy("bid_amount", "desc")
+    .first();
+
+  // ----------------------------
+  // Highest bidder + rating
+  // ----------------------------
+  let highestBidder: { id: string; full_name: string } | null = null;
+  let highestBidderRating = { score: 0, total: 0 };
+
+  if (highestBid) {
+    highestBidder = await db("users")
+      .select("id", "full_name")
+      .where("id", highestBid.bidder_id)
+      .first();
+
+    if (highestBidder) {
+      const bidderRatingRaw = (await db
+        .select(
+          db.raw("COALESCE(SUM(score), 0) AS score"),
+          db.raw("COUNT(*) AS total")
+        )
+        .from("ratings")
+        .where("to_user", highestBid.bidder_id)
+        .first()) as { score: number; total: number } | undefined;
+
+      highestBidderRating = {
+        score: Number(bidderRatingRaw?.score ?? 0),
+        total: Number(bidderRatingRaw?.total ?? 0),
+      };
+    }
+  }
+
+  // ----------------------------
+  // Auto bids
+  // ----------------------------
+  const autoBids = await db("auto_bids")
+    .where("product_id", productId)
+    .select("id", "bidder_id", "max_price", "created_at");
+
+  // ----------------------------
+  // Q&A
+  // ----------------------------
+  const questions = await db("questions")
+    .where("product_id", productId)
+    .select("id", "content", "user_id", "created_at");
+
+  const answers = questions.length
+    ? await db("answers")
+        .whereIn(
+          "question_id",
+          questions.map((q) => q.id)
+        )
+        .select("question_id", "content", "created_at", "user_id")
+    : [];
+
+  // ----------------------------
+  // Related products
+  // ----------------------------
+  const relatedProducts = await db("products")
+    .where("category_id", product.categoryId)
+    .andWhereNot("id", productId)
+    .limit(5);
+
+  // ----------------------------
+  // FINAL RAW RESULT
+  // ----------------------------
+  return {
+    product,
+    images,
+    seller: {
+      id: seller.id,
+      name: seller.full_name,
+      rating: sellerRating,
+    },
+    highestBid,
+    highestBidder: highestBidder
+      ? {
+          id: highestBidder.id,
+          name: highestBidder.full_name,
+          rating: highestBidderRating,
+        }
+      : null,
+    autoBids,
+    questions,
+    answers,
+    relatedProducts,
+  };
+}

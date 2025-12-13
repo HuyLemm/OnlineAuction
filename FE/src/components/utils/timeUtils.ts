@@ -1,14 +1,13 @@
 export interface RelativeTimeResult {
   formatted: string;
-  isUrgent: boolean; // Less than 1 hour
-  isCritical: boolean; // Less than 10 minutes
+  isUrgent: boolean;
+  isCritical: boolean;
 }
 
 export function getRelativeTime(
   timeLeft?: string,
   endDate?: Date
 ): RelativeTimeResult {
-  // If missing or not valid → safe fallback
   if (!timeLeft || typeof timeLeft !== "string") {
     return {
       formatted: "—",
@@ -17,7 +16,6 @@ export function getRelativeTime(
     };
   }
 
-  // Try parse values from string — format example: "2d 5h", "3h 20m"
   const daysMatch = timeLeft.match(/(\d+)d/);
   const hoursMatch = timeLeft.match(/(\d+)h/);
   const minutesMatch = timeLeft.match(/(\d+)m/);
@@ -26,7 +24,6 @@ export function getRelativeTime(
   const totalHours = hoursMatch ? Number(hoursMatch[1]) : 0;
   const totalMinutes = minutesMatch ? Number(minutesMatch[1]) : 0;
 
-  // When BE gives a weird / unexpected string → fallback
   if (totalDays === 0 && totalHours === 0 && totalMinutes === 0) {
     return {
       formatted: timeLeft.trim() !== "" ? timeLeft : "—",
@@ -51,32 +48,24 @@ export function getRelativeTime(
   };
 }
 
-/**
- * Mark "New" badge
- */
 export function isNewItem(
   postedDate?: Date,
   daysThreshold: number = 7,
-  minutesThreshold?: number // ⬅️ NEW
+  minutesThreshold?: number
 ): boolean {
   if (!postedDate) return false;
   const now = new Date();
   const diffMs = now.getTime() - postedDate.getTime();
 
-  // ⬅️ Ưu tiên xét theo phút nếu có truyền
   if (minutesThreshold !== undefined) {
     const diffMinutes = diffMs / (1000 * 60);
     return diffMinutes <= minutesThreshold;
   }
 
-  // fallback: xét theo ngày như cũ
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   return diffDays <= daysThreshold;
 }
 
-/**
- * Get days since posted for UI display
- */
 export function formatPostedDate(postedDate?: Date | string): string {
   if (!postedDate) return "—";
   return new Date(postedDate).toLocaleDateString("en-US", {
@@ -109,34 +98,29 @@ export function calculateTimeLeft(endTime: string | Date): string {
   const hrLabel = hours === 1 ? "hr" : "hrs";
   const minLabel = mins === 1 ? "min" : "mins";
 
-  // Year priority: year + (month || day)
   if (years > 0) {
     if (months > 0) return `${years} ${yrLabel} ${months} ${moLabel}`;
     if (days > 0) return `${years} ${yrLabel} ${days} ${dayLabel}`;
     return `${years} ${yrLabel}`;
   }
 
-  // Month priority: month + (day || hour)
   if (months > 0) {
     if (days > 0) return `${months} ${moLabel} ${days} ${dayLabel}`;
     if (hours > 0) return `${months} ${moLabel} ${hours} ${hrLabel}`;
     return `${months} ${moLabel}`;
   }
 
-  // Day priority: day + (hour || min)
   if (days > 0) {
     if (hours > 0) return `${days} ${dayLabel} ${hours} ${hrLabel}`;
     if (mins > 0) return `${days} ${dayLabel} ${mins} ${minLabel}`;
     return `${days} ${dayLabel}`;
   }
 
-  // Hour priority: hour + min (if min > 0)
   if (hours > 0) {
     if (mins > 0) return `${hours} ${hrLabel} ${mins} ${minLabel}`;
     return `${hours} ${hrLabel}`;
   }
 
-  // Only minutes left
   return `${mins} ${minLabel}`;
 }
 
@@ -151,3 +135,76 @@ export const normalizeDate = (
   const time = new Date(normalized).getTime();
   return isNaN(time) ? 0 : time;
 };
+
+export interface RelativeTimeResult {
+  formatted: string;
+  isUrgent: boolean; // < 1 hour
+  isCritical: boolean; // < 10 minutes
+}
+
+export function getRelativeEndTime(
+  endDate?: Date | string
+): RelativeTimeResult {
+  if (!endDate) {
+    return {
+      formatted: "—",
+      isUrgent: false,
+      isCritical: false,
+    };
+  }
+
+  const end = new Date(endDate).getTime();
+  const now = Date.now();
+  const diffMs = end - now;
+
+  if (diffMs <= 0) {
+    return {
+      formatted: "Ended",
+      isUrgent: false,
+      isCritical: false,
+    };
+  }
+
+  const minutesTotal = Math.floor(diffMs / (1000 * 60));
+  const hoursTotal = Math.floor(minutesTotal / 60);
+  const daysTotal = Math.floor(hoursTotal / 24);
+
+  if (daysTotal >= 3) {
+    return {
+      formatted: calculateTimeLeft(endDate),
+      isUrgent: false,
+      isCritical: false,
+    };
+  }
+
+  const isUrgent = minutesTotal < 60;
+  const isCritical = minutesTotal < 10;
+
+  let formatted: string;
+
+  if (daysTotal > 0) {
+    const hours = hoursTotal % 24;
+    formatted =
+      hours > 0
+        ? `${daysTotal} day${daysTotal > 1 ? "s" : ""} ${hours} hour${
+            hours > 1 ? "s" : ""
+          } left`
+        : `${daysTotal} day${daysTotal > 1 ? "s" : ""} left`;
+  } else if (hoursTotal > 0) {
+    const mins = minutesTotal % 60;
+    formatted =
+      mins > 0
+        ? `${hoursTotal} hour${hoursTotal > 1 ? "s" : ""} ${mins} min${
+            mins > 1 ? "s" : ""
+          } left`
+        : `${hoursTotal} hour${hoursTotal > 1 ? "s" : ""} left`;
+  } else {
+    formatted = `${minutesTotal} min${minutesTotal > 1 ? "s" : ""} left`;
+  }
+
+  return {
+    formatted,
+    isUrgent,
+    isCritical,
+  };
+}

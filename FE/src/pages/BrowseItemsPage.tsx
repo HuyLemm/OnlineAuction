@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { FilterSidebar } from "../components/browse/FilterSidebar";
 import { BrowseTopBar } from "../components/browse/BrowseTopBar";
 import { BrowseContentSection } from "../components/browse/BrowseContentSection";
-import { type AuctionItem, type CategoryTree } from "../types/dto";
+import type { AuctionItemDTO, CategoryTreeDTO } from "../types/dto";
 import { LoadingSpinner } from "../components/state";
 import {
   GET_BROWSE_PRODUCT_API,
@@ -15,15 +15,18 @@ interface BrowseItemsPageProps {
   ) => void;
   selectedCategory?: string | null;
   onCategorySelect?: (category: string | null) => void;
+
+  initialSort?: string;
 }
 
 export function BrowseItemsPage({
   onNavigate,
   selectedCategory,
   onCategorySelect,
+  initialSort,
 }: BrowseItemsPageProps) {
-  const [items, setItems] = useState<AuctionItem[]>([]);
-  const [categories, setCategories] = useState<CategoryTree[]>([]);
+  const [items, setItems] = useState<AuctionItemDTO[]>([]);
+  const [categories, setCategories] = useState<CategoryTreeDTO[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -33,7 +36,7 @@ export function BrowseItemsPage({
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortBy, setSortBy] = useState("default");
+  const [sortBy, setSortBy] = useState(initialSort ?? "default");
 
   const [expanded, setExpanded] = useState<string[]>([]);
 

@@ -1,4 +1,4 @@
-export interface AuctionItem {
+export interface AuctionItemDTO {
   id: string;
   title: string;
   image: string;
@@ -8,7 +8,7 @@ export interface AuctionItem {
   currentBid: number;
   bids: number;
 
-  end_time: string; 
+  end_time: string;
   postedDate: string;
   description?: string;
 
@@ -22,15 +22,7 @@ export interface AuctionItem {
   endingSoon?: boolean;
 }
 
-export interface Category {
-  id: number;
-  name: string;
-  count: number;
-  icon?: React.ReactNode;
-  image?: string;
-}
-
-export interface CategoryTree {
+export interface CategoryTreeDTO {
   id: number;
   label: string;
   count: number;
@@ -40,3 +32,89 @@ export interface CategoryTree {
     count: number;
   }[];
 }
+
+export interface ProductDetailDTO {
+  product: {
+    id: string;
+    title: string;
+    description: string;
+
+    postedDate: string;
+    endTime: string;
+
+    auctionType: "traditional" | "buy_now";
+    buyNowPrice?: number | null;
+
+    categoryId: number;
+    categoryName: string;
+  };
+
+  images: {
+    primary: string;
+    gallery: string[];
+  };
+
+  seller: {
+    id: string;
+    name: string;
+    rating: {
+      score: number;
+      total: number;
+    };
+  };
+
+  currentBid: number;
+
+  highestBidder?: {
+    id: string;
+    name: string;
+    rating: {
+      score: number;
+      total: number;
+    };
+  };
+
+  autoBids: {
+    id: string;
+    bidderId: string;
+    bidderName: string;
+    maxBid: number;
+    createdAt: string;
+  }[];
+
+  questions: {
+    id: string;
+    question: {
+      content: string;
+      askedBy: {
+        id: string;
+        name: string;
+      };
+      askedAt: string;
+    };
+
+    answer?: {
+      content: string;
+      answeredBy: {
+        id: string;
+        name: string;
+      };
+      answeredAt: string;
+    };
+  }[];
+
+  relatedProducts: {
+    id: string;
+    title: string;
+    image: string;
+    currentBid: number;
+    endTime: string;
+  }[];
+}
+
+export type BidStatusDTO =
+  | "no_bid"
+  | "outbid"
+  | "auto_active"
+  | "leading_auto"
+  | "winning";

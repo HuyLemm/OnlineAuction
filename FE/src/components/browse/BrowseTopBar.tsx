@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { type CategoryTree } from "../../types/dto";
+import { type CategoryTreeDTO } from "../../types/dto";
 
 interface BrowseTopBarProps {
   totalItems: number;
@@ -20,7 +20,7 @@ interface BrowseTopBarProps {
 
   selectedCategories?: string[];
   priceRange?: [number, number];
-  categories?: CategoryTree[]; // NEW
+  categories?: CategoryTreeDTO[];
 
   onRemoveCategory?: (id: string) => void;
   onResetPrice?: () => void;

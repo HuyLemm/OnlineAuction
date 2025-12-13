@@ -10,13 +10,12 @@ interface HomeFeaturedSectionProps {
   iconGradient: string;
   iconColor: string;
 
+  auctions: AuctionItem[];
+
   isEndingSoonSection?: boolean;
   isHotSection?: boolean;
 
-  auctions: AuctionItem[];
-  onNavigate?: (
-    page: "home" | "browse" | "detail" | "dashboard" | "seller"
-  ) => void;
+  onNavigate?: (page: "browse" | "detail", productId?: string) => void;
   onViewAll?: () => void;
 
   onCategoryClick?: (category: string) => void;
@@ -80,7 +79,7 @@ export function HomeFeaturedSection({
             isHot={auction.isHot}
             endingSoon={auction.endingSoon}
             onCategoryClick={onCategoryClick}
-            onNavigate={() => onNavigate?.("detail")}
+            onNavigate={onNavigate}
             showCategory={true}
           />
         ))}

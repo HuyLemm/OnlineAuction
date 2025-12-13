@@ -16,7 +16,10 @@ interface BidComparisonChartProps {
   highestBid: number;
 }
 
-export function BidComparisonChart({ bidders, highestBid }: BidComparisonChartProps) {
+export function BidComparisonChart({
+  bidders,
+  highestBid,
+}: BidComparisonChartProps) {
   const sortedBidders = [...bidders].sort((a, b) => b.maxBid - a.maxBid);
   const maxBidValue = Math.max(...bidders.map((b) => b.maxBid));
 
@@ -40,10 +43,15 @@ export function BidComparisonChart({ bidders, highestBid }: BidComparisonChartPr
             <Crown className="h-6 w-6 text-[#10b981]" />
             <div>
               <p className="text-foreground flex items-center gap-2">
-                {sortedBidders[0].isYou ? "You are" : sortedBidders[0].name + " is"} currently winning
+                {sortedBidders[0].isYou
+                  ? "You are"
+                  : sortedBidders[0].name + " is"}{" "}
+                currently winning
               </p>
               <p className="text-muted-foreground">
-                Current bid: ${sortedBidders[0].currentBid.toLocaleString()} • Max: ${sortedBidders[0].maxBid.toLocaleString()}
+                Current bid: $
+                {(sortedBidders[0].currentBid ?? 0).toLocaleString()} • Max: $
+                {(sortedBidders[0].maxBid ?? 0).toLocaleString()}
               </p>
             </div>
           </div>
@@ -93,14 +101,14 @@ export function BidComparisonChart({ bidders, highestBid }: BidComparisonChartPr
                         </Badge>
                       )}
                     </div>
-                    <p className="text-muted-foreground">
-                      Rank #{index + 1}
-                    </p>
+                    <p className="text-muted-foreground">Rank #{index + 1}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className={isLeading ? "text-[#10b981]" : "text-foreground"}>
-                    ${bidder.maxBid.toLocaleString()}
+                  <p
+                    className={isLeading ? "text-[#10b981]" : "text-foreground"}
+                  >
+                    ${(bidder.maxBid ?? 0).toLocaleString()}
                   </p>
                   <p className="text-muted-foreground">max bid</p>
                 </div>
@@ -122,14 +130,14 @@ export function BidComparisonChart({ bidders, highestBid }: BidComparisonChartPr
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
-                    Current: ${bidder.currentBid.toLocaleString()}
+                    Current: ${(bidder.currentBid ?? 0).toLocaleString()}
                   </span>
                   <span
                     className={
                       bidder.isYou ? "text-[#fbbf24]" : "text-muted-foreground"
                     }
                   >
-                    Buffer: ${(bidder.maxBid - bidder.currentBid).toLocaleString()}
+                    Buffer: ${(bidder.maxBid - highestBid).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -151,7 +159,8 @@ export function BidComparisonChart({ bidders, highestBid }: BidComparisonChartPr
       {/* Info Note */}
       <div className="bg-secondary/30 border border-border/50 rounded-lg p-4">
         <p className="text-muted-foreground text-center">
-          💡 The system automatically bids up to your maximum to keep you in the lead
+          💡 The system automatically bids up to your maximum to keep you in the
+          lead
         </p>
       </div>
     </div>

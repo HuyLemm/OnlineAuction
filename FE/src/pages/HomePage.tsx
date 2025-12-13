@@ -3,7 +3,7 @@ import { HeroBanner } from "../components/home/HeroBanner";
 import { CategoryGrid } from "../components/home/CategoryGrid";
 import { HomeFeaturedSection } from "../components/home/HomeFeaturedSection";
 import { Clock, TrendingUp, DollarSign } from "lucide-react";
-import { type AuctionItem } from "../types/dto";
+import { type AuctionItemDTO } from "../types/dto";
 import { LoadingSpinner } from "../components/state";
 import {
   GET_TOP_5_ENDING_SOON_API,
@@ -13,20 +13,23 @@ import {
 
 interface HomePageProps {
   onNavigate?: (
-    page: "home" | "browse" | "detail" | "dashboard" | "seller" | "search"
+    page: "home" | "browse" | "detail" | "dashboard" | "seller" | "search",
+    productId?: string
   ) => void;
   onSearch?: (query: string) => void;
   onCategorySelect?: (category: string) => void;
+  onBrowseSortChange?: (sort: string) => void;
 }
 
 export function HomePage({
   onNavigate,
   onSearch,
   onCategorySelect,
+  onBrowseSortChange,
 }: HomePageProps) {
-  const [endingSoon, setEndingSoon] = useState<AuctionItem[]>([]);
-  const [mostBids, setMostBids] = useState<AuctionItem[]>([]);
-  const [highestPrice, setHighestPrice] = useState<AuctionItem[]>([]);
+  const [endingSoon, setEndingSoon] = useState<AuctionItemDTO[]>([]);
+  const [mostBids, setMostBids] = useState<AuctionItemDTO[]>([]);
+  const [highestPrice, setHighestPrice] = useState<AuctionItemDTO[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async (url: string) => {
@@ -40,7 +43,7 @@ export function HomePage({
     }
   }, []);
 
-  const mapItem = (item: any): AuctionItem => ({
+  const mapItem = (item: any): AuctionItemDTO => ({
     id: item.id,
     title: item.title,
     image: item.image,
@@ -103,7 +106,10 @@ export function HomePage({
         iconColor="text-[#f59e0b]"
         auctions={endingSoon}
         onNavigate={onNavigate}
-        onViewAll={() => onNavigate?.("browse")}
+        onViewAll={() => {
+          onBrowseSortChange?.("ending-soon");
+          onNavigate?.("browse");
+        }}
         onCategoryClick={(categoryId) => {
           onCategorySelect?.(categoryId);
           onNavigate?.("browse");
@@ -119,7 +125,10 @@ export function HomePage({
         iconColor="text-[#ef4444]"
         auctions={mostBids}
         onNavigate={onNavigate}
-        onViewAll={() => onNavigate?.("browse")}
+        onViewAll={() => {
+          onBrowseSortChange?.("most-bids");
+          onNavigate?.("browse");
+        }}
         onCategoryClick={(categoryId) => {
           onCategorySelect?.(categoryId);
           onNavigate?.("browse");
@@ -135,7 +144,10 @@ export function HomePage({
         iconColor="text-[#fbbf24]"
         auctions={highestPrice}
         onNavigate={onNavigate}
-        onViewAll={() => onNavigate?.("browse")}
+        onViewAll={() => {
+          onBrowseSortChange?.("price-high");
+          onNavigate?.("browse");
+        }}
         onCategoryClick={(categoryId) => {
           onCategorySelect?.(categoryId);
           onNavigate?.("browse");

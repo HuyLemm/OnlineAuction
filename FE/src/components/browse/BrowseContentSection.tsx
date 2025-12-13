@@ -2,11 +2,11 @@ import { AuctionCard } from "../auction/AuctionCard";
 import { AuctionListItem } from "./AuctionListItem";
 import { Button } from "../ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { type AuctionItem } from "../../types/dto";
+import { type AuctionItemDTO} from "../../types/dto";
 import { calculateTimeLeft } from "../../components/utils/timeUtils";
 
 interface BrowseContentSectionProps {
-  auctions: AuctionItem[];
+  auctions: AuctionItemDTO[];
   viewMode: "grid" | "list";
   currentPage: number;
   totalPages: number;

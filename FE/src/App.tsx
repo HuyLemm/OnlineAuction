@@ -39,15 +39,24 @@ export default function App() {
   const [userEmail, setUserEmail] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [browseSort, setBrowseSort] = useState<string>("default");
+  const [currentProductId, setCurrentProductId] = useState<string | null>(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [currentPage]);
 
-  const handleNavigate = (page: Page) => {
+  const handleNavigate = (page: Page, productId?: string) => {
     if (page !== "browse") {
       setSelectedCategory(null);
+      setBrowseSort("default");
     }
+
+    if (page === "detail") {
+      if (!productId) return; // an toàn
+      setCurrentProductId(productId);
+    }
+
     setCurrentPage(page);
   };
 
@@ -67,7 +76,7 @@ export default function App() {
 
   const handleCategorySelect = (categoryId: string | null) => {
     setSelectedCategory(categoryId);
-    if (categoryId === null) return; 
+    if (categoryId === null) return;
     handleNavigate("browse");
   };
 
@@ -102,6 +111,7 @@ export default function App() {
               onNavigate={handleNavigate}
               onSearch={handleSearch}
               onCategorySelect={handleCategorySelect}
+              onBrowseSortChange={setBrowseSort}
             />
           </div>
         )}
@@ -111,11 +121,15 @@ export default function App() {
             onNavigate={handleNavigate}
             selectedCategory={selectedCategory}
             onCategorySelect={handleCategorySelect}
+            initialSort={browseSort}
           />
         )}
 
-        {currentPage === "detail" && (
-          <ProductDetailPage onBack={() => setCurrentPage("browse")} />
+        {currentPage === "detail" && currentProductId && (
+          <ProductDetailPage
+            productId={currentProductId}
+            onBack={() => setCurrentPage("browse")}
+          />
         )}
 
         {currentPage === "dashboard" && (

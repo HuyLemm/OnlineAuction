@@ -1,47 +1,56 @@
 import { Request, Response } from "express";
+import dayjs from "dayjs";
+
 import {
   getBrowseProductsService,
   searchProductsService,
+  getProductDetailService,
 } from "../services/product.service";
-import dayjs from "dayjs";
 
-function formatBrowseItem(item: any) {
+import { BrowseProductDTO, ProductDetailDTO } from "../dto/product.dto";
+
+/* =====================================================
+ * UTIL – map browse product
+ * ===================================================== */
+function mapBrowseProduct(item: any): BrowseProductDTO {
   const end = dayjs(item.end_time);
   const now = dayjs();
-  const diffYears = end.diff(now, "year");
 
   return {
     id: item.id,
     title: item.title,
     category: item.category,
     image: item.image,
+
     postedDate: item.postedDate,
+    end_time: item.end_time,
+
     auctionType: item.auctionType,
     buyNowPrice: item.buyNowPrice,
-    end_time: item.end_time,
-    description: item.description,
+
     currentBid: Number(item.currentBid),
     bids: Number(item.bids),
+
     highestBidderId: item.highestBidderId ?? null,
     highestBidderName: item.highestBidderName ?? null,
+
     isHot: Number(item.bids) > 7,
-    endingSoon: diffYears < 10,
+    endingSoon: end.diff(now, "day") < 3,
   };
 }
 
+/* =====================================================
+ * BROWSE PRODUCTS
+ * ===================================================== */
 export async function getBrowseProductsController(req: Request, res: Response) {
   try {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 20;
     const sort = (req.query.sort as string) || "default";
 
-    // 🔥 Filter Params
-    let categories: string[] = [];
-    if (req.query.categories) {
-      categories = (req.query.categories as string)
-        .split(",")
-        .filter((x) => x !== "");
-    }
+    const categories = req.query.categories
+      ? (req.query.categories as string).split(",").filter((x) => x !== "")
+      : [];
 
     const minPrice = Number(req.query.minPrice) || 0;
     const maxPrice = Number(req.query.maxPrice) || 999999999;
@@ -62,14 +71,20 @@ export async function getBrowseProductsController(req: Request, res: Response) {
       sort,
       totalItems: total,
       totalPages: Math.ceil(total / limit),
-      data: data.map(formatBrowseItem),
+      data: data.map(mapBrowseProduct),
     });
   } catch (error) {
-    console.error("❌ getBrowseProducts Error:", error);
-    res.status(500).json({ success: false, message: "Internal Server Error" });
+    console.error("❌ getBrowseProductsController:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
   }
 }
 
+/* =====================================================
+ * SEARCH PRODUCTS
+ * ===================================================== */
 export async function searchProductsController(req: Request, res: Response) {
   try {
     const keyword = (req.query.keyword as string) || "";
@@ -91,12 +106,121 @@ export async function searchProductsController(req: Request, res: Response) {
       newMinutes,
     });
 
-    return res.json(result);
+    res.json(result);
   } catch (error) {
-    console.error("❌ searchProductsController error:", error);
-    return res.status(500).json({
+    console.error("❌ searchProductsController:", error);
+    res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: "Internal Server Error",
+    });
+  }
+}
+
+/* =====================================================
+ * 🔥 PRODUCT DETAIL
+ * ===================================================== */
+export async function getProductDetailController(req: Request, res: Response) {
+  try {
+    const { productId } = req.params;
+
+    if (!productId) {
+      return res.status(400).json({
+        success: false,
+        message: "productId is required",
+      });
+    }
+
+    const raw = await getProductDetailService(productId);
+
+    const dto: ProductDetailDTO = {
+      product: {
+        id: raw.product.id,
+        title: raw.product.title,
+        description: raw.product.description,
+        postedDate: raw.product.postedDate,
+        endTime: raw.product.endTime,
+        auctionType: raw.product.auctionType,
+        buyNowPrice: raw.product.buyNowPrice,
+        categoryId: raw.product.categoryId,
+        categoryName: raw.product.categoryName,
+        currentBid: raw.product.currentBid,
+      },
+
+      images: {
+        primary: raw.images.find((i: any) => i.is_main)?.image_url || "",
+        gallery: raw.images
+          .filter((i: any) => !i.is_main)
+          .map((i: any) => i.image_url),
+      },
+
+      seller: {
+        id: raw.seller.id,
+        name: raw.seller.name,
+        rating: raw.seller.rating, // ✅ { score, total }
+      },
+
+      ...(raw.highestBidder && {
+        highestBidder: {
+          id: raw.highestBidder.id,
+          name: raw.highestBidder.name,
+          rating: raw.highestBidder.rating, // ✅ { score, total }
+        },
+      }),
+
+      autoBids: raw.autoBids.map((b: any) => ({
+        id: b.id,
+        bidderId: b.bidder_id,
+        bidderName: "", // frontend resolve / later join
+        maxBid: b.max_bid,
+        createdAt: b.created_at,
+      })),
+
+      questions: raw.questions.map((q: any) => {
+        const ans = raw.answers.find(
+          (a: any) => a.question_id === q.id
+        );
+
+        return {
+          id: q.id,
+          question: {
+            content: q.content,
+            askedBy: {
+              id: q.user_id,
+              name: "",
+            },
+            askedAt: q.created_at,
+          },
+          ...(ans && {
+            answer: {
+              content: ans.content,
+              answeredBy: {
+                id: ans.user_id,
+                name: "",
+              },
+              answeredAt: ans.created_at,
+            },
+          }),
+        };
+      }),
+
+      relatedProducts: raw.relatedProducts.map((p: any) => ({
+        id: p.id,
+        title: p.title,
+        image: "",
+        currentBid: p.current_price ?? p.start_price,
+        endTime: p.end_time,
+      })),
+    };
+
+    return res.json({
+      success: true,
+      data: dto,
+    });
+  } catch (error: any) {
+    console.error("❌ getProductDetailController:", error);
+    return res.status(404).json({
+      success: false,
+      message: error.message || "Product not found",
     });
   }
 }

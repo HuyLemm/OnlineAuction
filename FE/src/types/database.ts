@@ -1,4 +1,4 @@
-export interface User {
+export interface UserDTO {
   id: string;
   username: string;
   email: string;
@@ -7,7 +7,7 @@ export interface User {
   createdAt: string;
 }
 
-export interface Product {
+export interface ProductDTO {
   id: string;
   title: string;
   categoryId: number;
@@ -20,14 +20,14 @@ export interface Product {
   updatedAt?: string | null;
 }
 
-export interface ProductImage {
+export interface ProductImageDTO {
   id: string;
   productId: string;
   imageUrl: string;
   isMain: boolean;
 }
 
-export interface Bid {
+export interface BidDTO {
   id: string;
   productId: string;
   bidderId: string;
@@ -35,10 +35,18 @@ export interface Bid {
   createdAt: string;
 }
 
-export interface AutoBid {
+export interface AutoBidDTO {
   id: string;
   productId: string;
   bidderId: string;
   maxPrice: number;
   createdAt: string;
+}
+
+export interface CategoryDTO {
+  id: number;
+  name: string;
+  count: number;
+  icon?: React.ReactNode;
+  image?: string;
 }
