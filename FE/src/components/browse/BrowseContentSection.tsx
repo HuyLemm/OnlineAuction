@@ -2,7 +2,7 @@ import { AuctionCard } from "../auction/AuctionCard";
 import { AuctionListItem } from "./AuctionListItem";
 import { Button } from "../ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { type AuctionItemDTO} from "../../types/dto";
+import { type AuctionItemDTO } from "../../types/dto";
 import { calculateTimeLeft } from "../../components/utils/timeUtils";
 
 interface BrowseContentSectionProps {
@@ -14,10 +14,7 @@ interface BrowseContentSectionProps {
   endIndex: number;
   totalItems: number;
   onPageChange: (page: number) => void;
-  onNavigate?: (
-    page: "detail" | "browse" | "home" | "dashboard" | "seller"
-  ) => void;
-  onCategoryClick?: (category: string) => void;
+  onCategoryClick?: (categoryId: string) => void;
 }
 
 export function BrowseContentSection({
@@ -29,8 +26,6 @@ export function BrowseContentSection({
   endIndex,
   totalItems,
   onPageChange,
-  onNavigate,
-  onCategoryClick,
 }: BrowseContentSectionProps) {
   return (
     <div className="container mx-auto p-6">
@@ -51,13 +46,9 @@ export function BrowseContentSection({
               auctionType={auction.auctionType}
               isHot={auction.isHot}
               endingSoon={auction.endingSoon}
-              highestBidderId={auction.highestBidderId}
               highestBidderName={auction.highestBidderName}
               buyNowPrice={auction.buyNowPrice}
               postedDate={auction.postedDate}
-              onNavigate={onNavigate}
-              onCategoryClick={onCategoryClick}
-              showCategory={false}
             />
           ))}
         </div>
@@ -76,6 +67,7 @@ export function BrowseContentSection({
               category={auction.category}
               isHot={auction.isHot}
               endingSoon={auction.endingSoon}
+              categoryId={auction.categoryId}
             />
           ))}
         </div>

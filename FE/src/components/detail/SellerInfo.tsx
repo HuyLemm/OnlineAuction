@@ -2,6 +2,7 @@ import { Star, MapPin, Shield, Award, MessageCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
+import { formatPostedDate } from "../utils/timeUtils";
 
 interface SellerInfoProps {
   name: string;
@@ -22,8 +23,9 @@ export function SellerInfo({
   location,
   memberSince,
   verified,
-  topRated
+  topRated,
 }: SellerInfoProps) {
+  const formattedMemberSince = formatPostedDate(memberSince);
   return (
     <div className="bg-card border border-border/50 rounded-xl p-6 space-y-4">
       <div className="flex items-start gap-4">
@@ -41,12 +43,8 @@ export function SellerInfo({
             <div>
               <div className="flex items-center gap-2">
                 <h4 className="text-foreground">{name}</h4>
-                {verified && (
-                  <Shield className="h-4 w-4 text-[#10b981]" />
-                )}
-                {topRated && (
-                  <Award className="h-4 w-4 text-[#fbbf24]" />
-                )}
+                {verified && <Shield className="h-4 w-4 text-[#10b981]" />}
+                {topRated && <Award className="h-4 w-4 text-[#fbbf24]" />}
               </div>
               <div className="flex items-center gap-2 mt-1">
                 <div className="flex items-center gap-1">
@@ -61,12 +59,18 @@ export function SellerInfo({
           {/* Badges */}
           <div className="flex flex-wrap gap-2">
             {verified && (
-              <Badge variant="outline" className="border-[#10b981]/30 text-[#10b981]">
+              <Badge
+                variant="outline"
+                className="border-[#10b981]/30 text-[#10b981]"
+              >
                 Verified Seller
               </Badge>
             )}
             {topRated && (
-              <Badge variant="outline" className="border-[#fbbf24]/30 text-[#fbbf24]">
+              <Badge
+                variant="outline"
+                className="border-[#fbbf24]/30 text-[#fbbf24]"
+              >
                 Top Rated
               </Badge>
             )}
@@ -78,7 +82,7 @@ export function SellerInfo({
               <MapPin className="h-4 w-4" />
               <span>{location}</span>
             </div>
-            <p>Member since {memberSince}</p>
+            <p>Member since {formattedMemberSince}</p>
           </div>
         </div>
       </div>

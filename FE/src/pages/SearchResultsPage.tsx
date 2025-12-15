@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+
 import { SearchInput } from "../components/search/SearchInput";
 import {
   FilterChips,
@@ -11,7 +13,8 @@ import {
 import { SearchResultCard } from "../components/search/SearchResultCard";
 import { SearchPagination } from "../components/search/SearchPagination";
 import { SearchEmptyState } from "../components/search/SearchEmptyState";
-import { Filter, Grid, List, SunMedium } from "lucide-react";
+
+import { Filter, Grid, List } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
   DropdownMenu,
@@ -20,27 +23,28 @@ import {
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import { LoadingSpinner } from "../components/state";
+
 import {
   SEARCH_PRODUCTS_API,
   GET_MAIN_CATEGORIES_API,
 } from "../components/utils/api";
 
-interface SearchResultsPageProps {
-  initialQuery?: string;
-  onNavigate?: (page: "home" | "browse" | "detail") => void;
-}
+export function SearchResultsPage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-export function SearchResultsPage({
-  initialQuery = "",
-  onNavigate,
-}: SearchResultsPageProps) {
-  const [searchQuery, setSearchQuery] = useState(initialQuery);
+  /* ---------------- URL params ---------------- */
+  const query = searchParams.get("q") ?? "";
+  const page = Number(searchParams.get("page") ?? 1);
+  const sortBy = (searchParams.get("sort") as SortOption) ?? "default";
+  const categoryIdsParam = searchParams.get("categoryIds") ?? "";
+
+  /* ---------------- Local state ---------------- */
+  const [searchQuery, setSearchQuery] = useState(query);
+  const [submittedQuery, setSubmittedQuery] = useState(query);
+
   const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([]);
-  const [sortBy, setSortBy] = useState<SortOption>("default");
-  const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-
-  const [submittedQuery, setSubmittedQuery] = useState(initialQuery);
 
   const [results, setResults] = useState<any[]>([]);
   const [totalPages, setTotalPages] = useState(1);
@@ -51,112 +55,121 @@ export function SearchResultsPage({
   const [loadingResults, setLoadingResults] = useState(false);
 
   const limit = 20;
+  const globalLoading = loadingCategories || loadingResults;
 
-    const globalLoading = loadingCategories || loadingResults;
+  /* ---------------- Helpers ---------------- */
+  const updateParams = (updates: Record<string, string | number | null>) => {
+    const params = new URLSearchParams(searchParams);
 
-  // 🔹 Fetch Category Data
-  const fetchCategories = async () => {
-    try {
-      setLoadingCategories(true);
-      const res = await fetch(GET_MAIN_CATEGORIES_API);
-      const json = await res.json();
-      if (json.success) {
-        setCategories(json.data);
-      }
-    } catch (err) {
-      console.error("❌ Fetch categories error:", err);
-    }
-    finally {
-      setLoadingCategories(false);
-    }
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null || value === "") params.delete(key);
+      else params.set(key, String(value));
+    });
+
+    setSearchParams(params);
   };
 
+  /* ---------------- Fetch categories ---------------- */
   useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const res = await fetch(GET_MAIN_CATEGORIES_API);
+        const json = await res.json();
+        if (json.success) setCategories(json.data);
+      } catch (err) {
+        console.error("❌ Fetch categories error:", err);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
     fetchCategories();
   }, []);
 
-  // 🔹 Fetch Product Search Results
-  const fetchResults = async () => {
-    try {
-      setLoadingResults(true);
-      const selectedCategories = activeFilters
-        .filter((f) => f.type === "category")
-        .map((f) => f.value)
-        .join(",");
-
-      const url = `${SEARCH_PRODUCTS_API}?keyword=${encodeURIComponent(
-        submittedQuery
-      )}&page=${currentPage}&limit=${limit}&sort=${sortBy}${
-        selectedCategories ? `&categoryIds=${selectedCategories}` : ""
-      }`;
-
-      const res = await fetch(url);
-      const json = await res.json();
-      if (!json.success) return;
-
-      const updatedItems = json.data.map((item: any) => {
-        const posted = new Date(item.postedDate ?? item.created_at);
-        const diffMinutes = (Date.now() - posted.getTime()) / 60000;
-
-        return {
-          ...item,
-          isNew: diffMinutes <= 60,
-        };
-      });
-
-      setResults(updatedItems);
-      setTotalPages(json.totalPages);
-      setTotalItems(json.totalItems);
-    } catch (err) {
-      console.error("❌ Search API error:", err);
-    }
-    finally {
-      setLoadingResults(false);
-    }
-  };
-
+  /* ---------------- Sync filters from URL ---------------- */
   useEffect(() => {
+    if (!categoryIdsParam) {
+      setActiveFilters([]);
+      return;
+    }
+
+    const ids = categoryIdsParam.split(",");
+
+    setActiveFilters(
+      ids.map((id) => ({
+        type: "category",
+        value: id,
+        label: categories.find((c) => String(c.id) === id)?.name ?? "Category",
+        id: `category-${id}`,
+      }))
+    );
+  }, [categoryIdsParam, categories]);
+
+  /* ---------------- Fetch search results ---------------- */
+  useEffect(() => {
+    const fetchResults = async () => {
+      try {
+        setLoadingResults(true);
+
+        const url = `${SEARCH_PRODUCTS_API}?keyword=${encodeURIComponent(
+          submittedQuery
+        )}&page=${page}&limit=${limit}&sort=${sortBy}${
+          categoryIdsParam ? `&categoryIds=${categoryIdsParam}` : ""
+        }`;
+
+        const res = await fetch(url);
+        const json = await res.json();
+        if (!json.success) return;
+
+        setResults(json.data ?? []);
+        setTotalPages(json.totalPages ?? 1);
+        setTotalItems(json.totalItems ?? 0);
+      } catch (err) {
+        console.error("❌ Search API error:", err);
+      } finally {
+        setLoadingResults(false);
+      }
+    };
+
     fetchResults();
-  }, [submittedQuery, activeFilters, sortBy, currentPage]);
+  }, [submittedQuery, page, sortBy, categoryIdsParam]);
 
-  // 🔹 Filter Handling
-  const handleRemoveFilter = (id: string) => {
-    setActiveFilters((prev) => prev.filter((f) => f.id !== id));
-  };
-
-  const handleClearAllFilters = () => {
-    setActiveFilters([]);
-    setCurrentPage(1);
-  };
-
-  const handleClearSearch = () => {
-    setSearchQuery("");
-    setCurrentPage(1);
-  };
-
+  /* ---------------- Filter handlers ---------------- */
   const handleToggleCategoryFilter = (
     categoryId: string,
     categoryName: string
   ) => {
-    setActiveFilters((prev) => {
-      const exists = prev.find(
-        (f) => f.type === "category" && f.value === categoryId
-      );
-      if (exists) return prev.filter((f) => f.id !== exists.id);
+    const ids = categoryIdsParam ? categoryIdsParam.split(",") : [];
 
-      return [
-        ...prev,
-        {
-          type: "category",
-          label: categoryName,
-          value: categoryId,
-          id: `category-${categoryId}-${Date.now()}`,
-        },
-      ];
+    const updated = ids.includes(categoryId)
+      ? ids.filter((id) => id !== categoryId)
+      : [...ids, categoryId];
+
+    updateParams({
+      categoryIds: updated.length ? updated.join(",") : null,
+      page: 1,
     });
-
-    setCurrentPage(1);
   };
+
+  const handleRemoveFilter = (id: string) => {
+    const value = id.replace("category-", "");
+    const ids = categoryIdsParam.split(",").filter((c) => c !== value);
+
+    updateParams({
+      categoryIds: ids.length ? ids.join(",") : null,
+      page: 1,
+    });
+  };
+
+  const handleClearAllFilters = () => {
+    updateParams({
+      categoryIds: null,
+      page: 1,
+    });
+  };
+
+  const activeCategoryIds = categoryIdsParam ? categoryIdsParam.split(",") : [];
 
   if (globalLoading) {
     return (
@@ -182,19 +195,18 @@ export function SearchResultsPage({
           </p>
         </div>
 
-        {/* Search Bar */}
+        {/* Search */}
         <div className="mb-6">
           <SearchInput
             value={searchQuery}
             onChange={setSearchQuery}
             onClear={() => {
               setSearchQuery("");
-              setSubmittedQuery("");
-              setCurrentPage(1);
+              updateParams({ q: null, page: 1 });
             }}
             onSubmit={(val) => {
               setSubmittedQuery(val);
-              setCurrentPage(1);
+              updateParams({ q: val, page: 1 });
             }}
           />
         </div>
@@ -208,7 +220,7 @@ export function SearchResultsPage({
           />
 
           <div className="flex flex-wrap items-center justify-between gap-4">
-            {/* Category Dropdown */}
+            {/* Category dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -224,29 +236,30 @@ export function SearchResultsPage({
                 align="start"
                 className="bg-[#1a1a1a] border-[#fbbf24]/20 text-white min-w-[200px]"
               >
-                {categories.length === 0 ? (
-                  <DropdownMenuItem disabled className="text-gray-500">
-                    Loading...
+                {categories.map((cat) => (
+                  <DropdownMenuItem
+                    key={cat.id}
+                    onClick={() =>
+                      handleToggleCategoryFilter(String(cat.id), cat.name)
+                    }
+                    className={`cursor-pointer ${
+                      activeCategoryIds.includes(String(cat.id))
+                        ? "bg-[#fbbf24]/20 text-[#fbbf24]"
+                        : "text-gray-300 hover:bg-[#fbbf24]/10 hover:text-white"
+                    }`}
+                  >
+                    {cat.name}
                   </DropdownMenuItem>
-                ) : (
-                  categories.map((cat) => (
-                    <DropdownMenuItem
-                      key={cat.id}
-                      onClick={() =>
-                        handleToggleCategoryFilter(String(cat.id), cat.name)
-                      }
-                      className="cursor-pointer text-gray-300 hover:bg-[#fbbf24]/10 hover:text-white"
-                    >
-                      {cat.name}
-                    </DropdownMenuItem>
-                  ))
-                )}
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Sort + View Toggle */}
+            {/* Sort + View */}
             <div className="flex items-center gap-3">
-              <SortDropdown value={sortBy} onChange={setSortBy} />
+              <SortDropdown
+                value={sortBy}
+                onChange={(v) => updateParams({ sort: v, page: 1 })}
+              />
 
               <div className="hidden sm:flex gap-1">
                 <Button
@@ -269,10 +282,10 @@ export function SearchResultsPage({
         {/* Results */}
         {results.length === 0 ? (
           <SearchEmptyState
-            searchQuery={searchQuery}
+            searchQuery={submittedQuery}
             hasFilters={activeFilters.length > 0}
             onClearFilters={handleClearAllFilters}
-            onBrowseAll={() => onNavigate?.("browse")}
+            onBrowseAll={() => navigate("/browse")}
           />
         ) : (
           <>
@@ -289,15 +302,15 @@ export function SearchResultsPage({
                   item={item}
                   searchKeyword={submittedQuery}
                   viewMode={viewMode}
-                  onClick={() => onNavigate?.("detail")}
+                  onClick={() => navigate(`/product/${item.id}`)}
                 />
               ))}
             </div>
 
             <SearchPagination
-              currentPage={currentPage}
+              currentPage={page}
               totalPages={totalPages}
-              onPageChange={setCurrentPage}
+              onPageChange={(p) => updateParams({ page: p })}
               totalResults={totalItems}
               resultsPerPage={limit}
             />

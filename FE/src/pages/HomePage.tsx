@@ -1,32 +1,23 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+
 import { HeroBanner } from "../components/home/HeroBanner";
 import { CategoryGrid } from "../components/home/CategoryGrid";
 import { HomeFeaturedSection } from "../components/home/HomeFeaturedSection";
+
 import { Clock, TrendingUp, DollarSign } from "lucide-react";
-import { type AuctionItemDTO } from "../types/dto";
+import type { AuctionItemDTO } from "../types/dto";
 import { LoadingSpinner } from "../components/state";
+
 import {
   GET_TOP_5_ENDING_SOON_API,
   GET_TOP_5_MOST_BIDS_API,
   GET_TOP_5_HIGHEST_PRICE_API,
 } from "../components/utils/api";
 
-interface HomePageProps {
-  onNavigate?: (
-    page: "home" | "browse" | "detail" | "dashboard" | "seller" | "search",
-    productId?: string
-  ) => void;
-  onSearch?: (query: string) => void;
-  onCategorySelect?: (category: string) => void;
-  onBrowseSortChange?: (sort: string) => void;
-}
+export function HomePage() {
+  const navigate = useNavigate();
 
-export function HomePage({
-  onNavigate,
-  onSearch,
-  onCategorySelect,
-  onBrowseSortChange,
-}: HomePageProps) {
   const [endingSoon, setEndingSoon] = useState<AuctionItemDTO[]>([]);
   const [mostBids, setMostBids] = useState<AuctionItemDTO[]>([]);
   const [highestPrice, setHighestPrice] = useState<AuctionItemDTO[]>([]);
@@ -57,7 +48,6 @@ export function HomePage({
     highestBidderId: item.highestBidderId ?? null,
     highestBidderName: item.highestBidderName ?? null,
     buyNowPrice: item.buyNowPrice ?? null,
-
     isHot: item.isHot,
     endingSoon: item.endingSoon,
   });
@@ -88,16 +78,19 @@ export function HomePage({
 
   return (
     <div className="space-y-16">
-      <HeroBanner onSearch={onSearch} />
-
-      <CategoryGrid
-        onCategoryClick={(category) => {
-          onCategorySelect?.(category);
-          onNavigate?.("browse");
-        }}
+      {/* Hero */}
+      <HeroBanner
+        onSearch={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)}
       />
 
-      {/* ENDING SOON — only shows Ending Soon badge */}
+      {/* Categories */}
+      <CategoryGrid
+        onCategoryClick={(categoryId) =>
+          navigate(`/browse?category=${categoryId}`)
+        }
+      />
+
+      {/* ENDING SOON */}
       <HomeFeaturedSection
         title="Top 5 Ending Soon"
         description="Last chance to bid on these items"
@@ -105,18 +98,10 @@ export function HomePage({
         iconGradient="from-[#f59e0b]/20 to-[#ef4444]/20"
         iconColor="text-[#f59e0b]"
         auctions={endingSoon}
-        onNavigate={onNavigate}
-        onViewAll={() => {
-          onBrowseSortChange?.("ending-soon");
-          onNavigate?.("browse");
-        }}
-        onCategoryClick={(categoryId) => {
-          onCategorySelect?.(categoryId);
-          onNavigate?.("browse");
-        }}
+        onViewAll={() => navigate("/browse?sort=ending-soon")}
       />
 
-      {/* MOST BIDS — shows Hot badge */}
+      {/* MOST BIDS */}
       <HomeFeaturedSection
         title="Top 5 Most Popular"
         description="Hot items with the most bids"
@@ -124,18 +109,10 @@ export function HomePage({
         iconGradient="from-[#ef4444]/20 to-[#fbbf24]/20"
         iconColor="text-[#ef4444]"
         auctions={mostBids}
-        onNavigate={onNavigate}
-        onViewAll={() => {
-          onBrowseSortChange?.("most-bids");
-          onNavigate?.("browse");
-        }}
-        onCategoryClick={(categoryId) => {
-          onCategorySelect?.(categoryId);
-          onNavigate?.("browse");
-        }}
+        onViewAll={() => navigate("/browse?sort=most-bids")}
       />
 
-      {/* HIGHEST PRICE — also considered hot */}
+      {/* HIGHEST PRICE */}
       <HomeFeaturedSection
         title="Top 5 Highest Price"
         description="Premium luxury items"
@@ -143,15 +120,7 @@ export function HomePage({
         iconGradient="from-[#fbbf24]/20 to-[#f59e0b]/20"
         iconColor="text-[#fbbf24]"
         auctions={highestPrice}
-        onNavigate={onNavigate}
-        onViewAll={() => {
-          onBrowseSortChange?.("price-high");
-          onNavigate?.("browse");
-        }}
-        onCategoryClick={(categoryId) => {
-          onCategorySelect?.(categoryId);
-          onNavigate?.("browse");
-        }}
+        onViewAll={() => navigate("/browse?sort=price-high")}
       />
     </div>
   );

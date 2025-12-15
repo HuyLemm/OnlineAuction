@@ -1,14 +1,26 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, useMemo, useEffect } from "react";
 import { Zap, Info, TrendingUp, Shield } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { Separator } from "../ui/separator";
 import { toast } from "sonner";
+import { formatCurrency } from "../../lib/utils";
+
+function parseCurrencyInput(value: string): number | null {
+  const cleaned = value.replace(/[^\d]/g, "");
+  if (!cleaned) return null;
+  return Number(cleaned);
+}
+
+function formatCurrencyInput(value: number | null): string {
+  if (value === null) return "";
+  return formatCurrency(value);
+}
 
 interface AutoBidPanelProps {
   currentBid: number;
-  minimumBid: number;
+  bidStep: number;
   userMaxBid?: number;
   isUserWinning?: boolean;
   onSetMaxBid?: (amount: number) => void;
@@ -16,34 +28,83 @@ interface AutoBidPanelProps {
 
 export function AutoBidPanel({
   currentBid,
-  minimumBid,
+  bidStep,
   userMaxBid,
   isUserWinning = false,
   onSetMaxBid,
 }: AutoBidPanelProps) {
-  const [maxBidAmount, setMaxBidAmount] = useState(userMaxBid?.toString() || "");
+  const bidStepNum = Number(bidStep) || 0;
+
+  const minimumBid = useMemo(
+    () => Math.max(0, Number(currentBid) + bidStepNum),
+    [currentBid, bidStepNum]
+  );
+
+  const [maxBidText, setMaxBidText] = useState<string>(
+    userMaxBid ? formatCurrencyInput(userMaxBid) : ""
+  );
   const [showInfo, setShowInfo] = useState(false);
+
+  useEffect(() => {
+    if (userMaxBid !== undefined && userMaxBid !== null) {
+      setMaxBidText(formatCurrencyInput(userMaxBid));
+    }
+  }, [userMaxBid]);
+
+  const maxBidValue =
+    useMemo(() => parseCurrencyInput(maxBidText), [maxBidText]) || 0;
+
+  const isValid =
+    maxBidText.trim() !== "" &&
+    Number.isFinite(maxBidValue) &&
+    maxBidValue >= minimumBid &&
+    (!userMaxBid || maxBidValue > userMaxBid);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const amount = Number(maxBidAmount);
 
-    if (!amount || amount < minimumBid) {
-      toast.error(`Maximum bid must be at least $${minimumBid.toLocaleString()}`);
+    if (!Number.isFinite(maxBidValue)) {
+      toast.error("Please enter a valid number");
       return;
     }
 
-    if (userMaxBid && amount <= userMaxBid) {
-      toast.error(`New maximum bid must be higher than your current max ($${userMaxBid.toLocaleString()})`);
+    if (maxBidValue < minimumBid) {
+      toast.error(`Maximum bid must be at least ${formatCurrency(minimumBid)}`);
       return;
     }
 
-    onSetMaxBid?.(amount);
-    toast.success(`Auto-bidding activated with maximum of $${amount.toLocaleString()}`);
+    if (userMaxBid && maxBidValue <= userMaxBid) {
+      toast.error(
+        `New maximum bid must be higher than your current max (${formatCurrency(
+          userMaxBid
+        )})`
+      );
+      return;
+    }
+
+    onSetMaxBid?.(maxBidValue);
+    toast.success(
+      `Auto-bidding activated with maximum of ${formatCurrency(maxBidValue)}`
+    );
   };
 
   const handleQuickMax = (amount: number) => {
-    setMaxBidAmount(amount.toString());
+    setMaxBidText(formatCurrencyInput(amount));
+  };
+
+  const handleChange = (raw: string) => {
+    const n = parseCurrencyInput(raw);
+    if (!raw || raw.trim() === "") {
+      setMaxBidText("");
+      return;
+    }
+
+    if (!Number.isFinite(n)) {
+      setMaxBidText("");
+      return;
+    }
+
+    setMaxBidText(formatCurrencyInput(n));
   };
 
   return (
@@ -61,7 +122,9 @@ export function AutoBidPanel({
                 Smart
               </Badge>
             </h3>
-            <p className="text-muted-foreground">Set your maximum bid</p>
+            <p className="text-muted-foreground">
+              System bids automatically up to your max
+            </p>
           </div>
         </div>
         <button
@@ -80,11 +143,11 @@ export function AutoBidPanel({
             How Auto Bidding Works
           </p>
           <ul className="space-y-1 text-muted-foreground pl-6">
-            <li>• Set your maximum bid amount</li>
-            <li>• System bids incrementally on your behalf</li>
-            <li>• Never exceeds your maximum amount</li>
-            <li>• Automatically outbids competitors</li>
-            <li>• You only pay the minimum needed to win</li>
+            <li>• You set a maximum bid</li>
+            <li>• System bids automatically for you</li>
+            <li>• Always respects the bid step</li>
+            <li>• Never exceeds your maximum</li>
+            <li>• You pay only what’s needed to win</li>
           </ul>
         </div>
       )}
@@ -101,16 +164,18 @@ export function AutoBidPanel({
               </Badge>
             )}
           </div>
-          <p className="text-[#fbbf24]">${userMaxBid.toLocaleString()}</p>
+          <p className="text-[#fbbf24]">{formatCurrency(userMaxBid)}</p>
           <div className="mt-3 pt-3 border-t border-border/50">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Current Bid</span>
-              <span className="text-foreground">${currentBid.toLocaleString()}</span>
+              <span className="text-foreground">
+                {formatCurrency(currentBid)}
+              </span>
             </div>
             <div className="flex items-center justify-between text-sm mt-1">
-              <span className="text-muted-foreground">Remaining Budget</span>
-              <span className="text-[#10b981]">
-                ${(userMaxBid - currentBid).toLocaleString()}
+              <span className="text-muted-foreground">Next Minimum Bid</span>
+              <span className="text-foreground">
+                {formatCurrency(minimumBid)}
               </span>
             </div>
           </div>
@@ -119,7 +184,7 @@ export function AutoBidPanel({
 
       <Separator className="bg-border/50" />
 
-      {/* Max Bid Input Form */}
+      {/* Max Bid Input */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -127,66 +192,70 @@ export function AutoBidPanel({
               {userMaxBid ? "Update Maximum Bid" : "Set Maximum Bid"}
             </p>
             <p className="text-muted-foreground">
-              Min: ${minimumBid.toLocaleString()}
+              Min: {formatCurrency(currentBid)}
+            </p>
+            <p className="text-muted-foreground">
+              Bid step: {formatCurrency(bidStepNum)}
             </p>
           </div>
+
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-              $
-            </span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></span>
             <Input
-              type="number"
-              value={maxBidAmount}
-              onChange={(e) => setMaxBidAmount(e.target.value)}
+              type="text"
+              inputMode="numeric"
+              value={maxBidText}
+              onChange={(e) => handleChange(e.target.value)}
               className="pl-8 bg-secondary/50 border-border/50 h-12"
-              placeholder={minimumBid.toString()}
+              placeholder={formatCurrency(currentBid)}
               required
             />
           </div>
 
-          {/* Quick Max Bid Buttons */}
+          {/* Quick buttons */}
           <div className="grid grid-cols-4 gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => handleQuickMax(currentBid + 500)}
+              onClick={() => handleQuickMax(currentBid + bidStepNum)}
               className="border-border/50"
             >
-              +$500
+              +{formatCurrency(bidStepNum)}
             </Button>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => handleQuickMax(currentBid + 1000)}
+              onClick={() => handleQuickMax(currentBid + bidStepNum * 2)}
               className="border-border/50"
             >
-              +$1K
+              +{formatCurrency(bidStepNum * 2)}
             </Button>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => handleQuickMax(currentBid + 2500)}
+              onClick={() => handleQuickMax(currentBid + bidStepNum * 5)}
               className="border-border/50"
             >
-              +$2.5K
+              +{formatCurrency(bidStepNum * 5)}
             </Button>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => handleQuickMax(currentBid + 5000)}
+              onClick={() => handleQuickMax(currentBid + bidStepNum * 10)}
               className="border-border/50"
             >
-              +$5K
+              +{formatCurrency(bidStepNum * 10)}
             </Button>
           </div>
         </div>
 
         <Button
           type="submit"
+          disabled={!isValid}
           className="w-full bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90 h-12"
         >
           <Zap className="h-4 w-4 mr-2" />
@@ -194,14 +263,14 @@ export function AutoBidPanel({
         </Button>
       </form>
 
-      {/* Benefits */}
+      {/* Footer */}
       <div className="pt-4 space-y-2 text-center border-t border-border/50">
         <p className="text-muted-foreground flex items-center justify-center gap-2">
           <Shield className="h-4 w-4 text-[#10b981]" />
-          Protected Bidding System
+          Secure automated bidding
         </p>
         <p className="text-muted-foreground">
-          ✓ Never pay more than needed
+          ✓ Always respects bid increments
         </p>
       </div>
     </div>

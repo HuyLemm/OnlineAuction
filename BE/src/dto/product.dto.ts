@@ -2,7 +2,10 @@ export interface BrowseProductDTO {
   id: string;
   title: string;
   category: string;
+  categoryId: string;
   image: string;
+
+  description?: string;
 
   postedDate: string;
   end_time: string;
@@ -36,6 +39,7 @@ export interface ProductDetailDTO {
     categoryName: string;
 
     currentBid: number;
+    bidStep: number;
   };
 
   images: {
@@ -107,5 +111,17 @@ export interface RelatedProductDTO {
   image: string;
 
   currentBid: number;
+  bids: number;
+
   endTime: string;
+
+  auctionType: "traditional" | "buy_now";
+  buyNowPrice?: number | null;
+
+  postedDate: string;
+
+  category: string;
+  categoryId: number;
+
+  highestBidderName?: string | null;
 }

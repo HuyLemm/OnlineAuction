@@ -21,6 +21,8 @@ function mapBrowseProduct(item: any): BrowseProductDTO {
     title: item.title,
     category: item.category,
     image: item.image,
+    categoryId: String(item.categoryId ?? item.category_id ?? ""),
+    description: item.description,
 
     postedDate: item.postedDate,
     end_time: item.end_time,
@@ -144,6 +146,7 @@ export async function getProductDetailController(req: Request, res: Response) {
         categoryId: raw.product.categoryId,
         categoryName: raw.product.categoryName,
         currentBid: raw.product.currentBid,
+        bidStep: raw.product.bidStep,
       },
 
       images: {
@@ -176,9 +179,7 @@ export async function getProductDetailController(req: Request, res: Response) {
       })),
 
       questions: raw.questions.map((q: any) => {
-        const ans = raw.answers.find(
-          (a: any) => a.question_id === q.id
-        );
+        const ans = raw.answers.find((a: any) => a.question_id === q.id);
 
         return {
           id: q.id,
@@ -206,9 +207,22 @@ export async function getProductDetailController(req: Request, res: Response) {
       relatedProducts: raw.relatedProducts.map((p: any) => ({
         id: p.id,
         title: p.title,
-        image: "",
-        currentBid: p.current_price ?? p.start_price,
-        endTime: p.end_time,
+        image: p.image,
+
+        currentBid: Number(p.currentBid),
+        bids: Number(p.bids),
+
+        endTime: p.endTime,
+
+        auctionType: p.auctionType,
+        buyNowPrice: p.buyNowPrice ?? null,
+
+        postedDate: p.postedDate,
+
+        category: p.category,
+        categoryId: Number(p.categoryId),
+
+        highestBidderName: p.highestBidderName ?? null,
       })),
     };
 

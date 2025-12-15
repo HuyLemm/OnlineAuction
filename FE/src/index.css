@@ -3247,6 +3247,10 @@
     padding-inline: calc(var(--spacing) * 8);
   }
 
+  .px-40 {
+    padding-inline: calc(var(--spacing) * 40);
+  }
+
   .py-0\.5 {
     padding-block: calc(var(--spacing) * 0.5);
   }

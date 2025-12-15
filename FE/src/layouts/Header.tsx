@@ -1,20 +1,10 @@
-import {
-  Search,
-  Bell,
-  User,
-  Gavel,
-  Shield,
-  LogOut,
-  ChevronRight,
-} from "lucide-react";
+import { Search, Bell, User, Gavel, Shield, ChevronRight } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { Badge } from "../components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import { useState, useEffect } from "react";
@@ -22,36 +12,17 @@ import { NotificationDropdown } from "../components/notifications/NotificationDr
 import { type Notification } from "../components/notifications/NotificationCard";
 import { toast } from "sonner";
 import { GET_CATEGORIES_FOR_MENU_API } from "../components/utils/api";
+import { useNavigate, useLocation } from "react-router-dom";
+
 interface HeaderProps {
-  onNavigate?: (
-    page:
-      | "home"
-      | "browse"
-      | "detail"
-      | "dashboard"
-      | "seller"
-      | "admin"
-      | "login"
-      | "notifications"
-      | "search"
-  ) => void;
-  currentPage?: string;
   isAuthenticated?: boolean;
   onLogout?: () => void;
-  onCategorySelect?: (category: string) => void;
-  onSearch?: (query: string) => void;
-  currentSearchQuery?: string;
 }
 
-export function Header({
-  onNavigate,
-  currentPage = "home",
-  isAuthenticated = false,
-  onLogout,
-  onCategorySelect,
-  onSearch,
-  currentSearchQuery = "",
-}: HeaderProps) {
+export function Header({ isAuthenticated = false, onLogout }: HeaderProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [selectedMainCategory, setSelectedMainCategory] = useState<
     string | null
   >(null);
@@ -75,45 +46,11 @@ export function Header({
         console.error("❌ Failed to load categories:", err);
       }
     };
-
     fetchCategories();
   }, []);
-  // Mock notifications data
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: "1",
-      category: "auction_won",
-      title: "Congratulations! You Won",
-      message: "You won the auction for 'Rolex Submariner Date'.",
-      timestamp: new Date(Date.now() - 5 * 60 * 1000),
-      isRead: false,
-      metadata: {
-        auctionTitle: "Rolex Submariner Date",
-        bidAmount: 15000,
-      },
-    },
-    {
-      id: "2",
-      category: "bid_update",
-      title: "You've Been Outbid",
-      message: "Another user placed a higher bid on 'Vintage Ferrari'.",
-      timestamp: new Date(Date.now() - 30 * 60 * 1000),
-      isRead: false,
-      metadata: {
-        auctionTitle: "Vintage Ferrari 250 GTO",
-        bidAmount: 850000,
-      },
-    },
-    {
-      id: "3",
-      category: "auction_ending",
-      title: "Auction Ending Soon",
-      message: "The auction for 'Patek Philippe' ends in 2 hours!",
-      timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000),
-      isRead: false,
-    },
-  ]);
 
+  /* ---------------- Notifications (mock) ---------------- */
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const handleMarkAsRead = (id: string) => {
@@ -133,23 +70,21 @@ export function Header({
   };
 
   const handleNotificationClick = (notification: Notification) => {
-    // Navigate based on notification type
     if (notification.metadata?.auctionId) {
-      onNavigate?.("detail");
+      navigate(`/product/${notification.metadata.auctionId}`);
     }
   };
 
+  /* ---------------- Category ---------------- */
   const handleCategoryClick = (
     mainCategoryId: number,
     subcategoryId?: number
   ) => {
-    if (subcategoryId) {
-      onCategorySelect?.(subcategoryId.toString());
-    } else {
-      onCategorySelect?.(mainCategoryId.toString());
-    }
-    onNavigate?.("browse");
+    const categoryId = subcategoryId ?? mainCategoryId;
+    navigate(`/browse?category=${categoryId}`);
   };
+
+  const isActive = (path: string) => location.pathname.startsWith(path);
 
   return (
     <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-xl">
@@ -157,8 +92,8 @@ export function Header({
         <div className="flex items-center justify-between gap-8">
           {/* Logo */}
           <button
-            onClick={() => onNavigate?.("home")}
-            className="flex items-center gap-2 transition-opacity hover:opacity-80"
+            onClick={() => navigate("/")}
+            className="flex items-center gap-2 hover:opacity-80"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#fbbf24] to-[#f59e0b]">
               <Gavel className="h-5 w-5 text-black" />
@@ -171,9 +106,9 @@ export function Header({
           {/* Navigation */}
           <nav className="hidden md:flex items-center gap-8">
             <button
-              onClick={() => onNavigate?.("browse")}
-              className={`transition-colors text-lg ${
-                currentPage === "browse"
+              onClick={() => navigate("/browse")}
+              className={`text-lg transition-colors ${
+                isActive("/browse")
                   ? "text-[#fbbf24]"
                   : "text-foreground/90 hover:text-foreground"
               }`}
@@ -181,43 +116,51 @@ export function Header({
               Live Auctions
             </button>
 
-            {/* Hierarchical Menu Dropdown */}
+            {/* Category Menu */}
             <DropdownMenu
               onOpenChange={(open) => !open && setSelectedMainCategory(null)}
             >
               <DropdownMenuTrigger asChild>
-                <button className="text-foreground/90 hover:text-foreground text-lg transition-colors flex items-center gap-1">
+                <button className="text-lg text-foreground/90 hover:text-foreground transition-colors flex items-center gap-1">
                   Menu
                   <ChevronRight className="h-3 w-3 rotate-90" />
                 </button>
               </DropdownMenuTrigger>
+
               <DropdownMenuContent
-                className="w-[650px] bg-[#1a1a1a] border-[#fbbf24]/20 p-0 shadow-2xl"
+                className="w-[650px] bg-[#1a1a1a] border border-[#fbbf24]/20 p-0 shadow-2xl"
                 align="start"
                 sideOffset={8}
-                onMouseLeave={() => setSelectedMainCategory(null)}
               >
-                <div className="grid grid-cols-2 gap-0">
-                  {/* Main Categories List */}
+                <div
+                  className="grid grid-cols-2 gap-0"
+                  onMouseLeave={() => setSelectedMainCategory(null)}
+                >
+                  {/* ================= LEFT: MAIN CATEGORIES ================= */}
                   <div className="border-r border-[#fbbf24]/10 bg-black/40">
                     <div className="p-4 border-b border-[#fbbf24]/10">
-                      <p className="text-[#fbbf24]">Main Categories</p>
+                      <p className="text-[#fbbf24] text-lg">Main Categories</p>
                     </div>
+
                     <div className="py-2">
                       {menuCategories.map((category) => (
                         <button
-                          key={category.main}
+                          key={category.id}
                           onMouseEnter={() =>
                             setSelectedMainCategory(category.main)
                           }
                           onClick={() => handleCategoryClick(category.id)}
-                          className={`w-full px-5 py-3.5 text-left transition-all flex items-center gap-3 group ${
-                            selectedMainCategory === category.main
-                              ? "bg-gradient-to-r from-[#fbbf24]/20 to-transparent text-[#fbbf24] border-l-2 border-[#fbbf24]"
-                              : "text-gray-300 hover:bg-[#fbbf24]/5 hover:text-white border-l-2 border-transparent"
-                          }`}
+                          className={`w-full px-5 py-3.5 text-left transition-all flex items-center gap-3 group
+                ${
+                  selectedMainCategory === category.main
+                    ? "bg-gradient-to-r from-[#fbbf24]/20 to-transparent text-[#fbbf24] border-l-2 border-[#fbbf24]"
+                    : "text-gray-300 hover:bg-[#fbbf24]/5 hover:text-white border-l-2 border-transparent"
+                }
+              `}
                         >
-                          <span className="flex-1">{category.main}</span>
+                          <span className="flex-1 text-sm">
+                            {category.main}
+                          </span>
                           <ChevronRight
                             className={`h-4 w-4 transition-transform ${
                               selectedMainCategory === category.main
@@ -230,37 +173,39 @@ export function Header({
                     </div>
                   </div>
 
-                  {/* Subcategories List */}
+                  {/* ================= RIGHT: SUB CATEGORIES ================= */}
                   <div className="bg-[#0a0a0a]">
                     <div className="p-4 border-b border-[#fbbf24]/10">
-                      <p className="text-muted-foreground">
+                      <p className="text-muted-foreground text-lg">
                         {selectedMainCategory || "Select a category"}
                       </p>
                     </div>
+
                     <div className="max-h-[420px] overflow-y-auto py-2 scrollbar-thin scrollbar-thumb-[#fbbf24]/20 scrollbar-track-transparent">
                       {selectedMainCategory &&
                         menuCategories
-                          .find((cat) => cat.main === selectedMainCategory)
-                          ?.subcategories.map((subcategory) => (
+                          .find((c) => c.main === selectedMainCategory)
+                          ?.subcategories.map((sub) => (
                             <button
-                              key={subcategory.id}
+                              key={sub.id}
                               onClick={() =>
                                 handleCategoryClick(
                                   menuCategories.find(
                                     (c) => c.main === selectedMainCategory
-                                  )?.id!,
-                                  subcategory.id
+                                  )!.id,
+                                  sub.id
                                 )
                               }
                               className="w-full px-5 py-3 text-left text-gray-300 hover:bg-[#fbbf24]/10 hover:text-[#fbbf24] transition-all flex items-center gap-3 group"
                             >
                               <div className="w-1.5 h-1.5 rounded-full bg-[#fbbf24]/40 group-hover:bg-[#fbbf24] transition-colors" />
-                              <span className="flex-1">
-                                {subcategory.label}
+                              <span className="flex-1 text-sm">
+                                {sub.label}
                               </span>
                               <ChevronRight className="h-3 w-3 text-[#fbbf24]/0 group-hover:text-[#fbbf24]/60 transition-colors" />
                             </button>
                           ))}
+
                       {!selectedMainCategory && (
                         <div className="p-12 text-center text-gray-400">
                           <p className="text-sm">Hover over a category</p>
@@ -275,15 +220,10 @@ export function Header({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <button className="text-foreground/90 hover:text-foreground text-lg transition-colors">
-              How It Works
-            </button>
             <button
-              onClick={() => onNavigate?.("seller")}
-              className={`transition-colors text-lg ${
-                currentPage === "seller"
-                  ? "text-[#fbbf24]"
-                  : "text-foreground/90 hover:text-foreground"
+              onClick={() => navigate("/seller")}
+              className={`text-lg ${
+                isActive("/seller") ? "text-[#fbbf24]" : "text-foreground/90"
               }`}
             >
               Sell
@@ -295,16 +235,14 @@ export function Header({
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                type="search"
                 placeholder="Search auctions..."
-                className="pl-10 bg-secondary/50 border-border/50 "
+                className="pl-10"
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && searchValue.trim() && onSearch) {
-                    onSearch(searchValue);
-                    onNavigate?.("search");
-                    setSearchValue(""); // Clear input after search
+                  if (e.key === "Enter" && searchValue.trim()) {
+                    navigate(`/search?q=${encodeURIComponent(searchValue)}`);
+                    setSearchValue("");
                   }
                 }}
               />
@@ -313,78 +251,40 @@ export function Header({
 
           {/* Actions */}
           <div className="flex items-center gap-3">
-            {isAuthenticated ? (
-              <>
-                <NotificationDropdown
-                  notifications={notifications}
-                  unreadCount={unreadCount}
-                  onMarkAsRead={handleMarkAsRead}
-                  onMarkAllAsRead={handleMarkAllAsRead}
-                  onDelete={handleDeleteNotification}
-                  onViewAll={() => onNavigate?.("notifications")}
-                  onNotificationClick={handleNotificationClick}
-                />
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onNavigate?.("dashboard")}
-                  className={
-                    currentPage === "dashboard" ? "text-[#fbbf24]" : ""
-                  }
-                >
-                  <User className="h-5 w-5" />
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onNavigate?.("admin")}
-                  className={`relative ${
-                    currentPage === "admin" ? "text-[#fbbf24]" : ""
-                  }`}
-                  title="Admin Panel"
-                >
-                  <Shield className="h-5 w-5" />
-                </Button>
-
-                <Button
-                  onClick={() => onNavigate?.("login")}
-                  className="hidden md:inline-flex bg-gradient-to-r from-[#fbbf24] text-sm to-[#f59e0b] text-black hover:opacity-90"
-                >
-                  Start Bidding
-                </Button>
-              </>
-            ) : (
-              <>
-                {/* Test access buttons - always visible for testing */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onNavigate?.("dashboard")}
-                  className="text-muted-foreground hover:text-foreground"
-                  title="Dashboard (Test)"
-                >
-                  <User className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onNavigate?.("admin")}
-                  className="text-muted-foreground hover:text-foreground"
-                  title="Admin (Test)"
-                >
-                  <Shield className="h-5 w-5" />
-                </Button>
-
-                <Button
-                  onClick={() => onNavigate?.("login")}
-                  className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90"
-                >
-                  Login
-                </Button>
-              </>
+            {isAuthenticated && (
+              <NotificationDropdown
+                notifications={notifications}
+                unreadCount={unreadCount}
+                onMarkAsRead={handleMarkAsRead}
+                onMarkAllAsRead={handleMarkAllAsRead}
+                onDelete={handleDeleteNotification}
+                onViewAll={() => navigate("/notifications")}
+                onNotificationClick={handleNotificationClick}
+              />
             )}
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/dashboard")}
+            >
+              <User className="h-5 w-5" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/admin")}
+            >
+              <Shield className="h-5 w-5" />
+            </Button>
+
+            <Button
+              onClick={() => navigate("/login")}
+              className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black"
+            >
+              {isAuthenticated ? "Start Bidding" : "Login"}
+            </Button>
           </div>
         </div>
       </div>

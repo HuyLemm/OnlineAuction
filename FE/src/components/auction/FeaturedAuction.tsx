@@ -2,6 +2,7 @@ import { Clock, Users, TrendingUp, Gavel } from "lucide-react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { ImageWithFallback } from "../check/ImageWithFallback";
+import { formatCurrency } from "../../lib/utils";
 
 interface FeaturedAuctionProps {
   title: string;
@@ -65,7 +66,7 @@ export function FeaturedAuction({
                 <span>Current Bid</span>
               </div>
               <div className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] bg-clip-text text-transparent">
-                ${currentBid.toLocaleString()}
+                {formatCurrency(currentBid)}
               </div>
               <div className="flex items-center gap-1 mt-1 text-[#10b981]">
                 <TrendingUp className="h-3 w-3" />

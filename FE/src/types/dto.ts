@@ -47,6 +47,9 @@ export interface ProductDetailDTO {
 
     categoryId: number;
     categoryName: string;
+
+    currentBid: number;
+    bidStep: number;
   };
 
   images: {
@@ -108,7 +111,14 @@ export interface ProductDetailDTO {
     title: string;
     image: string;
     currentBid: number;
+    bids: number;
     endTime: string;
+
+    auctionType: "traditional" | "buy_now";
+    buyNowPrice?: number | null;
+
+    highestBidderName?: string | null;
+    postedDate: string;
   }[];
 }
 

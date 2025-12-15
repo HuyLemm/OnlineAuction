@@ -3,13 +3,23 @@ import { Gavel, Twitter, Instagram, Facebook, Linkedin } from "lucide-react";
 export function Footer() {
   const links = {
     Company: ["About Us", "Careers", "Press", "Contact"],
-    Support: ["Help Center", "Safety Center", "Community Guidelines", "Terms of Service"],
+    Support: [
+      "Help Center",
+      "Safety Center",
+      "Community Guidelines",
+      "Terms of Service",
+    ],
     Selling: ["How to Sell", "Seller Protection", "Fees", "Best Practices"],
-    Buying: ["How to Bid", "Payment Methods", "Buyer Protection", "Shipping Info"],
+    Buying: [
+      "How to Bid",
+      "Payment Methods",
+      "Buyer Protection",
+      "Shipping Info",
+    ],
   };
 
   return (
-    <footer className="border-t bg-card mt-20">
+    <footer className="border-t bg-card mt-auto">
       <div className="container mx-auto px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8 mb-12">
           {/* Brand */}
@@ -23,7 +33,8 @@ export function Footer() {
               </span>
             </div>
             <p className="text-muted-foreground max-w-xs">
-              The premier destination for luxury auctions. Discover rare finds, place bids, and win exclusive items.
+              The premier destination for luxury auctions. Discover rare finds,
+              place bids, and win exclusive items.
             </p>
             <div className="flex gap-3">
               <a
@@ -79,13 +90,22 @@ export function Footer() {
             © 2024 LuxeAuction. All rights reserved.
           </p>
           <div className="flex gap-6">
-            <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+            <a
+              href="#"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
               Privacy Policy
             </a>
-            <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+            <a
+              href="#"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
               Cookie Policy
             </a>
-            <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+            <a
+              href="#"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
               Accessibility
             </a>
           </div>

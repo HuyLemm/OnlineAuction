@@ -1,7 +1,7 @@
 import { AuctionCard } from "../auction/AuctionCard";
 import { Button } from "../ui/button";
 import { ArrowRight, type LucideIcon } from "lucide-react";
-import { type AuctionItem } from "../../types/dto";
+import { type AuctionItemDTO } from "../../types/dto";
 
 interface HomeFeaturedSectionProps {
   title: string;
@@ -10,15 +10,9 @@ interface HomeFeaturedSectionProps {
   iconGradient: string;
   iconColor: string;
 
-  auctions: AuctionItem[];
+  auctions: AuctionItemDTO[];
 
-  isEndingSoonSection?: boolean;
-  isHotSection?: boolean;
-
-  onNavigate?: (page: "browse" | "detail", productId?: string) => void;
   onViewAll?: () => void;
-
-  onCategoryClick?: (category: string) => void;
 }
 
 export function HomeFeaturedSection({
@@ -28,8 +22,6 @@ export function HomeFeaturedSection({
   iconGradient,
   iconColor,
   auctions,
-  onCategoryClick,
-  onNavigate,
   onViewAll,
 }: HomeFeaturedSectionProps) {
   return (
@@ -48,14 +40,16 @@ export function HomeFeaturedSection({
           </div>
         </div>
 
-        <Button
-          variant="ghost"
-          className="gap-2 hover:text-[#fbbf24] transition-colors"
-          onClick={onViewAll}
-        >
-          View All
-          <ArrowRight className="h-4 w-4" />
-        </Button>
+        {onViewAll && (
+          <Button
+            variant="ghost"
+            className="gap-2 hover:text-[#fbbf24] transition-colors"
+            onClick={onViewAll}
+          >
+            View All
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* Items */}
@@ -71,16 +65,13 @@ export function HomeFeaturedSection({
             end_time={auction.end_time}
             category={auction.category}
             categoryId={auction.categoryId}
-            highestBidderId={auction.highestBidderId}
             highestBidderName={auction.highestBidderName}
             buyNowPrice={auction.buyNowPrice}
             postedDate={auction.postedDate}
             auctionType={auction.auctionType}
             isHot={auction.isHot}
             endingSoon={auction.endingSoon}
-            onCategoryClick={onCategoryClick}
-            onNavigate={onNavigate}
-            showCategory={true}
+            showCategory
           />
         ))}
       </div>

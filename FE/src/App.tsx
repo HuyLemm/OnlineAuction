@@ -1,7 +1,6 @@
-import { useState, useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
-import { Header } from "./layouts/Header";
-import { Footer } from "./layouts/Footer";
+import { Layout } from "./layouts/Layout";
 import { HomePage } from "./pages/HomePage";
 import { BrowseItemsPage } from "./pages/BrowseItemsPage";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
@@ -17,162 +16,41 @@ import { SearchResultsPage } from "./pages/SearchResultsPage";
 import { StateExamplesPage } from "./pages/StateExamplesPage";
 import { DevTools } from "./components/dev/DevTools";
 
-type Page =
-  | "home"
-  | "browse"
-  | "detail"
-  | "dashboard"
-  | "seller"
-  | "order"
-  | "admin"
-  | "login"
-  | "otp-verification"
-  | "forgot-password"
-  | "notifications"
-  | "search"
-  | "state-examples";
+import { ScrollToTop } from "./components/ScrollToTop";
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<Page>("home");
-  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [userEmail, setUserEmail] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [browseSort, setBrowseSort] = useState<string>("default");
-  const [currentProductId, setCurrentProductId] = useState<string | null>(null);
-
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "instant" });
-  }, [currentPage]);
-
-  const handleNavigate = (page: Page, productId?: string) => {
-    if (page !== "browse") {
-      setSelectedCategory(null);
-      setBrowseSort("default");
-    }
-
-    if (page === "detail") {
-      if (!productId) return; // an toàn
-      setCurrentProductId(productId);
-    }
-
-    setCurrentPage(page);
-  };
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setCurrentPage("home");
-  };
-  const handleLogin = () => {
-    setIsAuthenticated(true);
-    setCurrentPage("dashboard");
-  };
-
-  const handleNavigateToOrder = (orderId: string) => {
-    setCurrentOrderId(orderId);
-    setCurrentPage("order");
-  };
-
-  const handleCategorySelect = (categoryId: string | null) => {
-    setSelectedCategory(categoryId);
-    if (categoryId === null) return;
-    handleNavigate("browse");
-  };
-
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    setCurrentPage("search");
-  };
-
-  const hideFooterPages = ["login", "otp-verification", "forgot-password"];
-
   return (
-    <div className="dark min-h-screen bg-background flex flex-col">
-      {/* Toast */}
+    <div className="dark min-h-screen bg-background">
       <Toaster theme="dark" position="top-right" />
+      <BrowserRouter>
+        <ScrollToTop />
+        <Routes>
+          {/* Routes with main layout */}
+          <Route element={<Layout />}>
+            <Route index element={<HomePage />} />
+            <Route path="browse" element={<BrowseItemsPage />} />
+            <Route path="product/:id" element={<ProductDetailPage />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="seller" element={<SellerPanelPage />} />
+            <Route path="order/:orderId" element={<OrderPage />} />
+            <Route path="admin" element={<AdminPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
+            <Route path="search" element={<SearchResultsPage />} />
+            <Route path="state-examples" element={<StateExamplesPage />} />
 
-      {/* HEADER ALWAYS AT TOP */}
-      <Header
-        onNavigate={handleNavigate}
-        currentPage={currentPage}
-        isAuthenticated={isAuthenticated}
-        onLogout={handleLogout}
-        onCategorySelect={handleCategorySelect}
-        onSearch={handleSearch}
-        currentSearchQuery={currentPage === "search" ? searchQuery : ""}
-      />
+            {/* Auth routes without footer */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/otp-verification" element={<OTPVerificationPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-      {/* MAIN EXPANDS FULL HEIGHT */}
-      <main className="flex-1 flex flex-col">
-        {currentPage === "home" && (
-          <div className="container mx-auto px-6 py-8 w-full">
-            <HomePage
-              onNavigate={handleNavigate}
-              onSearch={handleSearch}
-              onCategorySelect={handleCategorySelect}
-              onBrowseSortChange={setBrowseSort}
-            />
-          </div>
-        )}
-
-        {currentPage === "browse" && (
-          <BrowseItemsPage
-            onNavigate={handleNavigate}
-            selectedCategory={selectedCategory}
-            onCategorySelect={handleCategorySelect}
-            initialSort={browseSort}
-          />
-        )}
-
-        {currentPage === "detail" && currentProductId && (
-          <ProductDetailPage
-            productId={currentProductId}
-            onBack={() => setCurrentPage("browse")}
-          />
-        )}
-
-        {currentPage === "dashboard" && (
-          <DashboardPage onNavigateToOrder={handleNavigateToOrder} />
-        )}
-
-        {currentPage === "seller" && <SellerPanelPage />}
-
-        {currentPage === "order" && (
-          <OrderPage onBack={() => setCurrentPage("dashboard")} />
-        )}
-
-        {currentPage === "admin" && <AdminPage />}
-
-        {currentPage === "login" && <LoginPage onNavigate={handleNavigate} />}
-
-        {currentPage === "otp-verification" && (
-          <OTPVerificationPage onNavigate={handleNavigate} email={userEmail} />
-        )}
-
-        {currentPage === "forgot-password" && (
-          <ForgotPasswordPage onNavigate={handleNavigate} />
-        )}
-
-        {currentPage === "notifications" && (
-          <NotificationsPage onBack={() => setCurrentPage("home")} />
-        )}
-
-        {currentPage === "search" && (
-          <SearchResultsPage
-            initialQuery={searchQuery}
-            onNavigate={handleNavigate}
-          />
-        )}
-
-        {currentPage === "state-examples" && <StateExamplesPage />}
-      </main>
-
-      {/* FOOTER ALWAYS AT BOTTOM EXCEPT AUTH */}
-      {!hideFooterPages.includes(currentPage) && <Footer />}
-
-      {/* Dev Tools */}
-      <DevTools onNavigate={(page) => setCurrentPage(page as Page)} />
+            {/* Catch all */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+          {/* Catch all */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+        <DevTools />
+      </BrowserRouter>
     </div>
   );
 }

@@ -38,6 +38,7 @@ function baseQuery() {
       "p.created_at as postedDate",
       "p.description",
       "p.end_time",
+      "p.category_id as categoryId", 
       "c.name as category",
 
       db.raw(`COALESCE(p.current_price, p.start_price)::int AS "currentBid"`),
@@ -257,6 +258,7 @@ export async function getProductDetailService(productId: string) {
       "p.buy_now_price as buyNowPrice",
       "p.category_id as categoryId",
       "c.name as categoryName",
+      "p.bid_step as bidStep",
       db.raw(`COALESCE(p.current_price, p.start_price)::int AS "currentBid"`)
     )
     .where("p.id", productId)
@@ -361,9 +363,38 @@ export async function getProductDetailService(productId: string) {
   // ----------------------------
   // Related products
   // ----------------------------
-  const relatedProducts = await db("products")
-    .where("category_id", product.categoryId)
-    .andWhereNot("id", productId)
+  const relatedProducts = await db("products as p")
+    .leftJoin("categories as c", "c.id", "p.category_id")
+    .leftJoin("users as u", "u.id", "p.highest_bidder_id")
+    .leftJoin("bids as b", "b.product_id", "p.id")
+    .leftJoin("product_images as pi", function () {
+      this.on("pi.product_id", "=", "p.id").andOn(
+        "pi.is_main",
+        "=",
+        db.raw("true")
+      );
+    })
+    .select(
+      "p.id",
+      "p.title",
+      "p.end_time as endTime",
+      "p.auction_type as auctionType",
+      "p.buy_now_price as buyNowPrice",
+      "p.created_at as postedDate",
+
+      "c.name as category",
+      "c.id as categoryId",
+
+      "u.full_name as highestBidderName",
+
+      db.raw(`COALESCE(p.current_price, p.start_price)::int AS "currentBid"`),
+      db.raw(`COALESCE(pi.image_url, '') AS "image"`),
+      db.raw(`COUNT(b.id)::int AS "bids"`)
+    )
+    .where("p.status", "active")
+    .andWhere("p.category_id", product.categoryId)
+    .andWhereNot("p.id", productId)
+    .groupBy("p.id", "c.id", "c.name", "pi.image_url", "u.full_name")
     .limit(5);
 
   // ----------------------------

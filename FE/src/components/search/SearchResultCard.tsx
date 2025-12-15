@@ -4,7 +4,7 @@ import { ImageWithFallback } from "../check/ImageWithFallback";
 import { NewBadge } from "../ui/NewBadge";
 import { calculateTimeLeft, formatPostedDate } from "../utils/timeUtils";
 import { Button } from "../ui/button";
-
+import { formatCurrency } from "../../lib/utils";
 export interface SearchResult {
   id: string;
   title: string;
@@ -233,7 +233,7 @@ export function SearchResultCard({
           <div className="flex items-baseline justify-between p-2 rounded-lg bg-[#10b981]/10 border border-[#10b981]/20 min-h-[42px]">
             <span className="text-sm text-[#10b981]">Buy Now Price</span>
             <span className="text-[#10b981]">
-              ${item.buyNowPrice.toLocaleString()}
+              {formatCurrency(item.buyNowPrice)}
             </span>
           </div>
         )}

@@ -11,7 +11,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { ImageWithFallback } from "../check/ImageWithFallback";
-import { type Category } from "../../types/dto";
+import type { CategoryDTO } from "../../types/database";
 import { GET_MAIN_CATEGORIES_API } from "../utils/api";
 
 const categoryIcons: Record<string, React.ReactNode> = {
@@ -42,7 +42,7 @@ interface CategoryGridProps {
 }
 
 export function CategoryGrid({ onCategoryClick }: CategoryGridProps) {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<CategoryDTO[]>([]);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -50,7 +50,7 @@ export function CategoryGrid({ onCategoryClick }: CategoryGridProps) {
         const res = await fetch(GET_MAIN_CATEGORIES_API);
         const json = await res.json();
 
-        const formatted: Category[] = json.data.map((cat: Category) => ({
+        const formatted: CategoryDTO[] = json.data.map((cat: CategoryDTO) => ({
           ...cat,
           icon: categoryIcons[cat.name] || <Palette className="h-6 w-6" />,
           image: categoryImages[cat.name] || "../../src/images/Placeholder.jpg",

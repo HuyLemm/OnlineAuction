@@ -1,4 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
+
 import { FilterSidebar } from "../components/browse/FilterSidebar";
 import { BrowseTopBar } from "../components/browse/BrowseTopBar";
 import { BrowseContentSection } from "../components/browse/BrowseContentSection";
@@ -9,134 +11,185 @@ import {
   GET_CATEGORIES_FOR_SIDEBAR_API,
 } from "../components/utils/api";
 
-interface BrowseItemsPageProps {
-  onNavigate?: (
-    page: "home" | "browse" | "detail" | "dashboard" | "seller"
-  ) => void;
-  selectedCategory?: string | null;
-  onCategorySelect?: (category: string | null) => void;
+export function BrowseItemsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  initialSort?: string;
-}
+  /* ---------------- URL params ---------------- */
+  const pageParam = Number(searchParams.get("page") ?? 1);
+  const sortParam = searchParams.get("sort") ?? "default";
+  const categoryParam = searchParams.get("category"); // can be main OR sub id
+  const minPriceParam = Number(searchParams.get("minPrice") ?? 0);
+  const maxPriceParam = Number(searchParams.get("maxPrice") ?? 10000);
 
-export function BrowseItemsPage({
-  onNavigate,
-  selectedCategory,
-  onCategorySelect,
-  initialSort,
-}: BrowseItemsPageProps) {
+  /* ---------------- State ---------------- */
   const [items, setItems] = useState<AuctionItemDTO[]>([]);
   const [categories, setCategories] = useState<CategoryTreeDTO[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+
+  const hasUserInteractedRef = useRef(false);
 
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [sortBy, setSortBy] = useState(initialSort ?? "default");
 
   const [expanded, setExpanded] = useState<string[]>([]);
-
-  const [overrideCategory, setOverrideCategory] = useState<string | null>(null);
-  const effectiveCategory = overrideCategory ?? selectedCategory ?? null;
 
   const [filters, setFilters] = useState<{
     categories: string[];
     price: [number, number];
   }>({
-    categories: effectiveCategory ? [effectiveCategory] : [],
-    price: [0, 10000],
+    categories: categoryParam ? [categoryParam] : [],
+    price: [minPriceParam, maxPriceParam],
   });
 
   const itemsPerPage = 20;
 
+  /* ---------------- Fetch categories ---------------- */
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setLoadingCategories(true);
+      const res = await fetch(GET_CATEGORIES_FOR_SIDEBAR_API);
+      const json = await res.json();
+      setCategories(json.data ?? []);
+      setLoadingCategories(false);
+    };
+    fetchCategories();
+  }, []);
+
+  /* ---------------- Sync URL -> filters + expanded (MAIN or SUB) ---------------- */
+  useEffect(() => {
+    // luôn sync price từ URL
+    setFilters((prev) => ({
+      ...prev,
+      price: [minPriceParam, maxPriceParam],
+    }));
+
+    if (!categoryParam) {
+      setFilters((prev) => ({ ...prev, categories: [] }));
+      setExpanded([]);
+      return;
+    }
+
+    if (hasUserInteractedRef.current) return;
+
+    if (categories.length === 0) {
+      setFilters((prev) => ({ ...prev, categories: [categoryParam] }));
+      return;
+    }
+
+    const catId = String(categoryParam);
+
+    const main = categories.find((c) => String(c.id) === catId);
+    if (main) {
+      const subIds = main.subcategories?.map((s) => String(s.id)) ?? [];
+      const newCats = subIds.length ? [catId, ...subIds] : [catId];
+
+      setFilters((prev) => ({ ...prev, categories: newCats }));
+      setExpanded([catId]);
+      return;
+    }
+
+    const parent = categories.find((c) =>
+      c.subcategories?.some((s) => String(s.id) === catId)
+    );
+
+    if (parent) {
+      setFilters((prev) => ({ ...prev, categories: [catId] }));
+      setExpanded([String(parent.id)]);
+      return;
+    }
+
+    setFilters((prev) => ({ ...prev, categories: [catId] }));
+  }, [categoryParam, categories, minPriceParam, maxPriceParam]);
+
+  /* ---------------- Auto scroll top when params change ---------------- */
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+  }, [pageParam, sortParam, categoryParam, minPriceParam, maxPriceParam]);
+
+  /* ---------------- Fetch products ---------------- */
   const fetchProducts = useCallback(async () => {
     setLoadingProducts(true);
 
-    const sortQuery = sortBy !== "default" ? `&sort=${sortBy}` : "";
-    const catQuery =
-      filters.categories.length > 0
-        ? `&categories=${filters.categories.join(",")}`
-        : "";
-    const priceQuery = `&minPrice=${filters.price[0]}&maxPrice=${filters.price[1]}`;
+    const query = new URLSearchParams({
+      page: String(pageParam),
+      limit: String(itemsPerPage),
+      ...(sortParam !== "default" && { sort: sortParam }),
+      ...(filters.categories.length && {
+        categories: filters.categories.join(","),
+      }),
+      minPrice: String(filters.price[0]),
+      maxPrice: String(filters.price[1]),
+    });
 
-    const res = await fetch(
-      `${GET_BROWSE_PRODUCT_API}?page=${currentPage}&limit=${itemsPerPage}${sortQuery}${catQuery}${priceQuery}`
-    );
+    const res = await fetch(`${GET_BROWSE_PRODUCT_API}?${query.toString()}`);
     const json = await res.json();
 
     setItems(json.data ?? []);
     setTotalItems(json.totalItems ?? 0);
     setTotalPages(json.totalPages ?? 1);
     setLoadingProducts(false);
-  }, [currentPage, itemsPerPage, sortBy, filters]);
-
-  const fetchCategories = async () => {
-    setLoadingCategories(true);
-    const res = await fetch(GET_CATEGORIES_FOR_SIDEBAR_API);
-    const json = await res.json();
-    setCategories(json.data ?? []);
-    setLoadingCategories(false);
-  };
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
+  }, [pageParam, sortParam, filters]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
 
-  useEffect(() => {
-    if (!effectiveCategory || categories.length === 0) return;
+  /* ---------------- Helpers ---------------- */
+  const updateParams = (updates: Record<string, string | number | null>) => {
+    const params = new URLSearchParams(searchParams);
 
-    const cat = categories.find((c) => String(c.id) === effectiveCategory);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null) params.delete(key);
+      else params.set(key, String(value));
+    });
 
-    if (cat) {
-      if (cat.subcategories?.length > 0) {
-        setFilters({
-          categories: [
-            effectiveCategory,
-            ...cat.subcategories.map((s) => String(s.id)),
-          ],
-          price: filters.price,
-        });
-      } else {
-        setFilters({
-          categories: [effectiveCategory],
-          price: filters.price,
-        });
-      }
+    setSearchParams(params);
+  };
 
-      setExpanded([String(cat.id)]); // auto expand main
-      setCurrentPage(1);
-    }
-  }, [effectiveCategory, categories]);
+  const isMainCategoryId = (id: string) =>
+    categories.some((c) => String(c.id) === String(id));
 
+  const pickCategoryForUrl = (cats: string[]) => {
+    const firstSub = cats.find((id) => !isMainCategoryId(String(id)));
+    return firstSub ?? cats[0] ?? null;
+  };
+
+  /* ---------------- Handlers ---------------- */
   const handleSort = (sort: string) => {
-    setSortBy(sort);
-    setCurrentPage(1);
+    updateParams({ sort, page: 1 });
   };
 
   const handleApplyFilters = (newFilters: {
     categories: string[];
     price: [number, number];
   }) => {
+    hasUserInteractedRef.current = true;
     setFilters(newFilters);
-    setOverrideCategory(null);
-    setCurrentPage(1);
+
+    updateParams({
+      category: pickCategoryForUrl(newFilters.categories),
+      minPrice: newFilters.price[0],
+      maxPrice: newFilters.price[1],
+      page: 1,
+    });
+
     setShowMobileFilters(false);
   };
 
   const handleClearFilters = () => {
+    hasUserInteractedRef.current = true;
     setFilters({ categories: [], price: [0, 10000] });
     setExpanded([]);
-    setOverrideCategory(null);
-    setCurrentPage(1);
-    onCategorySelect?.(null);
+    updateParams({
+      category: null,
+      minPrice: 0,
+      maxPrice: 10000,
+      page: 1,
+    });
   };
 
   if (loadingProducts || loadingCategories) {
@@ -154,7 +207,6 @@ export function BrowseItemsPage({
         <FilterSidebar
           categories={categories}
           onApplyFilters={handleApplyFilters}
-          selectedMainCategory={selectedCategory ?? undefined}
           selectedCategories={filters.categories}
           priceRange={filters.price}
           expandedCategories={expanded}
@@ -167,11 +219,10 @@ export function BrowseItemsPage({
       {showMobileFilters && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60"
             onClick={() => setShowMobileFilters(false)}
-          ></div>
-
-          <div className="absolute left-0 top-0 bottom-0 w-80 animate-in slide-in-from-left">
+          />
+          <div className="absolute left-0 top-0 bottom-0 w-80">
             <FilterSidebar
               onClose={() => setShowMobileFilters(false)}
               categories={categories}
@@ -179,10 +230,7 @@ export function BrowseItemsPage({
               priceRange={filters.price}
               expandedCategories={expanded}
               onExpandedChange={setExpanded}
-              onApplyFilters={(f) => {
-                handleApplyFilters(f);
-                setShowMobileFilters(false);
-              }}
+              onApplyFilters={handleApplyFilters}
               onClearAll={handleClearFilters}
             />
           </div>
@@ -193,22 +241,21 @@ export function BrowseItemsPage({
         <BrowseTopBar
           totalItems={totalItems}
           viewMode={viewMode}
-          sortBy={sortBy}
+          sortBy={sortParam}
           onViewModeChange={setViewMode}
           onFilterToggle={() => setShowMobileFilters(true)}
-          showFilterToggle={true}
+          showFilterToggle
           categories={categories}
           selectedCategories={filters.categories}
           priceRange={filters.price}
-          onRemoveCategory={(category) => {
-            const updated = filters.categories.filter((c) => c !== category);
-            setFilters({ ...filters, categories: updated });
-            setCurrentPage(1);
+          onRemoveCategory={(cat) => {
+            hasUserInteractedRef.current = true;
+            const updated = filters.categories.filter((c) => c !== cat);
+            handleApplyFilters({ ...filters, categories: updated });
           }}
-          onResetPrice={() => {
-            setFilters({ ...filters, price: [0, 10000] });
-            setCurrentPage(1);
-          }}
+          onResetPrice={() =>
+            handleApplyFilters({ ...filters, price: [0, 10000] })
+          }
           onSortChange={handleSort}
         />
 
@@ -216,14 +263,12 @@ export function BrowseItemsPage({
           <BrowseContentSection
             auctions={items}
             viewMode={viewMode}
-            currentPage={currentPage}
+            currentPage={pageParam}
             totalPages={totalPages}
-            startIndex={(currentPage - 1) * itemsPerPage}
-            endIndex={currentPage * itemsPerPage}
+            startIndex={(pageParam - 1) * itemsPerPage}
+            endIndex={pageParam * itemsPerPage}
             totalItems={totalItems}
-            onPageChange={setCurrentPage}
-            onNavigate={onNavigate}
-            onCategoryClick={onCategorySelect}
+            onPageChange={(p) => updateParams({ page: p })}
           />
         </div>
       </div>

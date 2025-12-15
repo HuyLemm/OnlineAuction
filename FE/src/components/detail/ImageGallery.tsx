@@ -8,16 +8,7 @@ interface ImageGalleryProps {
   title?: string;
 }
 
-export function ImageGallery({ 
-  images = [
-    "https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=800&q=80",
-    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80",
-    "https://images.unsplash.com/photo-1614252368970-5b2f0d5a8a06?w=800&q=80",
-    "https://images.unsplash.com/photo-1584302179602-e4c3d3fd629d?w=800&q=80",
-    "https://images.unsplash.com/photo-1587836374228-4c4c1e0e8e8f?w=800&q=80"
-  ],
-  title = "Luxury Watch" 
-}: ImageGalleryProps) {
+export function ImageGallery({ images = [], title = "" }: ImageGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const goToPrevious = () => {
@@ -28,6 +19,13 @@ export function ImageGallery({
     setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   };
 
+  if (!images.length) {
+    return (
+      <div className="aspect-square rounded-xl bg-muted flex items-center justify-center">
+        No image
+      </div>
+    );
+  }
   return (
     <div className="space-y-4">
       {/* Main Image */}
@@ -37,7 +35,7 @@ export function ImageGallery({
           alt={`${title} - Image ${currentIndex + 1}`}
           className="h-full w-full object-cover"
         />
-        
+
         {/* Navigation Arrows */}
         {images.length > 1 && (
           <>

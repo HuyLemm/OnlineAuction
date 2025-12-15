@@ -10,6 +10,7 @@ import { type CategoryTreeDTO } from "../../types/dto";
 
 interface FilterSidebarProps {
   onClose?: () => void;
+
   categories: CategoryTreeDTO[];
   selectedMainCategory?: string | null;
   selectedSubCategory?: string | null;
@@ -20,10 +21,7 @@ interface FilterSidebarProps {
   expandedCategories: string[];
   onExpandedChange: (expanded: string[]) => void;
 
-  onApplyFilters: (filters: {
-    categories: string[];
-    price: [number, number];
-  }) => void;
+  onApplyFilters: (filters: { categories: string[]; price: [number, number] }) => void;
 
   onClearAll?: () => void;
 }
@@ -40,14 +38,39 @@ export function FilterSidebar({
   selectedCategories: externalSelected = [],
   priceRange: externalPrice = [0, 10000],
 }: FilterSidebarProps) {
-  const [selectedCategories, setSelectedCategories] =
-    useState<string[]>(externalSelected);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(externalSelected);
   const [priceRange, setPriceRange] = useState<[number, number]>(externalPrice);
 
   useEffect(() => {
     setSelectedCategories(externalSelected);
     setPriceRange(externalPrice);
-  }, [externalSelected, externalPrice]);
+
+    if (!categories.length) return;
+
+    const nextExpanded = new Set(expandedCategories);
+
+    for (const rawId of externalSelected) {
+      const id = String(rawId);
+
+      const isParent = categories.some((c) => String(c.id) === id);
+      if (isParent) {
+        nextExpanded.add(id);
+        continue;
+      }
+
+      const parent = categories.find((c) =>
+        (c.subcategories ?? []).some((s) => String(s.id) === id)
+      );
+      if (parent) nextExpanded.add(String(parent.id));
+    }
+
+    const merged = Array.from(nextExpanded);
+    const same =
+      merged.length === expandedCategories.length &&
+      merged.every((x) => expandedCategories.includes(x));
+
+    if (!same) onExpandedChange(merged);
+  }, [externalSelected, externalPrice, categories]); 
 
   useEffect(() => {
     if (!selectedMainCategory) return;
@@ -81,7 +104,7 @@ export function FilterSidebar({
 
     setSelectedCategories([...new Set(newSel)]);
     onExpandedChange([...new Set(newExp)]);
-  }, [selectedMainCategory]);
+  }, [selectedMainCategory]); // keep as-is
 
   const toggleCategory = (id: string, isParent = false, parentId?: string) => {
     setSelectedCategories((prev) => {
