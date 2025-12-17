@@ -1,17 +1,19 @@
+// src/controllers/category.controller.ts
 import { Request, Response } from "express";
 import {
   getMainCategoriesService,
   getCategoryForMenuService,
   getCategoryForSidebarService,
 } from "../services/category.service";
+import { ok, fail } from "../utils/response";
 
 export async function getMainCategoriesController(req: Request, res: Response) {
   try {
     const data = await getMainCategoriesService();
-    res.json({ success: true, data });
+    return ok(res, data);
   } catch (error) {
-    console.error("❌ getMainCategories Error:", error);
-    res.status(500).json({ success: false, message: "Internal Server Error" });
+    console.error("❌ getMainCategories:", error);
+    return fail(res);
   }
 }
 
@@ -21,10 +23,10 @@ export async function getCategoryForMenuController(
 ) {
   try {
     const data = await getCategoryForMenuService();
-    res.json({ success: true, data });
-  } catch (err) {
-    console.error("❌ Category Tree Error:", err);
-    res.status(500).json({ error: "Internal Server Error" });
+    return ok(res, data);
+  } catch (error) {
+    console.error("❌ getCategoryForMenu:", error);
+    return fail(res);
   }
 }
 
@@ -34,11 +36,9 @@ export async function getCategoryForSidebarController(
 ) {
   try {
     const data = await getCategoryForSidebarService();
-    return res.json({ success: true, data });
-  } catch (err) {
-    console.error("❌ Category Tree Error:", err);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal Server Error" });
+    return ok(res, data);
+  } catch (error) {
+    console.error("❌ getCategoryForSidebar:", error);
+    return fail(res);
   }
 }

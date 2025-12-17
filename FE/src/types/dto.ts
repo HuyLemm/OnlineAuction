@@ -85,6 +85,20 @@ export interface ProductDetailDTO {
     createdAt: string;
   }[];
 
+  bidHistory: {
+    id: string;
+    amount: number;
+    createdAt: string;
+    bidder: {
+      id: string;
+      name: string;
+      rating: {
+        score: number;
+        total: number;
+      };
+    };
+  }[];
+
   questions: {
     id: string;
     question: {

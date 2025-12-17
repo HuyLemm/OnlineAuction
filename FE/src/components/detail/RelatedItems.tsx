@@ -43,14 +43,11 @@ export function RelatedItems({ items }: RelatedItemsProps) {
 
       <div
         ref={scrollContainerRef}
-        className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory"
+        className="flex gap-6 overflow-x-hidden pb-4 scrollbar-hide snap-x snap-mandatory"
       >
         {items.map((item) => (
           <div key={item.id} className="flex-shrink-0 w-[300px] snap-start">
-            <AuctionCard
-              {...item}
-              showCategory
-            />
+            <AuctionCard {...item} showCategory />
           </div>
         ))}
       </div>

@@ -1,4 +1,7 @@
+// src/services/home.service.ts
 import { db } from "../config/db";
+import dayjs from "dayjs";
+import { HomeProductDTO } from "../dto/home.dto";
 
 function baseQuery() {
   return db("products as p")
@@ -30,24 +33,64 @@ function baseQuery() {
     .groupBy("p.id", "pi.image_url", "c.name", "c.id", "u.full_name");
 }
 
-export async function getTop5EndingSoonService() {
-  return baseQuery()
+/**
+ * Map raw DB row → HomeProductDTO
+ */
+function mapToHomeDTO(item: any): HomeProductDTO {
+  const end = dayjs(item.end_time);
+  const now = dayjs();
+  const diffYears = end.diff(now, "year");
+
+  return {
+    id: item.id,
+    title: item.title,
+
+    category: item.category,
+    categoryId: item.categoryId,
+
+    image: item.image,
+
+    postedDate: item.postedDate,
+    end_time: item.end_time,
+
+    auctionType: item.auctionType,
+    buyNowPrice: item.buyNowPrice,
+
+    currentBid: Number(item.currentBid),
+    bids: Number(item.bids),
+
+    highestBidderId: item.highestBidderId ?? null,
+    highestBidderName: item.highestBidderName ?? null,
+
+    isHot: Number(item.bids) > 7,
+    endingSoon: diffYears < 10,
+  };
+}
+
+export async function getTop5EndingSoonService(): Promise<HomeProductDTO[]> {
+  const rows = await baseQuery()
     .where("p.status", "active")
     .orderBy("p.end_time", "asc")
     .limit(5);
+
+  return rows.map(mapToHomeDTO);
 }
 
-export async function getTop5MostBidsService() {
-  return baseQuery()
+export async function getTop5MostBidsService(): Promise<HomeProductDTO[]> {
+  const rows = await baseQuery()
     .where("p.status", "active")
     .havingRaw("COUNT(b.id) > 0")
     .orderBy("bids", "desc")
     .limit(5);
+
+  return rows.map(mapToHomeDTO);
 }
 
-export async function getTop5HighestPriceService() {
-  return baseQuery()
+export async function getTop5HighestPriceService(): Promise<HomeProductDTO[]> {
+  const rows = await baseQuery()
     .where("p.status", "active")
     .orderBy("currentBid", "desc")
     .limit(5);
+
+  return rows.map(mapToHomeDTO);
 }

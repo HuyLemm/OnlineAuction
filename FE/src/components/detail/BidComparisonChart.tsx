@@ -1,12 +1,19 @@
-import { TrendingUp, Users, Crown } from "lucide-react";
+import { TrendingUp, Users, Crown, Star } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Avatar, AvatarFallback } from "../ui/avatar";
+import { formatCurrency } from "../../lib/utils";
 
 interface Bidder {
   id: string;
   name: string;
   maxBid: number;
   currentBid: number;
+
+  rating?: {
+    score: number;
+    total: number;
+  };
+
   isYou?: boolean;
   isWinning?: boolean;
 }
@@ -21,7 +28,7 @@ export function BidComparisonChart({
   highestBid,
 }: BidComparisonChartProps) {
   const sortedBidders = [...bidders].sort((a, b) => b.maxBid - a.maxBid);
-  const maxBidValue = Math.max(...bidders.map((b) => b.maxBid));
+  const maxBidValue = Math.max(...bidders.map((b) => b.maxBid), 1);
 
   return (
     <div className="bg-card border border-border/50 rounded-xl p-6 space-y-6">
@@ -45,24 +52,25 @@ export function BidComparisonChart({
               <p className="text-foreground flex items-center gap-2">
                 {sortedBidders[0].isYou
                   ? "You are"
-                  : sortedBidders[0].name + " is"}{" "}
+                  : `${sortedBidders[0].name} is`}{" "}
                 currently winning
               </p>
               <p className="text-muted-foreground">
-                Current bid: $
-                {(sortedBidders[0].currentBid ?? 0).toLocaleString()} • Max: $
-                {(sortedBidders[0].maxBid ?? 0).toLocaleString()}
+                Current bid:
+                {formatCurrency(sortedBidders[0].currentBid)} • Max: $
+                {formatCurrency(sortedBidders[0].maxBid)}
               </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Bidders Comparison */}
+      {/* Bidders */}
       <div className="space-y-3">
         {sortedBidders.map((bidder, index) => {
           const percentage = (bidder.maxBid / maxBidValue) * 100;
           const isLeading = index === 0;
+          const buffer = bidder.maxBid - bidder.currentBid;
 
           return (
             <div
@@ -87,28 +95,45 @@ export function BidComparisonChart({
                       {bidder.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
+
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="text-foreground">
                         {bidder.isYou ? "You" : bidder.name}
                       </p>
+
                       {isLeading && (
                         <Crown className="h-4 w-4 text-[#10b981]" />
                       )}
+
                       {bidder.isYou && (
                         <Badge className="bg-[#fbbf24] text-black border-0 h-5">
                           You
                         </Badge>
                       )}
                     </div>
-                    <p className="text-muted-foreground">Rank #{index + 1}</p>
+
+                    {/* Rating – aligned style */}
+                    {bidder.rating && bidder.rating.total > 0 ? (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Star className="h-3 w-3 text-yellow-500 fill-current" />
+                        Score: {bidder.rating?.score ?? 0} (
+                        {bidder.rating?.total ?? 0}{" "}
+                        {(bidder.rating?.total ?? 0) <= 1 ? "vote" : "votes"})
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-xs">
+                        Rank #{index + 1}
+                      </p>
+                    )}
                   </div>
                 </div>
+
                 <div className="text-right">
                   <p
                     className={isLeading ? "text-[#10b981]" : "text-foreground"}
                   >
-                    ${(bidder.maxBid ?? 0).toLocaleString()}
+                    ${bidder.maxBid.toLocaleString()}
                   </p>
                   <p className="text-muted-foreground">max bid</p>
                 </div>
@@ -128,21 +153,29 @@ export function BidComparisonChart({
                     style={{ width: `${percentage}%` }}
                   />
                 </div>
+
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
-                    Current: ${(bidder.currentBid ?? 0).toLocaleString()}
+                    Current: {formatCurrency(bidder.currentBid)}
                   </span>
-                  <span
-                    className={
-                      bidder.isYou ? "text-[#fbbf24]" : "text-muted-foreground"
-                    }
-                  >
-                    Buffer: ${(bidder.maxBid - highestBid).toLocaleString()}
-                  </span>
+
+                  {buffer >= 0 ? (
+                    <span
+                      className={
+                        bidder.isYou
+                          ? "text-[#fbbf24]"
+                          : "text-muted-foreground"
+                      }
+                    >
+                      Buffer: +{formatCurrency(buffer)}
+                    </span>
+                  ) : (
+                    <span className="text-red-500">Outbid</span>
+                  )}
                 </div>
               </div>
 
-              {/* Position Indicator */}
+              {/* Leading Badge */}
               {isLeading && (
                 <div className="absolute -top-2 -right-2">
                   <div className="bg-[#10b981] text-white px-2 py-1 rounded-full text-xs flex items-center gap-1">

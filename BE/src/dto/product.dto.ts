@@ -69,6 +69,8 @@ export interface ProductDetailDTO {
 
   autoBids: AutoBidDTO[];
 
+  bidHistory: BidHistoryDTO[];
+
   questions: QuestionWithAnswerDTO[];
 
   relatedProducts: RelatedProductDTO[];
@@ -124,4 +126,19 @@ export interface RelatedProductDTO {
   categoryId: number;
 
   highestBidderName?: string | null;
+}
+
+export interface BidHistoryDTO {
+  id: string;
+  amount: number;
+  createdAt: string;
+
+  bidder: {
+    id: string;
+    name: string;
+    rating: {
+      score: number;
+      total: number;
+    };
+  };
 }

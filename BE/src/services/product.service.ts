@@ -38,7 +38,7 @@ function baseQuery() {
       "p.created_at as postedDate",
       "p.description",
       "p.end_time",
-      "p.category_id as categoryId", 
+      "p.category_id as categoryId",
       "c.name as category",
 
       db.raw(`COALESCE(p.current_price, p.start_price)::int AS "currentBid"`),
@@ -344,21 +344,107 @@ export async function getProductDetailService(productId: string) {
     .where("product_id", productId)
     .select("id", "bidder_id", "max_price", "created_at");
 
+  const bidHistoryRaw = await db("bids as b")
+    .join("users as u", "u.id", "b.bidder_id")
+    .where("b.product_id", productId)
+    .orderBy("b.bid_time", "desc")
+    .select(
+      "b.id as bidId",
+      "b.bid_amount as amount",
+      "b.bid_time as createdAt",
+      "u.id as bidderId",
+      "u.full_name as bidderName"
+    );
+
+  const bidderRatingMap = new Map<string, { score: number; total: number }>();
+
+  for (const bid of bidHistoryRaw) {
+    if (bidderRatingMap.has(bid.bidderId)) continue;
+
+    const ratingRaw = (await db
+      .select(
+        db.raw("COALESCE(SUM(score), 0) AS score"),
+        db.raw("COUNT(*) AS total")
+      )
+      .from("ratings")
+      .where("to_user", bid.bidderId)
+      .first()) as { score: number; total: number } | undefined;
+
+    bidderRatingMap.set(bid.bidderId, {
+      score: Number(ratingRaw?.score ?? 0),
+      total: Number(ratingRaw?.total ?? 0),
+    });
+  }
+
+  const bidHistory = bidHistoryRaw.map((b) => ({
+    id: b.bidId,
+    amount: Number(b.amount),
+    createdAt: b.createdAt,
+    bidder: {
+      id: b.bidderId,
+      name: b.bidderName,
+      rating: bidderRatingMap.get(b.bidderId) ?? {
+        score: 0,
+        total: 0,
+      },
+    },
+  }));
+
   // ----------------------------
   // Q&A
   // ----------------------------
-  const questions = await db("questions")
-    .where("product_id", productId)
-    .select("id", "content", "user_id", "created_at");
+  const questionsRaw = await db("questions as q")
+    .join("users as u", "u.id", "q.user_id")
+    .where("q.product_id", productId)
+    .select(
+      "q.id",
+      "q.content",
+      "q.created_at",
+      "u.id as askerId",
+      "u.full_name as askerName"
+    );
 
-  const answers = questions.length
-    ? await db("answers")
+  const answersRaw = questionsRaw.length
+    ? await db("answers as a")
+        .join("users as u", "u.id", "a.seller_id")
         .whereIn(
-          "question_id",
-          questions.map((q) => q.id)
+          "a.question_id",
+          questionsRaw.map((q) => q.id)
         )
-        .select("question_id", "content", "created_at", "user_id")
+        .select(
+          "a.question_id",
+          "a.content",
+          "a.created_at",
+          "u.id as sellerId",
+          "u.full_name as sellerName"
+        )
     : [];
+
+  const questions = questionsRaw.map((q) => {
+    const ans = answersRaw.find((a) => a.question_id === q.id);
+
+    return {
+      id: q.id,
+      question: {
+        content: q.content,
+        askedBy: {
+          id: q.askerId,
+          name: q.askerName,
+        },
+        askedAt: q.created_at,
+      },
+      ...(ans && {
+        answer: {
+          content: ans.content,
+          answeredBy: {
+            id: ans.sellerId,
+            name: ans.sellerName,
+          },
+          answeredAt: ans.created_at,
+        },
+      }),
+    };
+  });
 
   // ----------------------------
   // Related products
@@ -417,8 +503,8 @@ export async function getProductDetailService(productId: string) {
         }
       : null,
     autoBids,
+    bidHistory,
     questions,
-    answers,
     relatedProducts,
   };
 }

@@ -1,119 +1,127 @@
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, Star } from "lucide-react";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
+import { formatCurrency } from "../../lib/utils";
 
-interface Bid {
-  id: string;
-  bidder: string;
+interface BidHistoryItem {
+  id?: string; // có thể null từ backend
   amount: number;
-  time: string;
-  isAutoBid?: boolean;
-  isLeading?: boolean;
+  createdAt: string;
+  bidder: {
+    id: string;
+    name: string;
+    rating?: {
+      score: number;
+      total: number;
+    };
+  };
 }
 
 interface BidHistoryProps {
-  bids?: Bid[];
+  bids: BidHistoryItem[];
 }
 
-export function BidHistory({ bids = [] }: BidHistoryProps) {
-  // Default mock data if no bids provided
-  const defaultBids: Bid[] = [
-    {
-      id: "1",
-      bidder: "James Wilson",
-      amount: 15000,
-      time: "2 mins ago",
-      isAutoBid: true,
-      isLeading: true,
-    },
-    {
-      id: "2",
-      bidder: "Sarah Chen",
-      amount: 14800,
-      time: "15 mins ago",
-      isAutoBid: true,
-    },
-    {
-      id: "3",
-      bidder: "Michael Rodriguez",
-      amount: 14500,
-      time: "1 hour ago",
-    },
-    {
-      id: "4",
-      bidder: "Emily Taylor",
-      amount: 14200,
-      time: "2 hours ago",
-      isAutoBid: true,
-    },
-    {
-      id: "5",
-      bidder: "David Kim",
-      amount: 14000,
-      time: "3 hours ago",
-    },
-  ];
+function formatTime(date: string) {
+  const d = new Date(date);
+  return d.toLocaleString();
+}
 
-  const displayBids = bids.length > 0 ? bids : defaultBids;
+export function BidHistory({ bids }: BidHistoryProps) {
+  if (!bids || bids.length === 0) {
+    return (
+      <div className="bg-card border border-border/50 rounded-xl p-6">
+        <h3 className="text-foreground mb-2">Bid History</h3>
+        <p className="text-muted-foreground text-center">
+          No bids have been placed yet
+        </p>
+      </div>
+    );
+  }
+
+  const highestAmount = Math.max(...bids.map((b) => b.amount));
 
   return (
     <div className="bg-card border border-border/50 rounded-xl p-6 space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-foreground">Bid History</h3>
         <Badge variant="outline" className="border-border/50">
-          {displayBids.length} bids
+          {bids.length} bids
         </Badge>
       </div>
 
-      {/* Bid List */}
+      {/* Bid list */}
       <div className="space-y-3 max-h-96 overflow-y-auto">
-        {displayBids.map((bid, index) => (
-          <div
-            key={bid.id}
-            className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
-              bid.isLeading
-                ? "bg-[#fbbf24]/5 border-[#fbbf24]/20"
-                : "bg-secondary/30 border-border/50"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10">
-                <AvatarFallback className="bg-gradient-to-br from-[#fbbf24]/20 to-[#f59e0b]/20 text-foreground">
-                  {bid.bidder.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="text-foreground">{bid.bidder}</p>
-                  {bid.isLeading && (
-                    <TrendingUp className="h-3 w-3 text-[#fbbf24]" />
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <p className="text-muted-foreground">{bid.time}</p>
-                  {bid.isAutoBid && (
-                    <Badge variant="outline" className="h-5 text-[10px] border-border/50">
-                      Auto Bid
-                    </Badge>
-                  )}
+        {bids.map((bid, index) => {
+          const isLeading = bid.amount === highestAmount;
+
+          // ⚠️ key LUÔN unique cho MỖI BID
+          const key =
+            bid.id ??
+            `${bid.bidder.id}-${bid.createdAt}-${bid.amount}-${index}`;
+
+          return (
+            <div
+              key={key}
+              className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                isLeading
+                  ? "bg-[#fbbf24]/5 border-[#fbbf24]/30"
+                  : "bg-secondary/30 border-border/50"
+              }`}
+            >
+              {/* Bidder */}
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-gradient-to-br from-[#fbbf24]/20 to-[#f59e0b]/20 text-foreground">
+                    {bid.bidder.name.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-foreground font-medium">
+                      {bid.bidder.name}
+                    </p>
+                    {isLeading && (
+                      <TrendingUp className="h-4 w-4 text-[#fbbf24]" />
+                    )}
+                  </div>
+
+                  {/* Rating + time */}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <span className="text-yellow-400">
+                        <Star className="h-3 w-3 text-yellow-500 fill-current" />
+                      </span>
+                      Score: {bid.bidder.rating?.score ?? 0} (
+                      {bid.bidder.rating?.total ?? 0}{" "}
+                      {(bid.bidder.rating?.total ?? 0) <= 1 ? "vote" : "votes"})
+                    </span>
+                    <span>•</span>
+                    <span>{formatTime(bid.createdAt)}</span>
+                  </div>
                 </div>
               </div>
+
+              {/* Amount */}
+              <div className="text-right">
+                <p
+                  className={`font-semibold ${
+                    isLeading ? "text-[#fbbf24]" : "text-foreground"
+                  }`}
+                >
+                  {formatCurrency(bid.amount)}
+                </p>
+                {isLeading && <p className="text-[#10b981] text-xs">Leading</p>}
+              </div>
             </div>
-            <div className="text-right">
-              <p className={bid.isLeading ? "text-[#fbbf24]" : "text-foreground"}>
-                ${bid.amount.toLocaleString()}
-              </p>
-              {index === 0 && bid.isLeading && (
-                <p className="text-[#10b981]">Leading</p>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Note */}
-      <p className="text-muted-foreground text-center pt-2 border-t border-border/50">
-        Only the highest bid from each bidder is shown
+      {/* Footer */}
+      <p className="text-muted-foreground text-center pt-2 border-t border-border/50 text-sm">
+        Bids are shown from newest to oldest
       </p>
     </div>
   );

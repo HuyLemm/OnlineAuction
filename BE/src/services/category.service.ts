@@ -1,6 +1,15 @@
+// src/services/category.service.ts
 import { db } from "../config/db";
+import {
+  MainCategoryDTO,
+  CategoryMenuDTO,
+  CategorySidebarDTO,
+} from "../dto/category.dto";
 
-export async function getMainCategoriesService() {
+/**
+ * Main categories (Home / Grid)
+ */
+export async function getMainCategoriesService(): Promise<MainCategoryDTO[]> {
   return db("categories as c")
     .leftJoin("categories as sub", "sub.parent_id", "c.id")
     .leftJoin("products as p", function () {
@@ -16,7 +25,10 @@ export async function getMainCategoriesService() {
     .orderBy("c.name", "asc");
 }
 
-export async function getCategoryForMenuService() {
+/**
+ * Categories for Header / Menu
+ */
+export async function getCategoryForMenuService(): Promise<CategoryMenuDTO[]> {
   const categories = await db("categories").select("id", "name", "parent_id");
 
   const mainCategories = categories.filter((c) => c.parent_id === null);
@@ -33,7 +45,10 @@ export async function getCategoryForMenuService() {
   }));
 }
 
-export async function getCategoryForSidebarService() {
+/**
+ * Categories for Sidebar / Filter
+ */
+export async function getCategoryForSidebarService(): Promise<CategorySidebarDTO[]> {
   const categories = await db("categories").select("id", "name", "parent_id");
 
   const productCounts = await db("products")
@@ -43,9 +58,9 @@ export async function getCategoryForSidebarService() {
 
   const countMap: Record<string, number> = {};
   productCounts.forEach((row) => {
-    const key = String(row.category_id ?? "");
-    if (!key) return;
-    countMap[key] = Number(row.count);
+    if (row.category_id) {
+      countMap[String(row.category_id)] = Number(row.count);
+    }
   });
 
   const mainCategories = categories.filter((c) => c.parent_id === null);
@@ -59,14 +74,14 @@ export async function getCategoryForSidebarService() {
       count: countMap[String(sub.id)] ?? 0,
     }));
 
-    const totalMainCount =
+    const totalCount =
       (countMap[String(main.id)] ?? 0) +
       subcategories.reduce((sum, s) => sum + s.count, 0);
 
     return {
       id: main.id,
       label: main.name,
-      count: totalMainCount,
+      count: totalCount,
       subcategories,
     };
   });

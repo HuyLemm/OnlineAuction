@@ -49,8 +49,11 @@ export function SellerInfo({
               <div className="flex items-center gap-2 mt-1">
                 <div className="flex items-center gap-1">
                   <Star className="h-4 w-4 fill-[#fbbf24] text-[#fbbf24]" />
-                  <span className="text-foreground">{rating}</span>
-                  <span className="text-muted-foreground">({totalSales})</span>
+                  <span className="text-foreground">Score: {rating}</span>
+                  <span className="text-muted-foreground">
+                    ({totalSales ?? 0}{" "}
+                    {(totalSales ?? 0) <= 1 ? "vote" : "votes"})
+                  </span>
                 </div>
               </div>
             </div>

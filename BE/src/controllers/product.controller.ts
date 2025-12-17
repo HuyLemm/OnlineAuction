@@ -178,31 +178,9 @@ export async function getProductDetailController(req: Request, res: Response) {
         createdAt: b.created_at,
       })),
 
-      questions: raw.questions.map((q: any) => {
-        const ans = raw.answers.find((a: any) => a.question_id === q.id);
+      bidHistory: raw.bidHistory,
 
-        return {
-          id: q.id,
-          question: {
-            content: q.content,
-            askedBy: {
-              id: q.user_id,
-              name: "",
-            },
-            askedAt: q.created_at,
-          },
-          ...(ans && {
-            answer: {
-              content: ans.content,
-              answeredBy: {
-                id: ans.user_id,
-                name: "",
-              },
-              answeredAt: ans.created_at,
-            },
-          }),
-        };
-      }),
+      questions: raw.questions,
 
       relatedProducts: raw.relatedProducts.map((p: any) => ({
         id: p.id,

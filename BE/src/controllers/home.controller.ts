@@ -1,55 +1,35 @@
+// src/controllers/home.controller.ts
 import { Request, Response } from "express";
-import dayjs from "dayjs";
 import {
   getTop5EndingSoonService,
   getTop5MostBidsService,
   getTop5HighestPriceService,
 } from "../services/home.service";
+import { ok, fail } from "../utils/response";
 
-function formatItem(item: any) {
-  const end = dayjs(item.end_time);
-  const now = dayjs();
-  const diffYears = end.diff(now, "year");
-
-  return {
-    id: item.id,
-    title: item.title,
-    category: item.category,
-    categoryId: item.categoryId,
-    image: item.image,
-    postedDate: item.postedDate,
-    auctionType: item.auctionType,
-    buyNowPrice: item.buyNowPrice,
-    end_time: item.end_time,
-
-    currentBid: Number(item.currentBid),
-    bids: Number(item.bids),
-
-    highestBidderId: item.highestBidderId ?? null,
-    highestBidderName: item.highestBidderName ?? null,
-
-    isHot: Number(item.bids) > 7,
-    endingSoon: diffYears < 10,
-  };
-}
-
-export async function getTop5EndingSoonController(req: Request, res: Response) {
+export async function getTop5EndingSoonController(
+  req: Request,
+  res: Response
+) {
   try {
-    const result = await getTop5EndingSoonService();
-    res.json({ success: true, data: result.map(formatItem) });
+    const data = await getTop5EndingSoonService();
+    return ok(res, data);
   } catch (err) {
-    console.error("❌ Error:", err);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error("❌ getTop5EndingSoon:", err);
+    return fail(res);
   }
 }
 
-export async function getTop5MostBidsController(req: Request, res: Response) {
+export async function getTop5MostBidsController(
+  req: Request,
+  res: Response
+) {
   try {
-    const result = await getTop5MostBidsService();
-    res.json({ success: true, data: result.map(formatItem) });
+    const data = await getTop5MostBidsService();
+    return ok(res, data);
   } catch (err) {
-    console.error("❌ Error:", err);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error("❌ getTop5MostBids:", err);
+    return fail(res);
   }
 }
 
@@ -58,10 +38,10 @@ export async function getTop5HighestPriceController(
   res: Response
 ) {
   try {
-    const result = await getTop5HighestPriceService();
-    res.json({ success: true, data: result.map(formatItem) });
+    const data = await getTop5HighestPriceService();
+    return ok(res, data);
   } catch (err) {
-    console.error("❌ Error:", err);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error("❌ getTop5HighestPrice:", err);
+    return fail(res);
   }
 }

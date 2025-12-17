@@ -64,26 +64,49 @@ export function ProductDetailPage() {
   }
 
   /* ---------------- Derived data ---------------- */
+
   const currentBid = data.product.currentBid;
   const bidStep = data.product.bidStep;
   const buyNowPrice = data.product.buyNowPrice;
 
-  const bidders = data.highestBidder
-    ? [
-        {
-          id: data.highestBidder.id,
-          name: data.highestBidder.name,
-          maxBid: currentBid,
-          currentBid,
-          isWinning: true,
-        },
-      ]
-    : [];
+  /**
+   * 🔥 Build bidders list from bidHistory
+   * - gộp theo bidder
+   * - lấy maxBid cao nhất của mỗi user
+   */
+  const bidderMap = new Map<
+    string,
+    {
+      id: string;
+      name: string;
+      maxBid: number;
+      rating: any;
+    }
+  >();
+
+  data.bidHistory.forEach((b) => {
+    const existing = bidderMap.get(b.bidder.id);
+    if (!existing || b.amount > existing.maxBid) {
+      bidderMap.set(b.bidder.id, {
+        id: b.bidder.id,
+        name: b.bidder.name,
+        maxBid: b.amount,
+        rating: b.bidder.rating,
+      });
+    }
+  });
+
+  const bidders = Array.from(bidderMap.values()).map((b) => ({
+    ...b,
+    currentBid,
+    isWinning: b.maxBid === currentBid,
+    // isYou: b.id === currentUserId (nếu có auth sau)
+  }));
 
   const bidStatus: BidStatusDTO = (() => {
     if (!userMaxBid) return "no_bid";
-    if (data.highestBidder && userMaxBid < currentBid) return "outbid";
-    if (data.highestBidder && userMaxBid >= currentBid) return "leading_auto";
+    if (userMaxBid < currentBid) return "outbid";
+    if (userMaxBid >= currentBid) return "leading_auto";
     return "auto_active";
   })();
 
@@ -120,9 +143,7 @@ export function ProductDetailPage() {
 
       {/* Title */}
       <div className="space-y-1">
-        <h1 className="text-foreground text-4xl">
-          {data.product.title}
-        </h1>
+        <h1 className="text-foreground text-4xl">{data.product.title}</h1>
 
         <div className="flex items-center justify-between text-lg">
           <div className="flex items-center gap-2">
@@ -150,9 +171,7 @@ export function ProductDetailPage() {
 
           <div className="flex items-center gap-2 text-muted-foreground">
             <Calendar className="h-4 w-4" />
-            <span>
-              Posted on {formatPostedDate(data.product.postedDate)}
-            </span>
+            <span>Posted on {formatPostedDate(data.product.postedDate)}</span>
           </div>
         </div>
       </div>
@@ -189,6 +208,7 @@ export function ProductDetailPage() {
         yourMaxBid={userMaxBid}
       />
 
+      {/* 🔥 Comparison + Auto Bid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <BidComparisonChart bidders={bidders} highestBid={currentBid} />
         <AutoBidHistory events={[]} />
@@ -197,25 +217,15 @@ export function ProductDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <ProductInfo
-            title={data.product.title}
-            category={data.product.categoryName}
-            description={data.product.description}
+            product={data.product}
+            seller={data.seller}
+            bidCount={data.bidHistory.length}
           />
 
-          <BidHistory />
+          {/* 🔥 Bid history real data */}
+          <BidHistory bids={data.bidHistory} />
 
-          <QASection
-            questions={data.questions.map((q) => ({
-              id: q.id,
-              question: q.question.content,
-              asker: q.question.askedBy.name || "User",
-              askedTime: q.question.askedAt,
-              answer: q.answer?.content,
-              answerer: q.answer?.answeredBy.name,
-              answeredTime: q.answer?.answeredAt,
-              likes: 0,
-            }))}
-          />
+          <QASection questions={data.questions} />
         </div>
 
         <SellerInfo
