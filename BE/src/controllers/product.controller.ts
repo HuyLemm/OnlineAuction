@@ -1,17 +1,12 @@
 import { Request, Response } from "express";
 import dayjs from "dayjs";
 
-import {
-  getBrowseProductsService,
-  searchProductsService,
-  getProductDetailService,
-} from "../services/product.service";
-
+import { ProductService } from "../services/product.service";
 import { BrowseProductDTO, ProductDetailDTO } from "../dto/product.dto";
 
-/* =====================================================
- * UTIL – map browse product
- * ===================================================== */
+// =====================================================
+// UTIL – map browse product
+// =====================================================
 function mapBrowseProduct(item: any): BrowseProductDTO {
   const end = dayjs(item.end_time);
   const now = dayjs();
@@ -41,178 +36,181 @@ function mapBrowseProduct(item: any): BrowseProductDTO {
   };
 }
 
-/* =====================================================
- * BROWSE PRODUCTS
- * ===================================================== */
-export async function getBrowseProductsController(req: Request, res: Response) {
-  try {
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 20;
-    const sort = (req.query.sort as string) || "default";
+export class ProductController {
+  // ===============================
+  // GET /products/get-browse-product
+  // ===============================
+  static async getBrowseProducts(req: Request, res: Response) {
+    try {
+      const page = Number(req.query.page) || 1;
+      const limit = Number(req.query.limit) || 20;
+      const sort = (req.query.sort as string) || "default";
 
-    const categories = req.query.categories
-      ? (req.query.categories as string).split(",").filter((x) => x !== "")
-      : [];
+      const categories = req.query.categories
+        ? (req.query.categories as string).split(",").filter((x) => x !== "")
+        : [];
 
-    const minPrice = Number(req.query.minPrice) || 0;
-    const maxPrice = Number(req.query.maxPrice) || 999999999;
+      const minPrice = Number(req.query.minPrice) || 0;
+      const maxPrice = Number(req.query.maxPrice) || 999999999;
 
-    const { data, total } = await getBrowseProductsService({
-      page,
-      limit,
-      sort,
-      categories,
-      minPrice,
-      maxPrice,
-    });
+      const { data, total } = await ProductService.getBrowseProducts({
+        page,
+        limit,
+        sort,
+        categories,
+        minPrice,
+        maxPrice,
+      });
 
-    res.json({
-      success: true,
-      page,
-      limit,
-      sort,
-      totalItems: total,
-      totalPages: Math.ceil(total / limit),
-      data: data.map(mapBrowseProduct),
-    });
-  } catch (error) {
-    console.error("❌ getBrowseProductsController:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-    });
-  }
-}
-
-/* =====================================================
- * SEARCH PRODUCTS
- * ===================================================== */
-export async function searchProductsController(req: Request, res: Response) {
-  try {
-    const keyword = (req.query.keyword as string) || "";
-    const page = Math.max(Number(req.query.page) || 1, 1);
-    const limit = Math.min(Number(req.query.limit) || 12, 48);
-    const sort = (req.query.sort as string) || "default";
-    const newMinutes = req.query.newMinutes ? Number(req.query.newMinutes) : 60;
-
-    const categoryIds = req.query.categoryIds
-      ? (req.query.categoryIds as string).split(",").map(Number)
-      : undefined;
-
-    const result = await searchProductsService({
-      keyword,
-      categoryIds,
-      page,
-      limit,
-      sort,
-      newMinutes,
-    });
-
-    res.json(result);
-  } catch (error) {
-    console.error("❌ searchProductsController:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-    });
-  }
-}
-
-/* =====================================================
- * 🔥 PRODUCT DETAIL
- * ===================================================== */
-export async function getProductDetailController(req: Request, res: Response) {
-  try {
-    const { productId } = req.params;
-
-    if (!productId) {
-      return res.status(400).json({
+      return res.json({
+        success: true,
+        page,
+        limit,
+        sort,
+        totalItems: total,
+        totalPages: Math.ceil(total / limit),
+        data: data.map(mapBrowseProduct),
+      });
+    } catch (error) {
+      console.error("❌ ProductController.browse:", error);
+      return res.status(500).json({
         success: false,
-        message: "productId is required",
+        message: "Internal Server Error",
       });
     }
+  }
 
-    const raw = await getProductDetailService(productId);
+  // ===============================
+  // GET /products/search-products
+  // ===============================
+  static async searchProducts(req: Request, res: Response) {
+    try {
+      const keyword = (req.query.keyword as string) || "";
+      const page = Math.max(Number(req.query.page) || 1, 1);
+      const limit = Math.min(Number(req.query.limit) || 12, 48);
+      const sort = (req.query.sort as string) || "default";
+      const newMinutes = req.query.newMinutes
+        ? Number(req.query.newMinutes)
+        : 60;
 
-    const dto: ProductDetailDTO = {
-      product: {
-        id: raw.product.id,
-        title: raw.product.title,
-        description: raw.product.description,
-        postedDate: raw.product.postedDate,
-        endTime: raw.product.endTime,
-        auctionType: raw.product.auctionType,
-        buyNowPrice: raw.product.buyNowPrice,
-        categoryId: raw.product.categoryId,
-        categoryName: raw.product.categoryName,
-        currentBid: raw.product.currentBid,
-        bidStep: raw.product.bidStep,
-      },
+      const categoryIds = req.query.categoryIds
+        ? (req.query.categoryIds as string).split(",").map(Number)
+        : undefined;
 
-      images: {
-        primary: raw.images.find((i: any) => i.is_main)?.image_url || "",
-        gallery: raw.images
-          .filter((i: any) => !i.is_main)
-          .map((i: any) => i.image_url),
-      },
+      const result = await ProductService.searchProducts({
+        keyword,
+        categoryIds,
+        page,
+        limit,
+        sort,
+        newMinutes,
+      });
 
-      seller: {
-        id: raw.seller.id,
-        name: raw.seller.name,
-        rating: raw.seller.rating, // ✅ { score, total }
-      },
+      return res.json(result);
+    } catch (error) {
+      console.error("❌ ProductController.search:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal Server Error",
+      });
+    }
+  }
 
-      ...(raw.highestBidder && {
-        highestBidder: {
-          id: raw.highestBidder.id,
-          name: raw.highestBidder.name,
-          rating: raw.highestBidder.rating, // ✅ { score, total }
+  // ===============================
+  // GET /products/:productId/get-product-detail
+  // ===============================
+  static async getProductDetail(req: Request, res: Response) {
+    try {
+      const { productId } = req.params;
+
+      if (!productId) {
+        return res.status(400).json({
+          success: false,
+          message: "productId is required",
+        });
+      }
+
+      const raw = await ProductService.getProductDetail(productId);
+
+      const dto: ProductDetailDTO = {
+        product: {
+          id: raw.product.id,
+          title: raw.product.title,
+          description: raw.product.description,
+          postedDate: raw.product.postedDate,
+          endTime: raw.product.endTime,
+          auctionType: raw.product.auctionType,
+          buyNowPrice: raw.product.buyNowPrice,
+          categoryId: raw.product.categoryId,
+          categoryName: raw.product.categoryName,
+          currentBid: raw.product.currentBid,
+          bidStep: raw.product.bidStep,
         },
-      }),
 
-      autoBids: raw.autoBids.map((b: any) => ({
-        id: b.id,
-        bidderId: b.bidder_id,
-        bidderName: "", // frontend resolve / later join
-        maxBid: b.max_bid,
-        createdAt: b.created_at,
-      })),
+        images: {
+          primary: raw.images.find((i: any) => i.is_main)?.image_url || "",
+          gallery: raw.images
+            .filter((i: any) => !i.is_main)
+            .map((i: any) => i.image_url),
+        },
 
-      bidHistory: raw.bidHistory,
+        seller: {
+          id: raw.seller.id,
+          name: raw.seller.name,
+          rating: raw.seller.rating,
+        },
 
-      questions: raw.questions,
+        ...(raw.highestBidder && {
+          highestBidder: {
+            id: raw.highestBidder.id,
+            name: raw.highestBidder.name,
+            rating: raw.highestBidder.rating,
+          },
+        }),
 
-      relatedProducts: raw.relatedProducts.map((p: any) => ({
-        id: p.id,
-        title: p.title,
-        image: p.image,
+        autoBids: raw.autoBids.map((b: any) => ({
+          id: b.id,
+          bidderId: b.bidder_id,
+          bidderName: "",
+          maxBid: b.max_bid,
+          createdAt: b.created_at,
+        })),
 
-        currentBid: Number(p.currentBid),
-        bids: Number(p.bids),
+        bidHistory: raw.bidHistory,
+        questions: raw.questions,
 
-        endTime: p.endTime,
+        relatedProducts: raw.relatedProducts.map((p: any) => ({
+          id: p.id,
+          title: p.title,
+          image: p.image,
 
-        auctionType: p.auctionType,
-        buyNowPrice: p.buyNowPrice ?? null,
+          currentBid: Number(p.currentBid),
+          bids: Number(p.bids),
 
-        postedDate: p.postedDate,
+          endTime: p.endTime,
 
-        category: p.category,
-        categoryId: Number(p.categoryId),
+          auctionType: p.auctionType,
+          buyNowPrice: p.buyNowPrice ?? null,
 
-        highestBidderName: p.highestBidderName ?? null,
-      })),
-    };
+          postedDate: p.postedDate,
 
-    return res.json({
-      success: true,
-      data: dto,
-    });
-  } catch (error: any) {
-    console.error("❌ getProductDetailController:", error);
-    return res.status(404).json({
-      success: false,
-      message: error.message || "Product not found",
-    });
+          category: p.category,
+          categoryId: Number(p.categoryId),
+
+          highestBidderName: p.highestBidderName ?? null,
+        })),
+      };
+
+      return res.json({
+        success: true,
+        data: dto,
+      });
+    } catch (error: any) {
+      console.error("❌ ProductController.detail:", error);
+      return res.status(404).json({
+        success: false,
+        message: error.message || "Product not found",
+      });
+    }
   }
 }

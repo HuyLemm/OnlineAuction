@@ -142,3 +142,6 @@ export type BidStatusDTO =
   | "auto_active"
   | "leading_auto"
   | "winning";
+
+
+  

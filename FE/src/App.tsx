@@ -40,7 +40,7 @@ export default function App() {
 
             {/* Auth routes without footer */}
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/otp-verification" element={<OTPVerificationPage />} />
+            <Route path="/verify-otp" element={<OTPVerificationPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
             {/* Catch all */}

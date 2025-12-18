@@ -1,96 +1,111 @@
 // src/services/home.service.ts
-import { db } from "../config/db";
 import dayjs from "dayjs";
+import { db } from "../config/db";
 import { HomeProductDTO } from "../dto/home.dto";
 
-function baseQuery() {
-  return db("products as p")
-    .leftJoin("product_images as pi", function () {
-      this.on("pi.product_id", "=", "p.id").andOn(
-        "pi.is_main",
-        "=",
-        db.raw("true")
-      );
-    })
-    .leftJoin("bids as b", "b.product_id", "p.id")
-    .leftJoin("categories as c", "c.id", "p.category_id")
-    .leftJoin("users as u", "u.id", "p.highest_bidder_id")
-    .select(
-      "p.id",
-      "p.title",
-      "p.auction_type as auctionType",
-      "p.highest_bidder_id as highestBidderId",
-      "u.full_name as highestBidderName",
-      "p.buy_now_price as buyNowPrice",
-      "p.created_at as postedDate",
-      "p.end_time as end_time",
-      "c.name as category",
-      "c.id as categoryId",
-      db.raw(`COALESCE(MAX(b.bid_amount), p.start_price) AS "currentBid"`),
-      db.raw(`COUNT(b.id) AS "bids"`),
-      db.raw(`COALESCE(pi.image_url, '') AS "image"`)
-    )
-    .groupBy("p.id", "pi.image_url", "c.name", "c.id", "u.full_name");
-}
+export class HomeService {
+  // ===============================
+  // Helpers
+  // ===============================
 
-/**
- * Map raw DB row → HomeProductDTO
- */
-function mapToHomeDTO(item: any): HomeProductDTO {
-  const end = dayjs(item.end_time);
-  const now = dayjs();
-  const diffYears = end.diff(now, "year");
+  private static baseQuery() {
+    return db("products as p")
+      .leftJoin("product_images as pi", function () {
+        this.on("pi.product_id", "=", "p.id").andOn(
+          "pi.is_main",
+          "=",
+          db.raw("true")
+        );
+      })
+      .leftJoin("bids as b", "b.product_id", "p.id")
+      .leftJoin("categories as c", "c.id", "p.category_id")
+      .leftJoin("users as u", "u.id", "p.highest_bidder_id")
+      .select(
+        "p.id",
+        "p.title",
+        "p.auction_type as auctionType",
+        "p.highest_bidder_id as highestBidderId",
+        "u.full_name as highestBidderName",
+        "p.buy_now_price as buyNowPrice",
+        "p.created_at as postedDate",
+        "p.end_time as end_time",
+        "c.name as category",
+        "c.id as categoryId",
+        db.raw(`COALESCE(MAX(b.bid_amount), p.start_price) AS "currentBid"`),
+        db.raw(`COUNT(b.id) AS "bids"`),
+        db.raw(`COALESCE(pi.image_url, '') AS "image"`)
+      )
+      .groupBy("p.id", "pi.image_url", "c.name", "c.id", "u.full_name");
+  }
 
-  return {
-    id: item.id,
-    title: item.title,
+  /**
+   * Map raw DB row → HomeProductDTO
+   */
+  private static mapToHomeDTO(item: any): HomeProductDTO {
+    const end = dayjs(item.end_time);
+    const now = dayjs();
+    const diffYears = end.diff(now, "year");
 
-    category: item.category,
-    categoryId: item.categoryId,
+    return {
+      id: item.id,
+      title: item.title,
 
-    image: item.image,
+      category: item.category,
+      categoryId: item.categoryId,
 
-    postedDate: item.postedDate,
-    end_time: item.end_time,
+      image: item.image,
 
-    auctionType: item.auctionType,
-    buyNowPrice: item.buyNowPrice,
+      postedDate: item.postedDate,
+      end_time: item.end_time,
 
-    currentBid: Number(item.currentBid),
-    bids: Number(item.bids),
+      auctionType: item.auctionType,
+      buyNowPrice: item.buyNowPrice,
 
-    highestBidderId: item.highestBidderId ?? null,
-    highestBidderName: item.highestBidderName ?? null,
+      currentBid: Number(item.currentBid),
+      bids: Number(item.bids),
 
-    isHot: Number(item.bids) > 7,
-    endingSoon: diffYears < 10,
-  };
-}
+      highestBidderId: item.highestBidderId ?? null,
+      highestBidderName: item.highestBidderName ?? null,
 
-export async function getTop5EndingSoonService(): Promise<HomeProductDTO[]> {
-  const rows = await baseQuery()
-    .where("p.status", "active")
-    .orderBy("p.end_time", "asc")
-    .limit(5);
+      isHot: Number(item.bids) > 7,
+      endingSoon: diffYears < 10,
+    };
+  }
 
-  return rows.map(mapToHomeDTO);
-}
+  // ===============================
+  // GET Top 5 Ending Soon
+  // ===============================
+  static async getTop5EndingSoon(): Promise<HomeProductDTO[]> {
+    const rows = await HomeService.baseQuery()
+      .where("p.status", "active")
+      .orderBy("p.end_time", "asc")
+      .limit(5);
 
-export async function getTop5MostBidsService(): Promise<HomeProductDTO[]> {
-  const rows = await baseQuery()
-    .where("p.status", "active")
-    .havingRaw("COUNT(b.id) > 0")
-    .orderBy("bids", "desc")
-    .limit(5);
+    return rows.map(HomeService.mapToHomeDTO);
+  }
 
-  return rows.map(mapToHomeDTO);
-}
+  // ===============================
+  // GET Top 5 Most Bids
+  // ===============================
+  static async getTop5MostBids(): Promise<HomeProductDTO[]> {
+    const rows = await HomeService.baseQuery()
+      .where("p.status", "active")
+      .havingRaw("COUNT(b.id) > 0")
+      .orderBy("bids", "desc")
+      .limit(5);
 
-export async function getTop5HighestPriceService(): Promise<HomeProductDTO[]> {
-  const rows = await baseQuery()
-    .where("p.status", "active")
-    .orderBy("currentBid", "desc")
-    .limit(5);
+    return rows.map(HomeService.mapToHomeDTO);
+  }
 
-  return rows.map(mapToHomeDTO);
+  // ===============================
+  // GET Top 5 Highest Price
+  // ===============================
+  static async getTop5HighestPrice(): Promise<HomeProductDTO[]> {
+    const rows = await HomeService.baseQuery()
+      .where("p.status", "active")
+      .orderBy("currentBid", "desc")
+      .limit(5);
+
+    return rows.map(HomeService.mapToHomeDTO);
+  }
 }

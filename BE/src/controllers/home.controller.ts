@@ -1,47 +1,45 @@
 // src/controllers/home.controller.ts
 import { Request, Response } from "express";
-import {
-  getTop5EndingSoonService,
-  getTop5MostBidsService,
-  getTop5HighestPriceService,
-} from "../services/home.service";
+import { HomeService } from "../services/home.service";
 import { ok, fail } from "../utils/response";
 
-export async function getTop5EndingSoonController(
-  req: Request,
-  res: Response
-) {
-  try {
-    const data = await getTop5EndingSoonService();
-    return ok(res, data);
-  } catch (err) {
-    console.error("❌ getTop5EndingSoon:", err);
-    return fail(res);
+export class HomeController {
+  // ===============================
+  // GET /home/top-5-ending-soon
+  // ===============================
+  static async getTop5EndingSoon(req: Request, res: Response) {
+    try {
+      const data = await HomeService.getTop5EndingSoon();
+      return ok(res, data);
+    } catch (error) {
+      console.error("❌ HomeController.getTop5EndingSoon:", error);
+      return fail(res);
+    }
   }
-}
 
-export async function getTop5MostBidsController(
-  req: Request,
-  res: Response
-) {
-  try {
-    const data = await getTop5MostBidsService();
-    return ok(res, data);
-  } catch (err) {
-    console.error("❌ getTop5MostBids:", err);
-    return fail(res);
+  // ===============================
+  // GET /home/top-5-most-bids
+  // ===============================
+  static async getTop5MostBids(req: Request, res: Response) {
+    try {
+      const data = await HomeService.getTop5MostBids();
+      return ok(res, data);
+    } catch (error) {
+      console.error("❌ HomeController.getTop5MostBids:", error);
+      return fail(res);
+    }
   }
-}
 
-export async function getTop5HighestPriceController(
-  req: Request,
-  res: Response
-) {
-  try {
-    const data = await getTop5HighestPriceService();
-    return ok(res, data);
-  } catch (err) {
-    console.error("❌ getTop5HighestPrice:", err);
-    return fail(res);
+  // ===============================
+  // GET /home/top-5-highest-price
+  // ===============================
+  static async getTop5HighestPrice(req: Request, res: Response) {
+    try {
+      const data = await HomeService.getTop5HighestPrice();
+      return ok(res, data);
+    } catch (error) {
+      console.error("❌ HomeController.getTop5HighestPrice:", error);
+      return fail(res);
+    }
   }
 }

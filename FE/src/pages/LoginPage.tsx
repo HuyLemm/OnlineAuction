@@ -1,12 +1,17 @@
 import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { User, Lock, Mail, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import "../styles/login-auth.css";
+import {
+  validateLogin,
+  validateRegister,
+} from "../components/utils/authValidation";
 
-interface LoginPageProps {
-  onNavigate?: (page: "dashboard" | "forgot-password") => void;
-}
+import { REGISTER_API, LOGIN_API } from "../components/utils/api";
 
-export function LoginPage({ onNavigate }: LoginPageProps) {
+export function LoginPage() {
+  const navigate = useNavigate();
   const [isActive, setIsActive] = useState(false);
 
   // Login form state
@@ -32,322 +37,84 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
   const [recaptchaVerified, setRecaptchaVerified] = useState(false);
 
   // Login handlers
-  const validateLogin = () => {
-    const newErrors: Record<string, string> = {};
-    if (!loginData.email) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginData.email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
-    if (!loginData.password) {
-      newErrors.password = "Password is required";
-    } else if (loginData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
-    }
-    setLoginErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
+  // ================= LOGIN =================
   const handleLoginSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!validateLogin()) return;
+
+    const errors = validateLogin(loginData);
+    setLoginErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     setIsLoginLoading(true);
-    setTimeout(() => {
-      setIsLoginLoading(false);
+
+    try {
+      const res = await fetch(LOGIN_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(loginData),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Login failed");
+      }
+
       toast.success("Login successful!");
-      onNavigate?.("dashboard");
-    }, 1500);
+      navigate("/");
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsLoginLoading(false);
+    }
   };
 
-  // Register handlers
-  const validateRegister = () => {
-    const newErrors: Record<string, string> = {};
-    if (!registerData.fullName.trim()) {
-      newErrors.fullName = "Full name is required";
-    } else if (registerData.fullName.trim().length < 3) {
-      newErrors.fullName = "Full name must be at least 3 characters";
-    }
-    if (!registerData.email) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registerData.email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
-    if (!registerData.address.trim()) {
-      newErrors.address = "Address is required";
-    } else if (registerData.address.trim().length < 10) {
-      newErrors.address = "Please enter a complete address";
-    }
-    if (!registerData.password) {
-      newErrors.password = "Password is required";
-    } else if (registerData.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
-    }
-    if (!registerData.confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
-    } else if (registerData.password !== registerData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-    }
-    if (!recaptchaVerified) {
-      newErrors.recaptcha = "Please verify that you are not a robot";
-    }
-    setRegisterErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
+  // ================= REGISTER =================
   const handleRegisterSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!validateRegister()) return;
+
+    const errorMessage = validateRegister(registerData, recaptchaVerified);
+
+    if (errorMessage) {
+      toast.error(errorMessage);
+      return;
+    }
+
     setIsRegisterLoading(true);
-    setTimeout(() => {
+
+    try {
+      const res = await fetch(REGISTER_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: registerData.fullName,
+          email: registerData.email,
+          password: registerData.password,
+          address: registerData.address,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Registration failed");
+      }
+
+      toast.success("OTP sent to your email");
+      navigate("/verify-otp", {
+        state: { email: registerData.email },
+      });
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
       setIsRegisterLoading(false);
-      toast.success("Registration successful!");
-      onNavigate?.("dashboard");
-    }, 1500);
+    }
   };
 
   return (
     <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-6 py-12 bg-[#1a1a1a]">
       <style>{`
-        .auth-container {
-          position: relative;
-          width: 950px;
-          height: 600px;
-          border: 2px solid #d4a446;
-          box-shadow: 0 0 25px rgba(212, 164, 70, 0.3);
-          overflow: hidden;
-        }
-
-        .form-box {
-          position: absolute;
-          top: 0;
-          width: 50%;
-          height: 100%;
-          display: flex;
-          justify-content: center;
-          flex-direction: column;
-        }
-
-        .form-box.login-form {
-          left: 0;
-          padding: 0 40px;
-        }
-
-        .form-box.login-form .animation {
-          transform: translateX(0%);
-          transition: 0.7s;
-          opacity: 1;
-          transition-delay: calc(0.1s * var(--S));
-        }
-
-        .auth-container.active .form-box.login-form .animation {
-          transform: translateX(-120%);
-          opacity: 0;
-          transition-delay: calc(0.1s * var(--D));
-        }
-
-        .form-box.register-form {
-          right: 0;
-          padding: 0 40px;
-        }
-
-        .form-box.register-form .animation {
-          transform: translateX(120%);
-          transition: 0.7s ease;
-          opacity: 0;
-          filter: blur(10px);
-          transition-delay: calc(0.1s * var(--S));
-        }
-
-        .auth-container.active .form-box.register-form .animation {
-          transform: translateX(0%);
-          opacity: 1;
-          filter: blur(0px);
-          transition-delay: calc(0.1s * var(--li));
-        }
-
-        .info-content {
-          position: absolute;
-          top: 0;
-          height: 100%;
-          width: 50%;
-          display: flex;
-          justify-content: center;
-          flex-direction: column;
-        }
-
-        .info-content.login-info {
-          right: 0;
-          text-align: right;
-          padding: 0 40px 60px 150px;
-        }
-
-        .info-content.login-info .animation {
-          transform: translateX(0);
-          transition: 0.7s ease;
-          transition-delay: calc(0.1s * var(--S));
-          opacity: 1;
-          filter: blur(0px);
-        }
-
-        .auth-container.active .info-content.login-info .animation {
-          transform: translateX(120%);
-          opacity: 0;
-          filter: blur(10px);
-          transition-delay: calc(0.1s * var(--D));
-        }
-
-        .info-content.register-info {
-          left: 0;
-          text-align: left;
-          padding: 0 150px 60px 38px;
-          pointer-events: none;
-        }
-
-        .info-content.register-info .animation {
-          transform: translateX(-120%);
-          transition: 0.7s ease;
-          opacity: 0;
-          filter: blur(10px);
-          transition-delay: calc(0.1s * var(--S));
-        }
-
-        .auth-container.active .info-content.register-info .animation {
-          transform: translateX(0%);
-          opacity: 1;
-          filter: blur(0);
-          transition-delay: calc(0.1s * var(--li));
-        }
-
-        .curved-shape {
-          position: absolute;
-          right: 0;
-          top: -5px;
-          height: 750px;
-          width: 950px;
-          background: linear-gradient(45deg, #2d2d39, #d4a446);
-          transform: rotate(10deg) skewY(40deg);
-          transform-origin: bottom right;
-          transition: 1.5s ease;
-          transition-delay: 1.6s;
-        }
-
-        .auth-container.active .curved-shape {
-          transform: rotate(0deg) skewY(0deg);
-          transition-delay: 0.5s;
-        }
-
-        .curved-shape2 {
-          position: absolute;
-          left: 250px;
-          top: 100%;
-          height: 750px;
-          width: 950px;
-          background: #2d2d39;
-          border-top: 3px solid #d4a446;
-          transform: rotate(0deg) skewY(0deg);
-          transform-origin: bottom left;
-          transition: 1.5s ease;
-          transition-delay: 0.5s;
-        }
-
-        .auth-container.active .curved-shape2 {
-          transform: rotate(-11deg) skewY(-41deg);
-          transition-delay: 1.2s;
-        }
-
-        .floating-input {
-          position: relative;
-          width: 100%;
-          height: 50px;
-          margin-top: 18px;
-        }
-
-        .floating-input input {
-          width: 100%;
-          height: 100%;
-          background: transparent;
-          border: none;
-          outline: none;
-          font-size: 16px;
-          color: #fff;
-          font-weight: 500;
-          border-bottom: 2px solid rgba(255, 255, 255, 0.3);
-          padding-right: 30px;
-          transition: 0.5s;
-        }
-
-        .floating-input input:focus,
-        .floating-input input:valid {
-          border-bottom: 2px solid #d4a446;
-        }
-
-        .floating-input label {
-          position: absolute;
-          top: 50%;
-          left: 0;
-          transform: translateY(-50%);
-          font-size: 16px;
-          color: rgba(255, 255, 255, 0.7);
-          pointer-events: none;
-          transition: 0.5s;
-        }
-
-        .floating-input input:focus ~ label,
-        .floating-input input:valid ~ label {
-          top: -5px;
-          color: #d4a446;
-          font-size: 13px;
-        }
-
-        .floating-input .icon {
-          position: absolute;
-          top: 50%;
-          right: 0;
-          transform: translateY(-50%);
-          color: rgba(255, 255, 255, 0.4);
-          transition: 0.5s;
-        }
-
-        .floating-input input:focus ~ .icon,
-        .floating-input input:valid ~ .icon {
-          color: #d4a446;
-        }
-
-        .gradient-btn {
-          position: relative;
-          width: 100%;
-          height: 45px;
-          background: transparent;
-          border-radius: 40px;
-          cursor: pointer;
-          font-size: 16px;
-          font-weight: 600;
-          border: 2px solid #d4a446;
-          overflow: hidden;
-          z-index: 1;
-          color: #fff;
-        }
-
-        .gradient-btn::before {
-          content: "";
-          position: absolute;
-          height: 300%;
-          width: 100%;
-          background: linear-gradient(#2d2d39, #d4a446, #2d2d39, #d4a446);
-          top: -100%;
-          left: 0;
-          z-index: -1;
-          transition: 0.5s;
-        }
-
-        .gradient-btn:hover::before {
-          top: 0;
-        }
-
-        .gradient-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
+        
       `}</style>
 
       <div className={`auth-container ${isActive ? "active" : ""}`}>
@@ -369,7 +136,6 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
             >
               <input
                 type="email"
-                required
                 value={loginData.email}
                 onChange={(e) =>
                   setLoginData({ ...loginData, email: e.target.value })
@@ -377,6 +143,9 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
               />
               <label>Email</label>
               <User className="icon h-5 w-5" />
+              {loginErrors.email && (
+                <p className="text-red-500 text-xs mt-1">{loginErrors.email}</p>
+              )}
             </div>
 
             <div
@@ -385,7 +154,6 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
             >
               <input
                 type="password"
-                required
                 value={loginData.password}
                 onChange={(e) =>
                   setLoginData({ ...loginData, password: e.target.value })
@@ -393,6 +161,11 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
               />
               <label>Password</label>
               <Lock className="icon h-5 w-5" />
+              {loginErrors.password && (
+                <p className="text-red-500 text-xs mt-1">
+                  {loginErrors.password}
+                </p>
+              )}
             </div>
 
             <div
@@ -424,7 +197,7 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
               </p>
               <button
                 type="button"
-                onClick={() => onNavigate?.("forgot-password")}
+                onClick={() => navigate("/forgot-password")}
                 className="text-[#d4a446] text-xm hover:underline"
               >
                 Forgot Password?
@@ -453,7 +226,7 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
         {/* Register Form */}
         <div className="form-box register-form">
           <h2
-            className="animation text-3xl text-center mb-4 text-white"
+            className="animation text-4xl text-center mb-8 text-white"
             style={{ "--li": 17, "--S": 0 } as any}
           >
             Register
@@ -465,7 +238,6 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
             >
               <input
                 type="text"
-                required
                 value={registerData.fullName}
                 onChange={(e) =>
                   setRegisterData({ ...registerData, fullName: e.target.value })
@@ -481,7 +253,6 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
             >
               <input
                 type="email"
-                required
                 value={registerData.email}
                 onChange={(e) =>
                   setRegisterData({ ...registerData, email: e.target.value })
@@ -497,7 +268,6 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
             >
               <input
                 type="text"
-                required
                 value={registerData.address}
                 onChange={(e) =>
                   setRegisterData({ ...registerData, address: e.target.value })
@@ -513,7 +283,6 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
             >
               <input
                 type="password"
-                required
                 value={registerData.password}
                 onChange={(e) =>
                   setRegisterData({ ...registerData, password: e.target.value })
@@ -529,7 +298,6 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
             >
               <input
                 type="password"
-                required
                 value={registerData.confirmPassword}
                 onChange={(e) =>
                   setRegisterData({
@@ -562,11 +330,6 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
                   I'm not a robot
                 </label>
               </div>
-              {registerErrors.recaptcha && (
-                <p className="text-red-500 text-xs mt-1">
-                  {registerErrors.recaptcha}
-                </p>
-              )}
             </div>
 
             <div
