@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react";
+import ReCAPTCHA from "react-google-recaptcha";
+import { useState, type FormEvent, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, Lock, Mail, MapPin } from "lucide-react";
 import { toast } from "sonner";
@@ -7,6 +8,7 @@ import {
   validateLogin,
   validateRegister,
 } from "../components/utils/authValidation";
+import { RecaptchaBox } from "../components/auth/RecaptchaBox";
 
 import { REGISTER_API, LOGIN_API } from "../components/utils/api";
 
@@ -30,20 +32,21 @@ export function LoginPage() {
     password: "",
     confirmPassword: "",
   });
-  const [registerErrors, setRegisterErrors] = useState<Record<string, string>>(
-    {}
-  );
   const [isRegisterLoading, setIsRegisterLoading] = useState(false);
-  const [recaptchaVerified, setRecaptchaVerified] = useState(false);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
 
-  // Login handlers
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
+
   // ================= LOGIN =================
   const handleLoginSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    const errors = validateLogin(loginData);
-    setLoginErrors(errors);
-    if (Object.keys(errors).length > 0) return;
+    const errorMessage = validateLogin(loginData);
+
+    if (errorMessage) {
+      toast.error(errorMessage);
+      return;
+    }
 
     setIsLoginLoading(true);
 
@@ -60,7 +63,7 @@ export function LoginPage() {
         throw new Error(data.message || "Login failed");
       }
 
-      toast.success("Login successful!");
+      toast.success(data.message);
       navigate("/");
     } catch (err: any) {
       toast.error(err.message);
@@ -73,7 +76,12 @@ export function LoginPage() {
   const handleRegisterSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    const errorMessage = validateRegister(registerData, recaptchaVerified);
+    const errorMessage = validateRegister(registerData);
+
+    if (!recaptchaToken) {
+      toast.error("Please verify that you are not a robot");
+      return;
+    }
 
     if (errorMessage) {
       toast.error(errorMessage);
@@ -91,6 +99,7 @@ export function LoginPage() {
           email: registerData.email,
           password: registerData.password,
           address: registerData.address,
+          recaptchaToken,
         }),
       });
 
@@ -100,23 +109,21 @@ export function LoginPage() {
         throw new Error(data.message || "Registration failed");
       }
 
-      toast.success("OTP sent to your email");
+      toast.success(data.message);
       navigate("/verify-otp", {
         state: { email: registerData.email },
       });
     } catch (err: any) {
       toast.error(err.message);
+      setRecaptchaToken(null);
+      recaptchaRef.current?.reset();
     } finally {
       setIsRegisterLoading(false);
     }
   };
 
   return (
-    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-6 py-12 bg-[#1a1a1a]">
-      <style>{`
-        
-      `}</style>
-
+    <div className="auth-page-wrapper">
       <div className={`auth-container ${isActive ? "active" : ""}`}>
         <div className="curved-shape"></div>
         <div className="curved-shape2"></div>
@@ -315,25 +322,21 @@ export function LoginPage() {
               className="floating-input animation"
               style={{ "--li": 20, "--S": 6 } as any}
             >
-              <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-lg p-4">
-                <input
-                  type="checkbox"
-                  id="recaptcha"
-                  checked={recaptchaVerified}
-                  onChange={(e) => setRecaptchaVerified(e.target.checked)}
-                  className="w-5 h-5 accent-[#d4a446]"
-                />
-                <label
-                  htmlFor="recaptcha"
-                  className="text-gray-300 text-sm cursor-pointer"
+              <div className="flex items-center  rounded-lg">
+                <div
+                  className="floating-input animation"
+                  style={{ "--li": 20, "--S": 6 } as any}
                 >
-                  I'm not a robot
-                </label>
+                  <RecaptchaBox
+                    ref={recaptchaRef}
+                    onVerify={setRecaptchaToken}
+                  />
+                </div>
               </div>
             </div>
 
             <div
-              className="floating-input animation"
+              className="floating-input animation fix-btn"
               style={{ "--li": 20, "--S": 7 } as any}
             >
               <button

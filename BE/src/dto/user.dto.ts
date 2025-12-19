@@ -20,3 +20,10 @@ export interface ResendOtpDTO {
   email: string;
   purpose: "verify_email";
 }
+
+export interface RecaptchaV2VerifyResponseDTO {
+  success: boolean;
+  challenge_ts?: string;
+  hostname?: string;
+  "error-codes"?: string[];
+}

@@ -6199,3 +6199,24 @@ html {
       rotate(var(--tw-exit-rotate, 0));
   }
 }
+
+/* Toast container */
+[data-sonner-toast] {
+  min-width: 360px;
+  max-width: 420px;
+  padding: 18px 20px;
+  font-size: 15px;
+  border-radius: 12px;
+}
+
+/* Title */
+[data-sonner-toast] [data-title] {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Description (nếu có) */
+[data-sonner-toast] [data-description] {
+  font-size: 14px;
+  line-height: 1.5;
+}

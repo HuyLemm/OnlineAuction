@@ -281,7 +281,7 @@ export function Header({ isAuthenticated = false, onLogout }: HeaderProps) {
 
             <Button
               onClick={() => navigate("/login")}
-              className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black"
+              className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black "
             >
               {isAuthenticated ? "Start Bidding" : "Login"}
             </Button>

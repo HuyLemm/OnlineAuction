@@ -21,7 +21,7 @@ import { ScrollToTop } from "./components/ScrollToTop";
 export default function App() {
   return (
     <div className="dark min-h-screen bg-background">
-      <Toaster theme="dark" position="top-right" />
+      <Toaster richColors theme="dark" position="top-right" />
       <BrowserRouter>
         <ScrollToTop />
         <Routes>

@@ -1,12 +1,63 @@
 import { Request, Response } from "express";
 import { UserService } from "../services/user.service";
-
+import { verifyRecaptcha } from "../utils/reCaptcha";
 export class UserController {
+  // ===============================
+  // POST /users/login
+  // ===============================
+  static async login(req: Request, res: Response) {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Email and password are required",
+        });
+      }
+
+      const user = await UserService.login(email, password);
+
+      return res.status(200).json({
+        success: true,
+        message: "Login successfully!",
+        user,
+      });
+    } catch (error: any) {
+      return res.status(401).json({
+        success: false,
+        message: error.message || "Login failed",
+      });
+    }
+  }
+
   // ===============================
   // POST /users/register
   // ===============================
   static async register(req: Request, res: Response) {
     try {
+      const { recaptchaToken } = req.body;
+
+      // 1️⃣ Check reCAPTCHA token tồn tại
+      if (!recaptchaToken) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing reCAPTCHA token",
+        });
+      }
+
+      // 2️⃣ Verify với Google
+      const recaptchaResult = await verifyRecaptcha(recaptchaToken);
+      console.log("recaptcha result:", recaptchaResult);
+
+      if (!recaptchaResult.success) {
+        return res.status(403).json({
+          success: false,
+          message: "reCAPTCHA verification failed",
+        });
+      }
+
+      // 3️⃣ reCAPTCHA OK → tiếp tục register
       const result = await UserService.register(req.body);
 
       return res.status(201).json({

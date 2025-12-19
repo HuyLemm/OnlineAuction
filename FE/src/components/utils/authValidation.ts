@@ -11,28 +11,23 @@ export interface RegisterData {
   confirmPassword: string;
 }
 
-export function validateLogin(data: LoginData) {
-  const errors: Record<string, string> = {};
-
+export function validateLogin(data: LoginData): string | null {
   if (!data.email) {
-    errors.email = "Email is required";
+    return "Email is required";
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
-    errors.email = "Please enter a valid email address";
+    return "Please enter a valid email address";
   }
 
   if (!data.password) {
-    errors.password = "Password is required";
+    return "Password is required";
   } else if (data.password.length < 6) {
-    errors.password = "Password must be at least 6 characters";
+    return "Password must be at least 8 characters";
   }
 
-  return errors;
+  return null;
 }
 
-export function validateRegister(
-  data: RegisterData,
-  recaptchaVerified: boolean
-): string | null {
+export function validateRegister(data: RegisterData): string | null {
   if (!data.fullName.trim()) {
     return "Full name is required";
   }
@@ -66,10 +61,6 @@ export function validateRegister(
   }
   if (data.password !== data.confirmPassword) {
     return "Passwords do not match";
-  }
-
-  if (!recaptchaVerified) {
-    return "Please confirm you are not a robot";
   }
 
   return null;

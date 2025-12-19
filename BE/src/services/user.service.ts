@@ -2,146 +2,170 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { db } from "../config/db";
 import { RegisterDTO, VerifyOtpDTO } from "../dto/user.dto";
+import { sendOtpMail } from "../utils/sendOtpMail";
 
 const SALT_ROUNDS = 10;
-const OTP_EXPIRE_MINUTES = 5;
+
+const OTP_EXPIRE_MINUTES = 2; // OTP sống 2 phút
 
 export class UserService {
+  // ===============================
+  // Login
+  // ===============================
+  static async login(email: string, password: string) {
+    // 1. Tìm user
+    const user = await db("users")
+      .select("id", "email", "password_hash", "is_verified", "role")
+      .where({ email })
+      .first();
+
+    if (!user) {
+      throw new Error("Email not found.");
+    }
+
+    // 2. Check verify
+    if (!user.is_verified) {
+      throw new Error("Please verify your email before logging in.");
+    }
+
+    // 3. So sánh password
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch) {
+      throw new Error("Password incorrect.");
+    }
+
+    // 4. Login OK
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    };
+  }
+
   // ===============================
   // Register
   // ===============================
   static async register(dto: RegisterDTO) {
-    // 1. Check user theo email
-    const existingUser = await db("users")
-      .select("id", "is_verified")
-      .where({ email: dto.email })
-      .first();
+    const now = new Date();
 
-    // Nếu user tồn tại nhưng CHƯA verify → cho đăng ký lại
-    if (existingUser && !existingUser.is_verified) {
-      await db("user_otps").where({ user_id: existingUser.id }).del();
+    return await db.transaction(async (trx) => {
+      // 1. Check user theo email
+      const existingUser = await trx("users")
+        .select("id", "is_verified")
+        .where({ email: dto.email })
+        .first();
 
-      await db("users").where({ id: existingUser.id }).del();
-    }
+      if (existingUser?.is_verified) {
+        throw new Error("Email already exists");
+      }
 
-    // Nếu user đã verify → chặn
-    if (existingUser && existingUser.is_verified) {
-      throw new Error("Email already exists");
-    }
+      // Nếu user pending → xoá sạch
+      if (existingUser && !existingUser.is_verified) {
+        await trx("user_otps").where({ user_id: existingUser.id }).del();
+        await trx("users").where({ id: existingUser.id }).del();
+      }
 
-    // 2. Hash password
-    const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
+      // 2. Hash password
+      const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
 
-    // 3. Insert user (pending)
-    const [user] = await db("users")
-      .insert({
-        full_name: dto.fullName,
-        email: dto.email,
-        password_hash: passwordHash,
-        address: dto.address,
-        role: "bidder",
-        is_verified: false,
-      })
-      .returning(["id", "email"]);
+      // 3. Insert user
+      const [user] = await trx("users")
+        .insert({
+          full_name: dto.fullName,
+          email: dto.email,
+          password_hash: passwordHash,
+          address: dto.address,
+          role: "bidder",
+          is_verified: false,
+          last_otp_sent_at: now, // ⏱ mốc xoá account
+        })
+        .returning(["id", "email"]);
 
-    // 4. Generate OTP
-    const otp = UserService.generateOTP();
-    const expiredAt = new Date(Date.now() + OTP_EXPIRE_MINUTES * 60 * 1000);
+      // 4. Generate OTP
+      const otp = UserService.generateOTP();
+      const expiredAt = new Date(
+        now.getTime() + OTP_EXPIRE_MINUTES * 60 * 1000
+      );
 
-    // 5. Insert OTP
-    await db("user_otps").insert({
-      user_id: user.id,
-      otp_code: otp,
-      purpose: "verify_email",
-      expired_at: expiredAt,
+      // 5. Insert OTP
+      await trx("user_otps").insert({
+        user_id: user.id,
+        otp_code: otp,
+        purpose: "verify_email",
+        expired_at: expiredAt,
+      });
+
+      // 6. Gửi mail (thay console.log sau)
+      await sendOtpMail(user.email, otp);
+      console.log(`OTP REGISTER ${user.email}: ${otp}`);
+
+      return {
+        message: "OTP sent to your email.",
+        email: user.email,
+      };
     });
-
-    // 6. Send OTP (demo)
-    console.log(`Verification code: ${otp}`);
-
-    return {
-      message: "Registration successful. Please verify OTP.",
-      email: user.email,
-    };
   }
 
   // ===============================
   // Verify OTP
   // ===============================
   static async verifyOtp(dto: VerifyOtpDTO) {
-    // 1. Find user
     const user = await db("users")
       .select("id", "is_verified")
       .where({ email: dto.email })
       .first();
 
-    if (!user) {
-      throw new Error("User not found");
-    }
+    if (!user) throw new Error("User not found");
+    if (user.is_verified) throw new Error("User already verified");
 
-    if (user.is_verified) {
-      throw new Error("User already verified");
-    }
-
-    // 2. Find OTP
     const otpRow = await db("user_otps")
       .where({
         user_id: user.id,
         otp_code: dto.otp,
-        purpose: dto.purpose, // "verify_email"
+        purpose: dto.purpose, // verify_email
       })
       .first();
 
-    if (!otpRow) {
-      throw new Error("Invalid OTP");
-    }
-
+    if (!otpRow) throw new Error("Invalid OTP");
     if (new Date(otpRow.expired_at) < new Date()) {
       throw new Error("OTP expired");
     }
 
-    // 3. Activate user
-    await db("users").where({ id: user.id }).update({ is_verified: true });
+    // Verify user
+    await db("users").where({ id: user.id }).update({
+      is_verified: true,
+      last_otp_sent_at: null, // ✅ clear timer
+    });
 
-    // 4. Delete OTP
-    await db("user_otps").where({ id: otpRow.id }).del();
+    // Xoá toàn bộ OTP
+    await db("user_otps").where({ user_id: user.id }).del();
 
-    return {
-      message: "OTP verified successfully",
-    };
+    return { message: "OTP verified. Login successfully!" };
   }
 
   // ===============================
   // Resend OTP
   // ===============================
   static async resendOtp(email: string) {
-    // 1. Find user
+    const now = new Date();
+
     const user = await db("users")
       .select("id", "is_verified")
       .where({ email })
       .first();
 
-    if (!user) {
-      throw new Error("User not found");
-    }
+    if (!user) throw new Error("User not found");
+    if (user.is_verified) throw new Error("User already verified");
 
-    if (user.is_verified) {
-      throw new Error("User already verified");
-    }
-
-    // 2. Delete old OTPs (verify_email)
+    // Xoá OTP cũ
     await db("user_otps")
-      .where({
-        user_id: user.id,
-        purpose: "verify_email",
-      })
+      .where({ user_id: user.id, purpose: "verify_email" })
       .del();
 
-    // 3. Generate new OTP
+    // Tạo OTP mới
     const otp = UserService.generateOTP();
-    const expiredAt = new Date(Date.now() + OTP_EXPIRE_MINUTES * 60 * 1000);
+    const expiredAt = new Date(now.getTime() + OTP_EXPIRE_MINUTES * 60 * 1000);
 
-    // 4. Insert new OTP
     await db("user_otps").insert({
       user_id: user.id,
       otp_code: otp,
@@ -149,12 +173,13 @@ export class UserService {
       expired_at: expiredAt,
     });
 
-    // 5. Send OTP (demo)
-    console.log(`RESEND OTP for ${email}: ${otp}`);
+    // Gia hạn account
+    await db("users").where({ id: user.id }).update({ last_otp_sent_at: now });
 
-    return {
-      message: "OTP resent successfully",
-    };
+    // await sendOtpMail(email, otp);
+    console.log(`OTP RESEND ${email}: ${otp}`);
+
+    return { message: "OTP resent successfully" };
   }
 
   // ===============================
