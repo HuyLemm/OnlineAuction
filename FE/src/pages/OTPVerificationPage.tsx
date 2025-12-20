@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import "../styles/verify-auth.css";
 import { VERIFY_OTP_API, RESEND_OTP_API } from "../components/utils/api";
 
+import { useAuth } from "../components/utils/AuthContext";
+
 export function OTPVerificationPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -15,6 +17,8 @@ export function OTPVerificationPage() {
   const [error, setError] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
+
+  const { login } = useAuth();
 
   useEffect(() => {
     if (!email) {
@@ -46,8 +50,15 @@ export function OTPVerificationPage() {
         throw new Error(data.message || "OTP verification failed");
       }
 
-      toast.success("Email verified successfully!");
-      navigate("/dashboard");
+      console.log("OTP verified:", data);
+      login({
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        role: data.user.role,
+      });
+
+      toast.success("Account verified and logged in!");
+      navigate("/");
     } catch (err: any) {
       setError(err.message);
       toast.error(err.message);

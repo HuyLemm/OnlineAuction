@@ -12,6 +12,8 @@ import { RecaptchaBox } from "../components/auth/RecaptchaBox";
 
 import { REGISTER_API, LOGIN_API } from "../components/utils/api";
 
+import { useAuth } from "../components/utils/AuthContext";
+
 export function LoginPage() {
   const navigate = useNavigate();
   const [isActive, setIsActive] = useState(false);
@@ -36,6 +38,8 @@ export function LoginPage() {
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
 
   const recaptchaRef = useRef<ReCAPTCHA>(null);
+
+  const { login } = useAuth();
 
   // ================= LOGIN =================
   const handleLoginSubmit = async (e: FormEvent) => {
@@ -62,6 +66,12 @@ export function LoginPage() {
       if (!res.ok) {
         throw new Error(data.message || "Login failed");
       }
+
+      login({
+        accessToken: data.user.accessToken,
+        refreshToken: data.user.refreshToken,
+        role: data.user.role,
+      });
 
       toast.success(data.message);
       navigate("/");
@@ -120,6 +130,21 @@ export function LoginPage() {
     } finally {
       setIsRegisterLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setRegisterData({
+      fullName: "",
+      email: "",
+      address: "",
+      password: "",
+      confirmPassword: "",
+    });
+
+    setLoginData({
+      email: "",
+      password: "",
+    });
   };
 
   return (
@@ -196,7 +221,10 @@ export function LoginPage() {
                 Don't have an account?{" "}
                 <button
                   type="button"
-                  onClick={() => setIsActive(true)}
+                  onClick={() => {
+                    setIsActive(true);
+                    resetForm();
+                  }}
                   className="text-[#d4a446] font-semibold hover:underline"
                 >
                   Sign Up
@@ -356,7 +384,10 @@ export function LoginPage() {
                 Already have an account?{" "}
                 <button
                   type="button"
-                  onClick={() => setIsActive(false)}
+                  onClick={() => {
+                    setIsActive(false);
+                    resetForm();
+                  }}
                   className="text-[#d4a446] font-semibold hover:underline"
                 >
                   Sign In

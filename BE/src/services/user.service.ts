@@ -3,6 +3,11 @@ import crypto from "crypto";
 import { db } from "../config/db";
 import { RegisterDTO, VerifyOtpDTO } from "../dto/user.dto";
 import { sendOtpMail } from "../utils/sendOtpMail";
+import {
+  signAccessToken,
+  signRefreshToken,
+  verifyRefreshToken,
+} from "../utils/jwt";
 
 const SALT_ROUNDS = 10;
 
@@ -13,7 +18,7 @@ export class UserService {
   // Login
   // ===============================
   static async login(email: string, password: string) {
-    // 1. Tìm user
+    // 1️⃣ Tìm user
     const user = await db("users")
       .select("id", "email", "password_hash", "is_verified", "role")
       .where({ email })
@@ -23,19 +28,41 @@ export class UserService {
       throw new Error("Email not found.");
     }
 
-    // 2. Check verify
+    // 2️⃣ Check verify
     if (!user.is_verified) {
       throw new Error("Please verify your email before logging in.");
     }
 
-    // 3. So sánh password
+    // 3️⃣ Check password
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       throw new Error("Password incorrect.");
     }
 
-    // 4. Login OK
+    // 4️⃣ Tạo tokens
+    const accessToken = signAccessToken({
+      userId: user.id, // UUID → string
+      role: user.role,
+    });
+
+    const refreshToken = signRefreshToken({
+      userId: user.id,
+    });
+    await db("user_sessions").where({ user_id: user.id }).del();
+    // 5️⃣ Lưu refresh token vào DB
+    await db("user_sessions").insert({
+      user_id: user.id,
+      refresh_token: refreshToken, // ✅ ĐÚNG
+      created_at: new Date(),
+      expired_at: new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 ngày
+      ),
+    });
+
+    // 6️⃣ Trả kết quả
     return {
+      accessToken,
+      refreshToken,
       id: user.id,
       email: user.email,
       role: user.role,
@@ -111,7 +138,7 @@ export class UserService {
   // ===============================
   static async verifyOtp(dto: VerifyOtpDTO) {
     const user = await db("users")
-      .select("id", "is_verified")
+      .select("id", "email", "is_verified", "role")
       .where({ email: dto.email })
       .first();
 
@@ -140,7 +167,35 @@ export class UserService {
     // Xoá toàn bộ OTP
     await db("user_otps").where({ user_id: user.id }).del();
 
-    return { message: "OTP verified. Login successfully!" };
+    // ✅ TẠO TOKEN
+    const accessToken = signAccessToken({
+      userId: user.id,
+      role: user.role,
+    });
+
+    const refreshToken = signRefreshToken({
+      userId: user.id,
+    });
+
+    await db("user_sessions").where({ user_id: user.id }).del();
+
+    // ✅ LƯU refresh token
+    await db("user_sessions").insert({
+      user_id: user.id,
+      refresh_token: refreshToken,
+      created_at: new Date(),
+      expired_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
+    };
   }
 
   // ===============================
@@ -180,6 +235,44 @@ export class UserService {
     console.log(`OTP RESEND ${email}: ${otp}`);
 
     return { message: "OTP resent successfully" };
+  }
+
+  // ===============================
+  // Refresh access token
+  // ===============================
+  static async refreshAccessToken(refreshToken: string) {
+    // 1️⃣ Verify refresh token (JWT)
+    const payload = verifyRefreshToken(refreshToken);
+
+    // 2️⃣ Check session trong DB
+    const session = await db("user_sessions")
+      .where({ refresh_token: refreshToken })
+      .andWhere("expired_at", ">", new Date())
+      .first();
+
+    if (!session) {
+      throw new Error("Refresh token expired or revoked");
+    }
+
+    // 3️⃣ Lấy role user
+    const user = await db("users")
+      .select("id", "role")
+      .where({ id: payload.userId })
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // 4️⃣ Cấp access token mới
+    const newAccessToken = signAccessToken({
+      userId: user.id,
+      role: user.role,
+    });
+
+    return {
+      accessToken: newAccessToken,
+    };
   }
 
   // ===============================

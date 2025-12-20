@@ -1,4 +1,13 @@
-import { Search, Bell, User, Gavel, Shield, ChevronRight } from "lucide-react";
+import {
+  Search,
+  Bell,
+  User,
+  Gavel,
+  Shield,
+  ChevronRight,
+  LogOut,
+  LogIn,
+} from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import {
@@ -14,12 +23,10 @@ import { toast } from "sonner";
 import { GET_CATEGORIES_FOR_MENU_API } from "../components/utils/api";
 import { useNavigate, useLocation } from "react-router-dom";
 
-interface HeaderProps {
-  isAuthenticated?: boolean;
-  onLogout?: () => void;
-}
+import { useAuth } from "../components/utils/AuthContext";
 
-export function Header({ isAuthenticated = false, onLogout }: HeaderProps) {
+export function Header() {
+  const { isLoggedIn, role, login, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -220,14 +227,16 @@ export function Header({ isAuthenticated = false, onLogout }: HeaderProps) {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <button
-              onClick={() => navigate("/seller")}
-              className={`text-lg ${
-                isActive("/seller") ? "text-[#fbbf24]" : "text-foreground/90"
-              }`}
-            >
-              Sell
-            </button>
+            {isLoggedIn && role === "seller" && (
+              <button
+                onClick={() => navigate("/seller")}
+                className={`text-lg ${
+                  isActive("/seller") ? "text-[#fbbf24]" : "text-foreground/90"
+                }`}
+              >
+                Sell
+              </button>
+            )}
           </nav>
 
           {/* Search */}
@@ -251,7 +260,7 @@ export function Header({ isAuthenticated = false, onLogout }: HeaderProps) {
 
           {/* Actions */}
           <div className="flex items-center gap-3">
-            {isAuthenticated && (
+            {isLoggedIn && role === "bidder" && (
               <NotificationDropdown
                 notifications={notifications}
                 unreadCount={unreadCount}
@@ -263,28 +272,50 @@ export function Header({ isAuthenticated = false, onLogout }: HeaderProps) {
               />
             )}
 
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/dashboard")}
-            >
-              <User className="h-5 w-5" />
-            </Button>
+            {isLoggedIn && role === "bidder" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate("/dashboard")}
+              >
+                <User className="h-5 w-5" />
+              </Button>
+            )}
 
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/admin")}
-            >
-              <Shield className="h-5 w-5" />
-            </Button>
+            {isLoggedIn && role === "admin" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate("/admin")}
+              >
+                <Shield className="h-5 w-5" />
+              </Button>
+            )}
 
-            <Button
-              onClick={() => navigate("/login")}
-              className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black "
-            >
-              {isAuthenticated ? "Start Bidding" : "Login"}
-            </Button>
+            {/* LOGOUT */}
+            {isLoggedIn && (
+              <Button
+                variant="ghost"
+                className="text-red-400 hover:text-red-500"
+                onClick={() => {
+                  logout();
+                  navigate("/");
+                }}
+              >
+                <LogOut className="h-4 w-4 mr-1" />
+                Logout
+              </Button>
+            )}
+
+            {/* LOGIN */}
+            {!isLoggedIn && (
+              <Button
+                onClick={() => navigate("/login")}
+                className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black"
+              >
+                Start Bidding
+              </Button>
+            )}
           </div>
         </div>
       </div>

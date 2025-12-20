@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import { UserService } from "../services/user.service";
 import { verifyRecaptcha } from "../utils/reCaptcha";
+import { verifyRefreshToken, signAccessToken } from "../utils/jwt";
+
 export class UserController {
   // ===============================
   // POST /users/login
@@ -95,7 +97,8 @@ export class UserController {
 
       return res.status(200).json({
         success: true,
-        message: result.message,
+        message: "OTP verified & logged in",
+        ...result,
       });
     } catch (error: any) {
       return res.status(400).json({
@@ -129,6 +132,34 @@ export class UserController {
       return res.status(400).json({
         success: false,
         message: error.message || "Resend OTP failed",
+      });
+    }
+  }
+
+  // ===============================
+  // POST /users/refresh-token
+  // ===============================
+  static async refreshToken(req: Request, res: Response) {
+    try {
+      const { refreshToken } = req.body;
+
+      if (!refreshToken) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing refresh token",
+        });
+      }
+
+      const result = await UserService.refreshAccessToken(refreshToken);
+
+      return res.status(200).json({
+        success: true,
+        accessToken: result.accessToken,
+      });
+    } catch (error: any) {
+      return res.status(401).json({
+        success: false,
+        message: error.message || "Invalid refresh token",
       });
     }
   }

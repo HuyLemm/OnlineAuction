@@ -15,42 +15,45 @@ import { NotificationsPage } from "./pages/NotificationsPage";
 import { SearchResultsPage } from "./pages/SearchResultsPage";
 import { StateExamplesPage } from "./pages/StateExamplesPage";
 import { DevTools } from "./components/dev/DevTools";
-
 import { ScrollToTop } from "./components/ScrollToTop";
+
+import { AuthProvider } from "./components/utils/AuthContext";
 
 export default function App() {
   return (
     <div className="dark min-h-screen bg-background">
-      <Toaster richColors theme="dark" position="top-right" />
-      <BrowserRouter>
-        <ScrollToTop />
-        <Routes>
-          {/* Routes with main layout */}
-          <Route element={<Layout />}>
-            <Route index element={<HomePage />} />
-            <Route path="browse" element={<BrowseItemsPage />} />
-            <Route path="product/:id" element={<ProductDetailPage />} />
-            <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="seller" element={<SellerPanelPage />} />
-            <Route path="order/:orderId" element={<OrderPage />} />
-            <Route path="admin" element={<AdminPage />} />
-            <Route path="notifications" element={<NotificationsPage />} />
-            <Route path="search" element={<SearchResultsPage />} />
-            <Route path="state-examples" element={<StateExamplesPage />} />
+      <AuthProvider>
+        <Toaster richColors theme="dark" position="top-right" />
+        <BrowserRouter>
+          <ScrollToTop />
+          <Routes>
+            {/* Routes with main layout */}
+            <Route element={<Layout />}>
+              <Route index element={<HomePage />} />
+              <Route path="browse" element={<BrowseItemsPage />} />
+              <Route path="product/:id" element={<ProductDetailPage />} />
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="seller" element={<SellerPanelPage />} />
+              <Route path="order/:orderId" element={<OrderPage />} />
+              <Route path="admin" element={<AdminPage />} />
+              <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="search" element={<SearchResultsPage />} />
+              <Route path="state-examples" element={<StateExamplesPage />} />
 
-            {/* Auth routes without footer */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/verify-otp" element={<OTPVerificationPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              {/* Auth routes without footer */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/verify-otp" element={<OTPVerificationPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
+              {/* Catch all */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
             {/* Catch all */}
             <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-          {/* Catch all */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        <DevTools />
-      </BrowserRouter>
+          </Routes>
+          <DevTools />
+        </BrowserRouter>
+      </AuthProvider>
     </div>
   );
 }

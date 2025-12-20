@@ -7,7 +7,6 @@ export const env = {
   DB_NAME: process.env.SUPABASE_DB!,
   DB_USER: process.env.SUPABASE_USER!,
   DB_PASSWORD: process.env.SUPABASE_PASSWORD!,
-  JWT_SECRET: process.env.JWT_SECRET!,
   PORT: Number(process.env.PORT) || 3000,
   MAIL_HOST: process.env.MAIL_HOST!,
   MAIL_PORT: Number(process.env.MAIL_PORT!),
@@ -15,4 +14,8 @@ export const env = {
   MAIL_PASS: process.env.MAIL_PASS!,
   MAIL_FROM: process.env.MAIL_FROM!,
   RECAPTCHA_SECRET_KEY: process.env.RECAPTCHA_SECRET_KEY!,
+  JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET!,
+  JWT_ACCESS_EXPIRES_IN: process.env.JWT_ACCESS_EXPIRES_IN,
+  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET!,
+  JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN,
 };
