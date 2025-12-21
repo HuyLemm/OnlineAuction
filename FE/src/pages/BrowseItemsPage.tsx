@@ -9,10 +9,14 @@ import { LoadingSpinner } from "../components/state";
 import {
   GET_BROWSE_PRODUCT_API,
   GET_CATEGORIES_FOR_SIDEBAR_API,
+  GET_WATCHLIST_ID_API,
 } from "../components/utils/api";
+
+import { fetchWithAuth } from "../components/utils/fetchWithAuth";
 
 export function BrowseItemsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [watchlistIds, setWatchlistIds] = useState<Set<string>>(new Set());
 
   /* ---------------- URL params ---------------- */
   const pageParam = Number(searchParams.get("page") ?? 1);
@@ -46,6 +50,20 @@ export function BrowseItemsPage() {
   });
 
   const itemsPerPage = 20;
+
+  useEffect(() => {
+    const loadWatchlistIds = async () => {
+      try {
+        const res = await fetchWithAuth(GET_WATCHLIST_ID_API);
+        const data = await res.json();
+        setWatchlistIds(new Set(data.data));
+      } catch {
+        // chưa login / refresh fail → bỏ qua
+      }
+    };
+
+    loadWatchlistIds();
+  }, []);
 
   /* ---------------- Fetch categories ---------------- */
   useEffect(() => {
@@ -269,6 +287,8 @@ export function BrowseItemsPage() {
             endIndex={pageParam * itemsPerPage}
             totalItems={totalItems}
             onPageChange={(p) => updateParams({ page: p })}
+            watchlistIds={watchlistIds}
+            setWatchlistIds={setWatchlistIds}
           />
         </div>
       </div>

@@ -11,6 +11,7 @@ import {
 } from "../../components/utils/timeUtils";
 import { useNavigate } from "react-router-dom";
 import { formatCurrency } from "../../lib/utils";
+import { useState } from "react";
 
 interface AuctionCardProps {
   id: string;
@@ -34,6 +35,11 @@ interface AuctionCardProps {
   onCategoryClick?: (categoryId: string) => void;
 
   showCategory?: boolean;
+
+  isFavorite: boolean;
+  onToggleFavorite: (productId: string, isFavorite: boolean) => void;
+
+  hideFavorite?: boolean;
 }
 
 export function AuctionCard({
@@ -52,9 +58,12 @@ export function AuctionCard({
   buyNowPrice,
   postedDate,
   showCategory = true,
+  isFavorite,
+  onToggleFavorite,
+  hideFavorite = false,
 }: AuctionCardProps) {
   const navigate = useNavigate();
-
+  const [loading, setLoading] = useState(false);
   const isNew = isNewItem(postedDate ? new Date(postedDate) : undefined, 7);
   const timeLeft = calculateTimeLeft(end_time);
   const postedAt = formatPostedDate(postedDate);
@@ -98,14 +107,25 @@ export function AuctionCard({
         </div>
 
         {/* Favorite */}
-        <button
-          className="absolute top-2 right-2 h-7 w-7 rounded-full
+        {!hideFavorite && (
+          <button
+            className="absolute top-2 right-2 h-10 w-10 rounded-full
                      bg-black/40 flex items-center justify-center
                      hover:bg-black/60"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Heart className="h-3.5 w-3.5 text-white" />
-        </button>
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite(id, isFavorite);
+            }}
+          >
+            <Heart
+              className={`h-8 w-8 transition ${
+                isFavorite
+                  ? "fill-red-500 text-red-500 fill-current  "
+                  : "text-gray-400"
+              }`}
+            />
+          </button>
+        )}
 
         {/* Bottom Overlay */}
         <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">

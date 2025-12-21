@@ -1,15 +1,15 @@
 import { type ReactNode, useState } from "react";
-import { 
-  Gavel, 
-  Heart, 
-  TrendingUp, 
-  Trophy, 
-  History, 
-  Star, 
-  Settings, 
+import {
+  Gavel,
+  Heart,
+  TrendingUp,
+  Trophy,
+  History,
+  Star,
+  Settings,
   Store,
   Menu,
-  X
+  X,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -27,32 +27,60 @@ interface NavItem {
   badge?: number;
 }
 
-export function DashboardLayout({ children, activeTab, onTabChange }: DashboardLayoutProps) {
+export function DashboardLayout({
+  children,
+  activeTab,
+  onTabChange,
+}: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems: NavItem[] = [
-    { id: "my-bids", label: "My Bids", icon: Gavel, badge: 5 },
-    { id: "watchlist", label: "Watchlist", icon: Heart, badge: 12 },
-    { id: "active-auctions", label: "Active Auctions", icon: TrendingUp, badge: 3 },
-    { id: "won-auctions", label: "Won Auctions", icon: Trophy },
-    { id: "bid-history", label: "Bid History", icon: History },
-    { id: "reviews", label: "Ratings & Reviews", icon: Star },
-    { id: "settings", label: "Profile Settings", icon: Settings },
-    { id: "become-seller", label: "Become a Seller", icon: Store },
+    {
+      id: "profile",
+      label: "Profile Settings",
+      icon: Settings,
+    },
+    {
+      id: "reviews",
+      label: "Ratings & Reviews",
+      icon: Star,
+    },
+    {
+      id: "watchlist",
+      label: "Watchlist",
+      icon: Heart,
+    },
+    {
+      id: "active-bids",
+      label: "My Active Bids",
+      icon: Gavel,
+    },
+    {
+      id: "won-auctions",
+      label: "Won Auctions",
+      icon: Trophy,
+    },
+    {
+      id: "become-seller",
+      label: "Become a Seller",
+      icon: Store,
+    },
   ];
 
   const NavContent = () => (
     <>
       <div className="p-6 border-b border-border/50">
         <h2 className="text-foreground mb-1">Dashboard</h2>
-        <p className="text-muted-foreground">Manage your auctions and profile</p>
+        <p className="text-muted-foreground">
+          Manage your auctions and profile
+        </p>
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
-          
+
           return (
             <button
               key={item.id}
@@ -71,7 +99,10 @@ export function DashboardLayout({ children, activeTab, onTabChange }: DashboardL
                 <span>{item.label}</span>
               </div>
               {item.badge && (
-                <Badge variant="secondary" className="bg-[#fbbf24]/10 text-[#fbbf24] border-0">
+                <Badge
+                  variant="secondary"
+                  className="bg-[#fbbf24]/10 text-[#fbbf24] border-0"
+                >
                   {item.badge}
                 </Badge>
               )}
@@ -96,7 +127,11 @@ export function DashboardLayout({ children, activeTab, onTabChange }: DashboardL
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         className="fixed bottom-6 right-6 lg:hidden z-50 h-14 w-14 rounded-full shadow-lg bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black border-0"
       >
-        {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        {mobileMenuOpen ? (
+          <X className="h-6 w-6" />
+        ) : (
+          <Menu className="h-6 w-6" />
+        )}
       </Button>
 
       {/* Mobile Sidebar Overlay */}
@@ -114,9 +149,7 @@ export function DashboardLayout({ children, activeTab, onTabChange }: DashboardL
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        <div className="container mx-auto p-6">
-          {children}
-        </div>
+        <div className="container mx-auto p-6">{children}</div>
       </main>
     </div>
   );

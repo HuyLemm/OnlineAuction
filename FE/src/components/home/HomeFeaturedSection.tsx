@@ -2,6 +2,11 @@ import { AuctionCard } from "../auction/AuctionCard";
 import { Button } from "../ui/button";
 import { ArrowRight, type LucideIcon } from "lucide-react";
 import { type AuctionItemDTO } from "../../types/dto";
+import { toast } from "sonner";
+
+import { REMOVE_FROM_WATCHLIST_API, ADD_TO_WATCHLIST_API } from "../utils/api";
+
+import { fetchWithAuth } from "../utils/fetchWithAuth";
 
 interface HomeFeaturedSectionProps {
   title: string;
@@ -11,6 +16,8 @@ interface HomeFeaturedSectionProps {
   iconColor: string;
 
   auctions: AuctionItemDTO[];
+  watchlistIds: Set<string>;
+  setWatchlistIds: React.Dispatch<React.SetStateAction<Set<string>>>;
 
   onViewAll?: () => void;
 }
@@ -22,8 +29,49 @@ export function HomeFeaturedSection({
   iconGradient,
   iconColor,
   auctions,
+  watchlistIds,
+  setWatchlistIds,
   onViewAll,
 }: HomeFeaturedSectionProps) {
+  const handleToggleFavorite = async (
+    productId: string,
+    isFavorite: boolean
+  ) => {
+    try {
+      if (isFavorite) {
+        await fetchWithAuth(`${REMOVE_FROM_WATCHLIST_API}/${productId}`, {
+          method: "DELETE",
+        });
+
+        setWatchlistIds((prev) => {
+          const next = new Set(prev);
+          next.delete(productId);
+          return next;
+        });
+
+        toast.success("Removed from watchlist");
+      } else {
+        await fetchWithAuth(ADD_TO_WATCHLIST_API, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ productId }),
+        });
+
+        setWatchlistIds((prev) => {
+          const next = new Set(prev);
+          next.add(productId);
+          return next;
+        });
+
+        toast.success("Added to watchlist");
+      }
+    } catch (err) {
+      toast.error("You must be logged in to add to watchlist");
+    }
+  };
+
   return (
     <section className="space-y-6">
       {/* Header */}
@@ -72,6 +120,8 @@ export function HomeFeaturedSection({
             isHot={auction.isHot}
             endingSoon={auction.endingSoon}
             showCategory
+            isFavorite={watchlistIds.has(auction.id)}
+            onToggleFavorite={handleToggleFavorite}
           />
         ))}
       </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Clock, Calendar } from "lucide-react";
+import { ArrowLeft, Clock, Calendar, Heart, HeartOff } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { Button } from "../components/ui/button";
@@ -25,9 +25,17 @@ import { LoadingSpinner } from "../components/state";
 import { API_BASE_URL } from "../components/utils/api";
 import { toast } from "sonner";
 
+import { fetchWithAuth } from "../components/utils/fetchWithAuth";
+import {
+  ADD_TO_WATCHLIST_API,
+  REMOVE_FROM_WATCHLIST_API,
+  GET_WATCHLIST_ID_API,
+} from "../components/utils/api";
+
 export function ProductDetailPage() {
   const { id: productId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [isFavorite, setIsFavorite] = useState(false);
 
   const [data, setData] = useState<ProductDetailDTO | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +44,16 @@ export function ProductDetailPage() {
   /* ---------------- Fetch product detail ---------------- */
   useEffect(() => {
     if (!productId) return;
-
+    const checkFavorite = async () => {
+      try {
+        const res = await fetchWithAuth(GET_WATCHLIST_ID_API);
+        const json = await res.json();
+        const ids: string[] = json.data ?? [];
+        setIsFavorite(ids.includes(productId));
+      } catch {
+        // chưa login → bỏ qua
+      }
+    };
     const fetchDetail = async () => {
       try {
         setLoading(true);
@@ -53,7 +70,30 @@ export function ProductDetailPage() {
     };
 
     fetchDetail();
+    checkFavorite();
   }, [productId]);
+
+  const handleToggleFavorite = async () => {
+    try {
+      if (isFavorite) {
+        await fetchWithAuth(`${REMOVE_FROM_WATCHLIST_API}/${productId}`, {
+          method: "DELETE",
+        });
+        setIsFavorite(false);
+        toast.success("Removed from watchlist");
+      } else {
+        await fetchWithAuth(ADD_TO_WATCHLIST_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ productId }),
+        });
+        setIsFavorite(true);
+        toast.success("Added to watchlist");
+      }
+    } catch {
+      toast.warning("You must be logged in to use watchlist");
+    }
+  };
 
   if (loading || !data) {
     return (
@@ -143,7 +183,33 @@ export function ProductDetailPage() {
 
       {/* Title */}
       <div className="space-y-1">
-        <h1 className="text-foreground text-4xl">{data.product.title}</h1>
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="text-foreground text-4xl leading-tight">
+            {data.product.title}
+          </h1>
+
+          <Button
+            variant="ghost"
+            onClick={handleToggleFavorite}
+            className="flex items-center gap-2 mt-1 px-3 hover:bg-transparent"
+          >
+            {isFavorite ? (
+              <>
+                <HeartOff className="h-5 w-5 text-red-500 fill-current" />
+                <span className="text-lg font-medium text-yellow-500">
+                  Remove from favourite
+                </span>
+              </>
+            ) : (
+              <>
+                <Heart className="h-5 w-5 text-red-500 fill-current" />
+                <span className="text-lg font-medium text-yellow-500">
+                  Add to favourite
+                </span>
+              </>
+            )}
+          </Button>
+        </div>
 
         <div className="flex items-center justify-between text-lg">
           <div className="flex items-center gap-2">

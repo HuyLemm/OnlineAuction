@@ -8,7 +8,6 @@
     "outDir": "dist",
 
     "lib": ["ES2020"],
-    "types": ["node", "express"],
 
     "sourceMap": true,
     "strict": true,
@@ -18,7 +17,12 @@
     "exactOptionalPropertyTypes": true,
 
     "isolatedModules": false,
-    "moduleDetection": "auto"
+    "moduleDetection": "auto",
+
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/@types"
+    ]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules"]

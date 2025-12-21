@@ -13,11 +13,14 @@ import {
   GET_TOP_5_ENDING_SOON_API,
   GET_TOP_5_MOST_BIDS_API,
   GET_TOP_5_HIGHEST_PRICE_API,
+  GET_WATCHLIST_ID_API,
 } from "../components/utils/api";
+
+import { fetchWithAuth } from "../components/utils/fetchWithAuth";
 
 export function HomePage() {
   const navigate = useNavigate();
-
+  const [watchlistIds, setWatchlistIds] = useState<Set<string>>(new Set());
   const [endingSoon, setEndingSoon] = useState<AuctionItemDTO[]>([]);
   const [mostBids, setMostBids] = useState<AuctionItemDTO[]>([]);
   const [highestPrice, setHighestPrice] = useState<AuctionItemDTO[]>([]);
@@ -51,6 +54,20 @@ export function HomePage() {
     isHot: item.isHot,
     endingSoon: item.endingSoon,
   });
+
+  useEffect(() => {
+    const loadWatchlistIds = async () => {
+      try {
+        const res = await fetchWithAuth(GET_WATCHLIST_ID_API);
+        const data = await res.json();
+        setWatchlistIds(new Set(data.data));
+      } catch {
+        // chưa login / refresh fail → bỏ qua
+      }
+    };
+
+    loadWatchlistIds();
+  }, []);
 
   useEffect(() => {
     const loadAll = async () => {
@@ -99,6 +116,8 @@ export function HomePage() {
         iconColor="text-[#f59e0b]"
         auctions={endingSoon}
         onViewAll={() => navigate("/browse?sort=ending-soon")}
+        watchlistIds={watchlistIds}
+        setWatchlistIds={setWatchlistIds}
       />
 
       {/* MOST BIDS */}
@@ -110,6 +129,8 @@ export function HomePage() {
         iconColor="text-[#ef4444]"
         auctions={mostBids}
         onViewAll={() => navigate("/browse?sort=most-bids")}
+        watchlistIds={watchlistIds}
+        setWatchlistIds={setWatchlistIds}
       />
 
       {/* HIGHEST PRICE */}
@@ -121,6 +142,8 @@ export function HomePage() {
         iconColor="text-[#fbbf24]"
         auctions={highestPrice}
         onViewAll={() => navigate("/browse?sort=price-high")}
+        watchlistIds={watchlistIds}
+        setWatchlistIds={setWatchlistIds}
       />
     </div>
   );

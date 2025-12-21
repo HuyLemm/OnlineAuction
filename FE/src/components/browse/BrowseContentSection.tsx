@@ -4,6 +4,10 @@ import { Button } from "../ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { type AuctionItemDTO } from "../../types/dto";
 import { calculateTimeLeft } from "../../components/utils/timeUtils";
+import { REMOVE_FROM_WATCHLIST_API, ADD_TO_WATCHLIST_API } from "../utils/api";
+import { toast } from "sonner";
+
+import { fetchWithAuth } from "../utils/fetchWithAuth";
 
 interface BrowseContentSectionProps {
   auctions: AuctionItemDTO[];
@@ -15,6 +19,8 @@ interface BrowseContentSectionProps {
   totalItems: number;
   onPageChange: (page: number) => void;
   onCategoryClick?: (categoryId: string) => void;
+  watchlistIds: Set<string>;
+  setWatchlistIds: React.Dispatch<React.SetStateAction<Set<string>>>;
 }
 
 export function BrowseContentSection({
@@ -25,8 +31,49 @@ export function BrowseContentSection({
   startIndex,
   endIndex,
   totalItems,
+  watchlistIds,
+  setWatchlistIds,
   onPageChange,
 }: BrowseContentSectionProps) {
+  const handleToggleFavorite = async (
+    productId: string,
+    isFavorite: boolean
+  ) => {
+    try {
+      if (isFavorite) {
+        await fetchWithAuth(`${REMOVE_FROM_WATCHLIST_API}/${productId}`, {
+          method: "DELETE",
+        });
+
+        setWatchlistIds((prev) => {
+          const next = new Set(prev);
+          next.delete(productId);
+          return next;
+        });
+
+        toast.success("Removed from watchlist");
+      } else {
+        await fetchWithAuth(ADD_TO_WATCHLIST_API, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ productId }),
+        });
+
+        setWatchlistIds((prev) => {
+          const next = new Set(prev);
+          next.add(productId);
+          return next;
+        });
+
+        toast.success("Added to watchlist");
+      }
+    } catch (err) {
+      toast.error("You must be logged in to add to watchlist");
+    }
+  };
+
   return (
     <div className="container mx-auto p-6">
       {/* Grid/List View */}
@@ -49,6 +96,8 @@ export function BrowseContentSection({
               highestBidderName={auction.highestBidderName}
               buyNowPrice={auction.buyNowPrice}
               postedDate={auction.postedDate}
+              isFavorite={watchlistIds.has(auction.id)}
+              onToggleFavorite={handleToggleFavorite}
             />
           ))}
         </div>

@@ -11,6 +11,7 @@ type Role = "bidder" | "seller" | "admin";
 interface AuthContextType {
   isLoggedIn: boolean;
   role: Role | null;
+  isLoading: boolean;
   login: (data: {
     accessToken: string;
     refreshToken: string;
@@ -28,20 +29,37 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [role, setRole] = useState<Role | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  /* =====================
+     LOGOUT (define trước)
+  ===================== */
+  const logout = () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    setIsLoggedIn(false);
+    setRole(null);
+  };
 
   /* =====================
      HYDRATE FROM STORAGE
   ===================== */
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
-    if (!token) return;
+
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const payload = JSON.parse(atob(token.split(".")[1]));
       setIsLoggedIn(true);
-      setRole(payload.role);
+      setRole(payload.role as Role);
     } catch {
       logout();
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -61,18 +79,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   /* =====================
-     LOGOUT
+     RENDER
   ===================== */
-  const logout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-
-    setIsLoggedIn(false);
-    setRole(null);
-  };
+  if (isLoading) {
+    return null; // hoặc spinner
+  }
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, role, login, logout }}>
+    <AuthContext.Provider
+      value={{ isLoggedIn, role, isLoading, login, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

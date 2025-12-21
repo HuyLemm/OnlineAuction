@@ -7,6 +7,7 @@ import {
   ChevronRight,
   LogOut,
   LogIn,
+  ShoppingCart,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -226,17 +227,6 @@ export function Header() {
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            {isLoggedIn && role === "seller" && (
-              <button
-                onClick={() => navigate("/seller")}
-                className={`text-lg ${
-                  isActive("/seller") ? "text-[#fbbf24]" : "text-foreground/90"
-                }`}
-              >
-                Sell
-              </button>
-            )}
           </nav>
 
           {/* Search */}
@@ -260,61 +250,68 @@ export function Header() {
 
           {/* Actions */}
           <div className="flex items-center gap-3">
-            {isLoggedIn && role === "bidder" && (
-              <NotificationDropdown
-                notifications={notifications}
-                unreadCount={unreadCount}
-                onMarkAsRead={handleMarkAsRead}
-                onMarkAllAsRead={handleMarkAllAsRead}
-                onDelete={handleDeleteNotification}
-                onViewAll={() => navigate("/notifications")}
-                onNotificationClick={handleNotificationClick}
-              />
-            )}
+            <NotificationDropdown
+              notifications={notifications}
+              unreadCount={unreadCount}
+              onMarkAsRead={handleMarkAsRead}
+              onMarkAllAsRead={handleMarkAllAsRead}
+              onDelete={handleDeleteNotification}
+              onViewAll={() => navigate("/notifications")}
+              onNotificationClick={handleNotificationClick}
+            />
 
-            {isLoggedIn && role === "bidder" && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate("/dashboard")}
-              >
-                <User className="h-5 w-5" />
-              </Button>
-            )}
+            <button
+              onClick={() => navigate("/user")}
+              className={`text-lg mr-2 ${
+                isActive("/user") ? "text-[#fbbf24]" : "text-foreground/90"
+              }`}
+            >
+              <User className="h-5 w-5 inline ml-1 mr-1 mb-1" />
+              User
+            </button>
 
-            {isLoggedIn && role === "admin" && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate("/admin")}
-              >
-                <Shield className="h-5 w-5" />
-              </Button>
-            )}
+            <button
+              onClick={() => navigate("/seller")}
+              className={`text-lg mr-2 ${
+                isActive("/seller") ? "text-[#fbbf24]" : "text-foreground/90"
+              }`}
+            >
+              <ShoppingCart className="h-5 w-5 inline mr-1 mb-1" />
+              Seller
+            </button>
+
+            <button
+              onClick={() => navigate("/admin")}
+              className={`text-lg mr-2 ${
+                isActive("/admin") ? "text-[#fbbf24]" : "text-foreground/90"
+              }`}
+            >
+              <Shield className="h-5 w-5 inline mr-1 mb-1" />
+              Admin
+            </button>
 
             {/* LOGOUT */}
             {isLoggedIn && (
-              <Button
-                variant="ghost"
-                className="text-red-400 hover:text-red-500"
+              <button
+                className="text-lg mr-2 text-foreground/90"
                 onClick={() => {
                   logout();
                   navigate("/");
                 }}
               >
-                <LogOut className="h-4 w-4 mr-1" />
+                <LogOut className="h-5 w-5 inline mr-1 mb-1" />
                 Logout
-              </Button>
+              </button>
             )}
 
             {/* LOGIN */}
             {!isLoggedIn && (
-              <Button
+              <button
                 onClick={() => navigate("/login")}
-                className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black"
+                className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black text-lg py-2 px-4 rounded-lg hover:opacity-90 font-semibold cursor-pointer"
               >
                 Start Bidding
-              </Button>
+              </button>
             )}
           </div>
         </div>
