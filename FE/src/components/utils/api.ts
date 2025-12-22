@@ -30,5 +30,12 @@ export const GET_PROFILE_API = `${API_BASE_URL}/users/profile`;
 export const UPDATE_PROFILE_API = `${API_BASE_URL}/users/profile`;
 export const CHANGE_PASSWORD_API = `${API_BASE_URL}/users/change-password`;
 
-export const REFRESH_TOKEN_API = `${API_BASE_URL}/users/refresh-token`;
+export const GET_RATINGS_SUMMARY_API = `${API_BASE_URL}/users/ratings-summary`;
+export const GET_RATINGS_DETAIL_API = `${API_BASE_URL}/users/ratings-detail`;
 
+export const GET_ACTIVE_BIDS_API = `${API_BASE_URL}/users/my-bidding-products`;
+
+export const REQUEST_BECOME_SELLER_API = `${API_BASE_URL}/users/request-upgrade-seller`;
+export const GET_SELLER_UPGRADE_STATUS_API = `${API_BASE_URL}/users/upgrade-seller-status`;
+
+export const REFRESH_TOKEN_API = `${API_BASE_URL}/users/refresh-token`;

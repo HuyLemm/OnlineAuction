@@ -29,7 +29,10 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     // ❌ sai role
     if (allowedRoles && role && !allowedRoles.includes(role)) {
       if (warnedPathRef.current !== location.pathname) {
-        toast.warning("You do not have permission to access this page");
+        const displayRole = role.charAt(0).toUpperCase() + role.slice(1);
+        toast.warning(
+          `You are ${displayRole}, you do not have permission to access this page`
+        );
         warnedPathRef.current = location.pathname;
       }
     }

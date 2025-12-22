@@ -357,4 +357,133 @@ export class UserController {
       res.status(400).json({ message: err.message });
     }
   }
+
+  // ===============================
+  // Ratings - Summary
+  // ===============================
+  static async getMyRatingSummary(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user!.userId;
+
+      const summary = await UserService.getRatingSummary(userId);
+
+      return res.json({
+        success: true,
+        data: summary,
+      });
+    } catch (err) {
+      console.error("Get rating summary error:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to get rating summary",
+      });
+    }
+  }
+
+  // ===============================
+  // Ratings - Detail list
+  // ===============================
+  static async getMyRatingDetails(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user!.userId;
+
+      const details = await UserService.getRatingDetails(userId);
+
+      return res.json({
+        success: true,
+        data: details,
+      });
+    } catch (err) {
+      console.error("Get rating details error:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to get rating details",
+      });
+    }
+  }
+  // ===============================
+  // POST /users/request-upgrade-seller
+  // ===============================
+  static async requestUpgradeSeller(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.userId;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
+      }
+
+      const result = await UserService.requestUpgradeToSeller(userId);
+
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        success: false,
+        message: error.message || "Request failed",
+      });
+    }
+  }
+
+  // ===============================
+  // GET /users/upgrade-seller-status
+  // ===============================
+  static async getUpgradeSellerStatus(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.userId;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
+      }
+
+      const data = await UserService.getUpgradeSellerRequestStatus(userId);
+
+      return res.status(200).json({
+        success: true,
+        data,
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        success: false,
+        message: error.message || "Failed to fetch status",
+      });
+    }
+  }
+
+  // ===============================
+  // GET /users/my-bidding-products
+  // ===============================
+  static async getMyBiddingProducts(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.userId;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
+      }
+
+      const products = await UserService.getMyActiveBids(userId);
+
+      return res.status(200).json({
+        success: true,
+        data: products,
+      });
+    } catch (error: any) {
+      console.error("❌ getMyBiddingProducts error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Failed to load bidding products",
+      });
+    }
+  }
 }

@@ -60,4 +60,41 @@ router.get("/profile", authenticate, UserController.getProfile);
 router.put("/profile", authenticate, UserController.updateProfile);
 router.put("/change-password", authenticate, UserController.changePassword);
 
+// Get rating summary
+router.get(
+  "/ratings-summary",
+  authenticate,
+  authorize("bidder"),
+  UserController.getMyRatingSummary
+);
+
+// Get rating detail list
+router.get(
+  "/ratings-detail",
+  authenticate,
+  authorize("bidder"),
+  UserController.getMyRatingDetails
+);
+
+router.get(
+  "/upgrade-seller-status",
+  authenticate,
+  authorize("bidder"),
+  UserController.getUpgradeSellerStatus
+);
+
+router.post(
+  "/request-upgrade-seller",
+  authenticate,
+  authorize("bidder"),
+  UserController.requestUpgradeSeller
+);
+
+router.get(
+  "/my-bidding-products",
+  authenticate,
+  authorize("bidder"),
+  UserController.getMyBiddingProducts
+);
+
 export default router;

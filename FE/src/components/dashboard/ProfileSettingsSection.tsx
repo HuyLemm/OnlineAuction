@@ -18,20 +18,16 @@ import { LoadingSpinner } from "../state";
 const normalizeDobForDateInput = (v: any) => {
   if (!v) return "";
   if (typeof v === "string") {
-    // Nếu là "2003-11-17" thì ok luôn
     if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
 
-    // Nếu là ISO "2003-11-17T..." -> lấy phần trước T
     if (v.includes("T")) return v.split("T")[0];
 
-    // Nếu là kiểu "17 Nov 2003" -> parse date
     const d = new Date(v);
     if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
 
     return "";
   }
 
-  // Nếu backend trả Date object
   const d = new Date(v);
   if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
   return "";
@@ -61,7 +57,6 @@ export function ProfileSettingsSection() {
 
         const json = await res.json();
         const u = json.data;
-        console.log(u);
 
         setFullName(u.full_name ?? "");
         setEmail(u.email ?? "");

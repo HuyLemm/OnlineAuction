@@ -6,7 +6,7 @@ import { WatchlistSection } from "../components/dashboard/WatchlistSection";
 import { MyBidsSection } from "../components/dashboard/MyBidsSection";
 import { WonAuctionsSection } from "../components/dashboard/WonAuctionsSection";
 import { BecomeSellerSection } from "../components/dashboard/BecomeSellerSection";
-// import { MyReviewsSection } from "../components/dashboard/MyReviewsSection";
+import { MyReviewsSection } from "../components/dashboard/MyReviewsSection";
 
 interface DashboardPageProps {
   onNavigateToOrder?: (orderId: string) => void;
@@ -20,8 +20,8 @@ export function DashboardPage({ onNavigateToOrder }: DashboardPageProps) {
       case "profile":
         return <ProfileSettingsSection />;
 
-      // case "reviews":
-      //   return <MyReviewsSection />;
+      case "reviews":
+        return <MyReviewsSection />;
 
       case "watchlist":
         return <WatchlistSection />;

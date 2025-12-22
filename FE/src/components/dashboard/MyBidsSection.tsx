@@ -1,261 +1,173 @@
-import { useState } from "react";
-import { Clock, TrendingUp, AlertCircle, Gavel } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { Badge } from "../ui/badge";
+import { useEffect, useState } from "react";
+import { Clock, Gavel, Crown } from "lucide-react";
 import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
+import { fetchWithAuth } from "../utils/fetchWithAuth";
+import { GET_ACTIVE_BIDS_API } from "../utils/api";
 import { ImageWithFallback } from "../check/ImageWithFallback";
-import { Progress } from "../ui/progress";
+import { useNavigate } from "react-router-dom";
+import { LoadingSpinner } from "../state";
 
-interface Bid {
-  id: string;
-  itemId: string;
-  title: string;
-  image: string;
-  currentBid: number;
-  yourBid: number;
-  maxBid: number;
-  isLeading: boolean;
-  isOutbid: boolean;
-  timeLeft: string;
-  endDate: Date;
-  category: string;
-  totalBids: number;
+interface MyBidItem {
+  product: {
+    id: string;
+    title: string;
+    category: string;
+    sellerName: string;
+    image: string;
+    status: string;
+    isClosed: boolean;
+    currentPrice: number;
+    endTime: string;
+    highestBidder?: {
+      id: string;
+      name: string;
+    };
+  };
+  myBids: {
+    id: string;
+    amount: number;
+    time: string | null;
+  }[];
 }
 
 export function MyBidsSection() {
-  const [activeTab, setActiveTab] = useState("active");
+  const [items, setItems] = useState<MyBidItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
-  const activeBids: Bid[] = [
-    {
-      id: "1",
-      itemId: "item1",
-      title: "Patek Philippe Nautilus 5711/1A Steel Blue Dial",
-      image: "https://images.unsplash.com/photo-1670177257750-9b47927f68eb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjB3YXRjaHxlbnwxfHx8fDE3NjMzOTExMzB8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      currentBid: 156000,
-      yourBid: 156000,
-      maxBid: 160000,
-      isLeading: true,
-      isOutbid: false,
-      timeLeft: "1d 8h 30m",
-      endDate: new Date(Date.now() + 1000 * 60 * 60 * 32.5),
-      category: "Watches",
-      totalBids: 234
-    },
-    {
-      id: "2",
-      itemId: "item2",
-      title: "1967 Ford Mustang Fastback - Fully Restored",
-      image: "https://images.unsplash.com/photo-1604940500627-d3f44d1d21c6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aW50YWdlJTIwY2FyfGVufDF8fHx8MTc2MzM5MDY2Nnww&ixlib=rb-4.1.0&q=80&w=1080",
-      currentBid: 76000,
-      yourBid: 75000,
-      maxBid: 78000,
-      isLeading: false,
-      isOutbid: true,
-      timeLeft: "2h 15m",
-      endDate: new Date(Date.now() + 1000 * 60 * 135),
-      category: "Vintage Cars",
-      totalBids: 89
-    },
-    {
-      id: "3",
-      itemId: "item3",
-      title: "Hermès Birkin 35 Crocodile Limited Edition",
-      image: "https://images.unsplash.com/photo-1591348278863-a8fb3887e2aa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBoYW5kYmFnfGVufDF8fHx8MTc2MzMwNTk3N3ww&ixlib=rb-4.1.0&q=80&w=1080",
-      currentBid: 52000,
-      yourBid: 52000,
-      maxBid: 55000,
-      isLeading: true,
-      isOutbid: false,
-      timeLeft: "5h 10m",
-      endDate: new Date(Date.now() + 1000 * 60 * 310),
-      category: "Fashion",
-      totalBids: 78
-    },
-  ];
+  useEffect(() => {
+    fetchWithAuth(GET_ACTIVE_BIDS_API)
+      .then((r) => r.json())
+      .then((j) => setItems(j.data ?? []))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const lostBids: Bid[] = [
-    {
-      id: "4",
-      itemId: "item4",
-      title: "Vintage Cartier Diamond Necklace 18K Gold",
-      image: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBqZXdlbHJ5fGVufDF8fHx8MTc2MzM5OTk0NXww&ixlib=rb-4.1.0&q=80&w=1080",
-      currentBid: 29500,
-      yourBid: 28000,
-      maxBid: 28500,
-      isLeading: false,
-      isOutbid: true,
-      timeLeft: "Ended",
-      endDate: new Date(Date.now() - 1000 * 60 * 60 * 2),
-      category: "Jewelry",
-      totalBids: 67
-    },
-  ];
-
-  const BidCard = ({ bid }: { bid: Bid }) => (
-    <div className="bg-card border border-border/50 rounded-xl overflow-hidden hover:border-border transition-all">
-      <div className="flex flex-col sm:flex-row gap-4 p-4">
-        {/* Image */}
-        <div className="relative w-full sm:w-32 h-32 rounded-lg overflow-hidden flex-shrink-0">
-          <ImageWithFallback
-            src={bid.image}
-            alt={bid.title}
-            className="h-full w-full object-cover"
-          />
-          {bid.isLeading && (
-            <div className="absolute top-2 left-2">
-              <Badge className="bg-[#10b981] text-white border-0">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                Leading
-              </Badge>
-            </div>
-          )}
-          {bid.isOutbid && (
-            <div className="absolute top-2 left-2">
-              <Badge className="bg-[#ef4444] text-white border-0">
-                <AlertCircle className="h-3 w-3 mr-1" />
-                Outbid
-              </Badge>
-            </div>
-          )}
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 flex flex-col justify-between min-w-0">
-          <div className="space-y-2">
-            <Badge variant="outline" className="border-border/50 text-muted-foreground">
-              {bid.category}
-            </Badge>
-            <h3 className="text-foreground line-clamp-1">{bid.title}</h3>
-            
-            {/* Bid Progress */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Your Max Bid</span>
-                <span className="text-foreground">${bid.maxBid.toLocaleString()}</span>
-              </div>
-              <Progress 
-                value={(bid.yourBid / bid.maxBid) * 100} 
-                className="h-2"
-              />
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-muted-foreground">Current Bid</p>
-                  <p className="text-[#fbbf24]">${bid.currentBid.toLocaleString()}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-muted-foreground">Your Bid</p>
-                  <p className="text-foreground">${bid.yourBid.toLocaleString()}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex flex-wrap items-center justify-between gap-2 mt-4 pt-4 border-t border-border/50">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Clock className="h-4 w-4" />
-              <span>{bid.timeLeft}</span>
-              <span>•</span>
-              <span>{bid.totalBids} bids</span>
-            </div>
-            {bid.isOutbid && (
-              <Button size="sm" className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90">
-                Increase Bid
-              </Button>
-            )}
-            {bid.isLeading && (
-              <Button variant="outline" size="sm" className="border-border/50">
-                View Auction
-              </Button>
-            )}
-          </div>
-        </div>
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <LoadingSpinner size="lg" />
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-foreground mb-2">My Bids</h1>
-        <p className="text-muted-foreground">Track and manage all your active bids</p>
+        <h1 className="text-foreground mb-1">My Bids</h1>
+        <p className="text-muted-foreground">
+          Auctions you are participating in
+        </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-card border border-border/50 rounded-xl p-6">
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-[#10b981]/20 to-[#10b981]/10 flex items-center justify-center">
-              <TrendingUp className="h-6 w-6 text-[#10b981]" />
+      {items.map((item) => (
+        <div
+          key={item.product.id}
+          className="bg-card border border-border/50 rounded-xl p-6 grid grid-cols-1 lg:grid-cols-2 gap-6"
+        >
+          {/* ================= LEFT COLUMN ================= */}
+          <div className="flex gap-4">
+            <div className="w-40 h-40 rounded-lg overflow-hidden flex-shrink-0">
+              <ImageWithFallback
+                src={item.product.image}
+                alt={item.product.title}
+                className="w-full h-full object-cover"
+              />
             </div>
-            <div>
-              <p className="text-muted-foreground">Leading</p>
-              <p className="text-foreground">2 Auctions</p>
+
+            <div className="flex flex-col justify-between flex-1">
+              <div className="space-y-2">
+                <Badge variant="outline">{item.product.category}</Badge>
+
+                <h3 className="text-foreground text-lg">
+                  {item.product.title}
+                </h3>
+
+                <p className="text-muted-foreground text-sm">
+                  Seller: {item.product.sellerName}
+                </p>
+
+                {item.product.highestBidder && (
+                  <p className="text-sm flex items-center gap-1 text-[#fbbf24]">
+                    <Crown className="h-4 w-4" />
+                    Highest bidder: {item.product.highestBidder.name}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between mt-4">
+                <div>
+                  <p className="text-muted-foreground text-sm">Current</p>
+                  <p className="text-[#fbbf24] text-lg font-semibold">
+                    ${item.product.currentPrice.toLocaleString()}
+                  </p>
+                </div>
+
+                <div className="text-muted-foreground text-sm flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  {new Date(item.product.endTime).toLocaleDateString()}
+                </div>
+
+                <Button
+                  size="sm"
+                  className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black"
+                  onClick={() => {
+                    navigate(`/product/${item.product.id}`);
+                  }}
+                >
+                  View Auction
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="bg-card border border-border/50 rounded-xl p-6">
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-[#ef4444]/20 to-[#ef4444]/10 flex items-center justify-center">
-              <AlertCircle className="h-6 w-6 text-[#ef4444]" />
-            </div>
-            <div>
-              <p className="text-muted-foreground">Outbid</p>
-              <p className="text-foreground">1 Auction</p>
-            </div>
+          {/* ================= RIGHT COLUMN ================= */}
+          <div className="border-l border-yellow-500/30 pl-6 space-y-3">
+            <p className="text-foreground font-medium flex items-center gap-2">
+              <Gavel className="h-4 w-4 text-[#fbbf24]" />
+              Your Bids
+            </p>
+
+            {[...item.myBids]
+              .sort((a, b) => b.amount - a.amount)
+              .map((bid) => {
+                const isCurrent = bid.amount === item.product.currentPrice;
+
+                return (
+                  <div
+                    key={bid.id}
+                    className={`flex items-center justify-between px-4 py-2 rounded-lg ${
+                      isCurrent
+                        ? "bg-[#fbbf24]/10 border border-[#fbbf24]/40"
+                        : "opacity-60"
+                    }`}
+                  >
+                    <div
+                      className={`${
+                        isCurrent
+                          ? "text-[#fbbf24] font-semibold"
+                          : "line-through text-muted-foreground"
+                      }`}
+                    >
+                      ${bid.amount.toLocaleString()}
+                    </div>
+
+                    <div className="text-muted-foreground text-sm">
+                      {bid.time ? new Date(bid.time).toLocaleString() : "—"}
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </div>
+      ))}
 
-        <div className="bg-card border border-border/50 rounded-xl p-6">
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-[#fbbf24]/20 to-[#f59e0b]/20 flex items-center justify-center">
-              <Gavel className="h-6 w-6 text-[#fbbf24]" />
-            </div>
-            <div>
-              <p className="text-muted-foreground">Total Bids</p>
-              <p className="text-foreground">$283,000</p>
-            </div>
-          </div>
+      {items.length === 0 && (
+        <div className="text-center text-muted-foreground py-12">
+          You have not placed any bids yet
         </div>
-
-        <div className="bg-card border border-border/50 rounded-xl p-6">
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-[#8b5cf6]/20 to-[#8b5cf6]/10 flex items-center justify-center">
-              <Clock className="h-6 w-6 text-[#8b5cf6]" />
-            </div>
-            <div>
-              <p className="text-muted-foreground">Ending Soon</p>
-              <p className="text-foreground">1 in 2h</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-secondary/50 border border-border/50">
-          <TabsTrigger value="active">
-            Active Bids ({activeBids.length})
-          </TabsTrigger>
-          <TabsTrigger value="lost">
-            Lost ({lostBids.length})
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="active" className="space-y-4 mt-6">
-          {activeBids.map((bid) => (
-            <BidCard key={bid.id} bid={bid} />
-          ))}
-        </TabsContent>
-
-        <TabsContent value="lost" className="space-y-4 mt-6">
-          {lostBids.map((bid) => (
-            <BidCard key={bid.id} bid={bid} />
-          ))}
-        </TabsContent>
-      </Tabs>
+      )}
     </div>
   );
 }

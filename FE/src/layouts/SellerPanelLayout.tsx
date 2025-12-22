@@ -1,13 +1,10 @@
 import { useState } from "react";
-import { 
-  Package, 
-  PlusCircle, 
-  List, 
-  CheckCircle, 
-  Star, 
-  MessageSquare,
-  BarChart3,
-  Settings
+import {
+  PlusCircle,
+  List,
+  CheckCircle,
+  Settings,
+  Package,
 } from "lucide-react";
 
 interface SellerPanelLayoutProps {
@@ -16,17 +13,34 @@ interface SellerPanelLayoutProps {
   onTabChange: (tab: string) => void;
 }
 
-export function SellerPanelLayout({ children, activeTab, onTabChange }: SellerPanelLayoutProps) {
+export function SellerPanelLayout({
+  children,
+  activeTab,
+  onTabChange,
+}: SellerPanelLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { id: "overview", label: "Overview", icon: BarChart3 },
-    { id: "create", label: "Create Auction", icon: PlusCircle },
-    { id: "manage", label: "Manage Listings", icon: List, badge: 3 },
-    { id: "ended", label: "Ended Auctions", icon: CheckCircle },
-    { id: "ratings", label: "Ratings & Reviews", icon: Star },
-    { id: "qa", label: "Q&A Management", icon: MessageSquare, badge: 2 },
-    { id: "settings", label: "Seller Settings", icon: Settings },
+    {
+      id: "profile",
+      label: "Profile Settings",
+      icon: Settings,
+    },
+    {
+      id: "create",
+      label: "Create Auction",
+      icon: PlusCircle,
+    },
+    {
+      id: "active",
+      label: "My Auctions (Open)",
+      icon: List,
+    },
+    {
+      id: "closed",
+      label: "My Auctions (Closed & Won)",
+      icon: CheckCircle,
+    },
   ];
 
   return (
@@ -47,26 +61,19 @@ export function SellerPanelLayout({ children, activeTab, onTabChange }: SellerPa
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
-            
+
             return (
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
-                className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-all ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                   isActive
                     ? "bg-gradient-to-r from-[#fbbf24]/10 to-[#f59e0b]/10 text-[#fbbf24] border border-[#fbbf24]/20"
                     : "text-foreground/80 hover:text-foreground hover:bg-secondary/50"
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <Icon className="h-5 w-5" />
-                  <span>{item.label}</span>
-                </div>
-                {item.badge && (
-                  <span className="h-5 w-5 rounded-full bg-[#fbbf24]/10 text-[#fbbf24] text-xs flex items-center justify-center border border-[#fbbf24]/20">
-                    {item.badge}
-                  </span>
-                )}
+                <Icon className="h-5 w-5" />
+                <span>{item.label}</span>
               </button>
             );
           })}
@@ -75,9 +82,7 @@ export function SellerPanelLayout({ children, activeTab, onTabChange }: SellerPa
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        <div className="container mx-auto p-6">
-          {children}
-        </div>
+        <div className="container mx-auto p-6">{children}</div>
       </main>
     </div>
   );

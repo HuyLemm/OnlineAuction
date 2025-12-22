@@ -13,6 +13,8 @@ const SALT_ROUNDS = 10;
 
 const OTP_EXPIRE_MINUTES = 2; // OTP sống 2 phút
 
+const SELLER_UPGRADE_DURATION_DAYS = 7;
+
 export class UserService {
   private static baseQuery() {
     return db("products as p")
@@ -495,6 +497,272 @@ export class UserService {
     await db("users").where({ id: userId }).update({ password_hash: newHash });
 
     return { success: true };
+  }
+
+  // ===============================
+  // Ratings - Summary
+  // ===============================
+  static async getRatingSummary(userId: string) {
+    const rows = await db("ratings").select("score").where("to_user", userId);
+
+    let plus = 0;
+    let minus = 0;
+
+    for (const r of rows) {
+      if (r.score === 1) plus++;
+      if (r.score === -1) minus++;
+    }
+
+    const totalVotes = plus + minus;
+    const totalScore = plus - minus;
+
+    return {
+      totalScore, // ví dụ: 1
+      plus, // số phiếu +1
+      minus, // số phiếu -1
+      ratio: `${plus}/${totalVotes}`, // ví dụ: "2/3"
+      totalVotes,
+    };
+  }
+
+  // ===============================
+  // Ratings - Detail list
+  // ===============================
+  static async getRatingDetails(userId: string) {
+    const rows = await db("ratings as r")
+      // người đánh giá
+      .join("users as u", "u.id", "r.from_user")
+
+      // sản phẩm được đánh giá
+      .join("products as p", "p.id", "r.product_id")
+
+      // ảnh main của product
+      .leftJoin("product_images as pi", function () {
+        this.on("pi.product_id", "=", "p.id").andOn(
+          "pi.is_main",
+          "=",
+          db.raw("true")
+        );
+      })
+
+      // category
+      .leftJoin("categories as c", "c.id", "p.category_id")
+
+      .select(
+        // rating
+        "r.id",
+        "r.score",
+        "r.comment",
+        "r.created_at",
+
+        // from user
+        "u.id as fromUserId",
+        "u.full_name as fromUserName",
+
+        // product
+        "p.id as productId",
+        "p.title as productTitle",
+        "c.name as category",
+
+        db.raw(`COALESCE(pi.image_url, '') AS "productImage"`)
+      )
+      .where("r.to_user", userId)
+      .orderBy("r.created_at", "desc");
+
+    return rows.map((r) => ({
+      id: r.id,
+      score: r.score, // 1 | -1
+      comment: r.comment,
+      createdAt: r.created_at,
+
+      fromUser: {
+        id: r.fromUserId,
+        fullName: r.fromUserName,
+      },
+
+      product: {
+        id: r.productId,
+        title: r.productTitle,
+        image: r.productImage,
+        category: r.category,
+      },
+    }));
+  }
+
+  // ===============================
+  // Seller upgrade request (Bidder)
+  // ===============================
+  static async requestUpgradeToSeller(userId: string) {
+    const user = await db("users").select("role").where({ id: userId }).first();
+
+    if (!user) throw new Error("User not found");
+
+    // ❌ Đã là seller
+    if (user.role === "seller") {
+      throw new Error("You are already a seller");
+    }
+
+    // Lấy request gần nhất
+    const lastRequest = await db("seller_upgrade_requests")
+      .where({ user_id: userId })
+      .orderBy("requested_at", "desc")
+      .first();
+
+    // ❌ Pending
+    if (lastRequest && lastRequest.status === "pending") {
+      throw new Error("You already have a pending upgrade request");
+    }
+
+    // ❌ Approved (đề phòng role chưa sync)
+    if (lastRequest && lastRequest.status === "approved") {
+      throw new Error("Your upgrade request has already been approved");
+    }
+
+    // ✅ Chỉ cho request nếu:
+    // - chưa có request
+    // - hoặc request trước bị rejected
+    await db("seller_upgrade_requests").insert({
+      user_id: userId,
+      status: "pending",
+      requested_at: new Date(),
+    });
+
+    return {
+      message: "Upgrade request submitted successfully",
+    };
+  }
+
+  // ===============================
+  // Seller upgrade - Get my request status
+  // ===============================
+  static async getUpgradeSellerRequestStatus(userId: string) {
+    // check role
+    const user = await db("users").select("role").where({ id: userId }).first();
+
+    if (!user) throw new Error("User not found");
+
+    if (user.role === "seller") {
+      return {
+        role: "seller",
+        request: null,
+      };
+    }
+
+    const request = await db("seller_upgrade_requests")
+      .where({ user_id: userId })
+      .orderBy("requested_at", "desc")
+      .first();
+
+    return {
+      role: user.role,
+      request: request
+        ? {
+            id: request.id,
+            status: request.status, // pending | approved | rejected
+            requestedAt: request.requested_at,
+          }
+        : null,
+    };
+  }
+
+  // ===============================
+  // Auctions bidder is participating in
+  // ===============================
+  static async getMyActiveBids(userId: string) {
+    /* =============================
+     * 1️⃣ Lấy toàn bộ bids của bidder
+     * ============================= */
+    const bidRows = await db("bids")
+      .where("bidder_id", userId)
+      .orderBy("bid_amount", "desc");
+
+    if (bidRows.length === 0) {
+      return [];
+    }
+
+    /* =============================
+     * 2️⃣ Gom bids theo product_id
+     * ============================= */
+    const bidsByProduct: Record<
+      string,
+      {
+        id: string;
+        amount: number;
+        time: Date;
+      }[]
+    > = {};
+
+    for (const bid of bidRows) {
+      (bidsByProduct[bid.product_id] ??= []).push({
+        id: bid.id,
+        amount: Number(bid.bid_amount),
+        time: bid.bid_time,
+      });
+    }
+
+    const productIds = Object.keys(bidsByProduct);
+
+    /* =============================
+     * 3️⃣ Lấy thông tin product
+     * ============================= */
+    const productRows = await db("products as p")
+      .leftJoin("categories as c", "c.id", "p.category_id")
+      .leftJoin("users as s", "s.id", "p.seller_id")
+      .leftJoin("product_images as pi", function () {
+        this.on("pi.product_id", "=", "p.id").andOn(
+          "pi.is_main",
+          "=",
+          db.raw("true")
+        );
+      })
+      .leftJoin("users as hb", "hb.id", "p.highest_bidder_id")
+      .whereIn("p.id", productIds)
+      .select(
+        "p.id",
+        "p.title",
+        "p.status",
+        "p.current_price",
+        "p.start_price",
+        "p.end_time",
+        "p.highest_bidder_id",
+        "p.auction_type",
+
+        "c.name as category",
+        "s.full_name as sellerName",
+        "hb.full_name as highestBidderName",
+
+        db.raw(`COALESCE(pi.image_url, '') AS image`)
+      );
+
+    /* =============================
+     * 4️⃣ Trả dữ liệu cho FE
+     * ============================= */
+    return productRows.map((p) => ({
+      product: {
+        id: p.id,
+        title: p.title,
+        category: p.category,
+        sellerName: p.sellerName,
+        image: p.image,
+        auctionType: p.auction_type,
+
+        status: p.status, // active / closed
+        isClosed: p.status !== "active",
+
+        currentPrice: Number(p.current_price) ?? Number(p.start_price),
+
+        endTime: p.end_time,
+
+        highestBidder: p.highest_bidder_id
+          ? {
+              id: p.highest_bidder_id,
+              name: p.highestBidderName,
+            }
+          : null,
+      },
+
+      myBids: bidsByProduct[p.id] ?? [],
+    }));
   }
 
   // ===============================

@@ -2,33 +2,24 @@ import { useState } from "react";
 import { SellerPanelLayout } from "../layouts/SellerPanelLayout";
 import { CreateAuction } from "../components/seller/CreateAuction";
 import { ManageListings } from "../components/seller/ManageListings";
-import { SellerOverviewSection } from "../components/seller/SellerOverviewSection";
 import { EndedAuctionsSection } from "../components/seller/EndedAuctionsSection";
-import { SellerRatingsSection } from "../components/seller/SellerRatingsSection";
-import { QAManagementSection } from "../components/seller/QAManagementSection";
-import { SellerSettingsSection } from "../components/seller/SellerSettingsSection";
+import { ProfileSettingsSection } from "../components/dashboard/ProfileSettingsSection";
 
 export function SellerPanelPage() {
   const [activeTab, setActiveTab] = useState("manage");
 
   const renderContent = () => {
     switch (activeTab) {
+      case "profile":
+        return <ProfileSettingsSection />;
       case "create":
         return <CreateAuction />;
-      case "manage":
+      case "active":
         return <ManageListings />;
-      case "overview":
-        return <SellerOverviewSection />;
-      case "ended":
+      case "closed":
         return <EndedAuctionsSection />;
-      case "ratings":
-        return <SellerRatingsSection />;
-      case "qa":
-        return <QAManagementSection />;
-      case "settings":
-        return <SellerSettingsSection />;
       default:
-        return <ManageListings />;
+        return <ProfileSettingsSection />;
     }
   };
 
