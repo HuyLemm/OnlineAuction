@@ -4,6 +4,7 @@ import homeRouter from "./home.route";
 import categoryRouter from "./category.route";
 import userRouter from "./user.route";
 import adminRouter from "./admin.route";
+import sellerRouter from "./seller.route";
 
 const router = Router();
 
@@ -12,5 +13,6 @@ router.use("/home", homeRouter);
 router.use("/categories", categoryRouter);
 router.use("/users", userRouter);
 router.use("/admin", adminRouter);
+router.use("/seller", sellerRouter);
 
 export default router;

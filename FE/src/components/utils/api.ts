@@ -39,3 +39,8 @@ export const REQUEST_BECOME_SELLER_API = `${API_BASE_URL}/users/request-upgrade-
 export const GET_SELLER_UPGRADE_STATUS_API = `${API_BASE_URL}/users/upgrade-seller-status`;
 
 export const REFRESH_TOKEN_API = `${API_BASE_URL}/users/refresh-token`;
+
+//Seller
+export const CREATE_AUCTION_API = `${API_BASE_URL}/seller/create-auction`;
+export const GET_AUTO_EXTEND_CONFIG_API = `${API_BASE_URL}/seller/auto-extend-config`;
+export const UPLOAD_IMAGE_API = `${API_BASE_URL}/seller/upload-image`;

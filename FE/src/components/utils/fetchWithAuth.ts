@@ -8,11 +8,14 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const accessToken = localStorage.getItem("accessToken");
   const refreshToken = localStorage.getItem("refreshToken");
 
+  const isFormData = options.body instanceof FormData;
+
   let res = await fetch(url, {
     ...options,
     headers: {
-      ...options.headers,
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       Authorization: `Bearer ${accessToken}`,
+      ...(options.headers || {}),
     },
   });
 
@@ -27,17 +30,22 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}) {
       throw new Error("Session expired");
     }
 
-    const data = (await refreshRes.json()) as RefreshTokenResponse;
-
+    const data = await refreshRes.json();
     localStorage.setItem("accessToken", data.accessToken);
 
     res = await fetch(url, {
       ...options,
       headers: {
-        ...options.headers,
+        ...(isFormData ? {} : { "Content-Type": "application/json" }),
         Authorization: `Bearer ${data.accessToken}`,
+        ...(options.headers || {}),
       },
     });
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Request failed");
   }
 
   return res;

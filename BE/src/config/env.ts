@@ -9,6 +9,9 @@ export const env = {
   DB_PASSWORD: process.env.SUPABASE_PASSWORD!,
   PORT: Number(process.env.PORT) || 3000,
 
+  SUPABASE_URL: process.env.SUPABASE_URL!,  
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+
   MAIL_USER: process.env.MAIL_USER!,
   MAIL_PASS: process.env.MAIL_PASS!,
   MAIL_FROM: process.env.MAIL_FROM!,

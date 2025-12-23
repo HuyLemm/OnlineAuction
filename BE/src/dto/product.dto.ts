@@ -142,3 +142,45 @@ export interface BidHistoryDTO {
     };
   };
 }
+
+export interface CreateAuctionDTO {
+  title: string;
+  categoryId: string;
+  sellerId: string;
+
+  startPrice: number;
+  bidStep: number;
+  buyNowPrice?: number | null;
+
+  description: string;
+  auctionType: "traditional" | "buy_now";
+
+  durationMinutes: number;
+
+  autoExtend: boolean;
+
+  images: {
+    url: string;
+    isMain: boolean;
+  }[];
+
+  uploadSessionId?: string;
+}
+
+export interface SellerActiveProductDTO {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+
+  currentBid: number;
+  startingBid: number;
+  bid_count: string;
+
+  buyNowPrice: number | null;
+
+  image: string | null;
+
+  endDate: string;
+  timeLeft: number;
+}

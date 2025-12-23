@@ -68,7 +68,7 @@ export function HomeFeaturedSection({
         toast.success("Added to watchlist");
       }
     } catch (err) {
-      toast.error("You must be logged in to add to watchlist");
+      toast.warning("You are not authorized to perform this action");
     }
   };
 

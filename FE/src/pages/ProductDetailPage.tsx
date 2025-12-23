@@ -91,7 +91,7 @@ export function ProductDetailPage() {
         toast.success("Added to watchlist");
       }
     } catch {
-      toast.warning("You must be logged in to use watchlist");
+      toast.warning("You are not authorized to perform this action");
     }
   };
 

@@ -3,6 +3,8 @@ import express from "express";
 import router from "./routes/index";
 import errorMiddleware from "./middlewares/error.middleware";
 
+import sellerUploadRoutes from "./routes/seller.upload.route";
+
 const app = express();
 
 app.use(
@@ -13,6 +15,8 @@ app.use(
     credentials: true,
   })
 );
+
+app.use("/seller", sellerUploadRoutes);
 
 // Middlewares
 app.use(express.json());

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Upload, Plus, X, Calendar, DollarSign, FileText } from "lucide-react";
 import { Editor } from "@tinymce/tinymce-react";
 
@@ -15,6 +15,17 @@ import {
   SelectValue,
 } from "../ui/select";
 
+import { fetchWithAuth } from "../utils/fetchWithAuth";
+import {
+  CREATE_AUCTION_API,
+  GET_CATEGORIES_FOR_MENU_API,
+  GET_AUTO_EXTEND_CONFIG_API,
+  UPLOAD_IMAGE_API,
+} from "../utils/api";
+
+import { toast } from "sonner";
+import { LoadingSpinner } from "../state";
+
 const formatCurrency = (value: number | "") =>
   value === "" ? "" : `$${value.toLocaleString()}`;
 
@@ -22,15 +33,29 @@ const parseCurrency = (value: string) => value.replace(/[^0-9]/g, "");
 
 const digitsOnly = (s: string) => s.replace(/\D/g, "");
 
+type SubCategory = {
+  id: number;
+  label: string;
+};
+
+type ImageInput = {
+  file: File | null;
+  previewUrl: string;
+};
+
 export function CreateAuction() {
   /* ====== STATES ====== */
   const [title, setTitle] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [categories, setCategories] = useState<SubCategory[]>([]);
 
-  const [images, setImages] = useState<File[]>([]);
-  const imagePreviews = useMemo(
-    () => images.map((f) => URL.createObjectURL(f)),
-    [images]
-  );
+  const [uploadSessionId, setUploadSessionId] = useState(crypto.randomUUID());
+
+  const [images, setImages] = useState<ImageInput[]>([
+    { file: null, previewUrl: "" },
+    { file: null, previewUrl: "" },
+    { file: null, previewUrl: "" },
+  ]);
 
   const [startingBid, setStartingBid] = useState<number | "">("");
   const [bidStep, setBidStep] = useState<number | "">("");
@@ -41,16 +66,66 @@ export function CreateAuction() {
   const [description, setDescription] = useState("");
 
   const [enableAutoExtend, setEnableAutoExtend] = useState(false);
-  const [extendMinutes, setExtendMinutes] = useState<number | "">("");
-  const [extendThreshold, setExtendThreshold] = useState<number | "">("");
+  const [autoExtendConfig, setAutoExtendConfig] = useState<{
+    thresholdMinutes: number;
+    durationMinutes: number;
+  } | null>(null);
 
   const [durationType, setDurationType] = useState("3");
   const [customDays, setCustomDays] = useState<number | "">("");
   const [customMinutes, setCustomMinutes] = useState<number | "">("");
 
-  const [startDate, setStartDate] = useState("");
-
   const [showConfirm, setShowConfirm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  /* ====== FETCH CATEGORIES ====== */
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const res = await fetch(GET_CATEGORIES_FOR_MENU_API);
+      const json = await res.json();
+      if (!json.success) return;
+
+      const subs: SubCategory[] = json.data.flatMap(
+        (c: any) => c.subcategories
+      );
+      setCategories(subs);
+    };
+
+    fetchCategories();
+  }, []);
+
+  /* ====== RESET ====== */
+  const resetForm = () => {
+    setTitle("");
+    setCategoryId("");
+    setImages([
+      { file: null, previewUrl: "" },
+      { file: null, previewUrl: "" },
+      { file: null, previewUrl: "" },
+    ]);
+    setStartingBid("");
+    setBidStep("");
+    setEnableBuyNow(false);
+    setBuyNow("");
+    setDescription("");
+    setEnableAutoExtend(false);
+    setDurationType("3");
+    setCustomDays("");
+    setCustomMinutes("");
+    setShowConfirm(false);
+    setUploadSessionId(crypto.randomUUID());
+  };
+
+  /* ====== AUTO EXTEND ====== */
+  const handleToggleAutoExtend = async (checked: boolean) => {
+    setEnableAutoExtend(checked);
+
+    if (checked && !autoExtendConfig) {
+      const res = await fetchWithAuth(GET_AUTO_EXTEND_CONFIG_API);
+      const json = await res.json();
+      if (json.success) setAutoExtendConfig(json.data);
+    }
+  };
 
   /* ====== DERIVED ====== */
   const descriptionLength = useMemo(
@@ -58,39 +133,120 @@ export function CreateAuction() {
     [description]
   );
 
+  const validImages = images.filter((i) => i.file !== null);
+
+  const computeDurationMinutes = () => {
+    if (durationType === "other") {
+      return Number(customDays) * 1440 + Number(customMinutes);
+    }
+    return Number(durationType) * 1440;
+  };
+
   const isValid =
     title.trim() &&
-    images.length >= 3 &&
+    categoryId &&
+    validImages.length >= 3 &&
     startingBid !== "" &&
     bidStep !== "" &&
     descriptionLength >= 100 &&
-    startDate &&
     (!enableBuyNow || buyNow !== "") &&
-    (!enableAutoExtend || (extendMinutes !== "" && extendThreshold !== "")) &&
-    (durationType !== "other" || customDays !== "" || customMinutes !== "");
+    computeDurationMinutes() > 0;
 
-  /* ====== HANDLER ====== */
-  const handleConfirmCreate = () => {
-    setShowConfirm(false);
+  /* ====== IMAGE HANDLERS ====== */
 
-    const payload = {
-      title,
-      starting_bid: startingBid,
-      bid_step: bidStep,
-      buy_now_price: enableBuyNow ? buyNow : null,
-      auto_extend: enableAutoExtend,
-      auto_extend_minutes: enableAutoExtend ? extendMinutes : null,
-      auto_extend_threshold: enableAutoExtend ? extendThreshold : null,
-      duration_days:
-        durationType === "other" ? customDays : Number(durationType),
-      duration_minutes: durationType === "other" ? customMinutes : 0,
-      start_date: startDate,
-      images,
-      description,
+  const addImage = () => {
+    if (images.length >= 5) return;
+    setImages((prev) => [...prev, { file: null, previewUrl: "" }]);
+  };
+
+  const removeImage = (idx: number) => {
+    if (idx < 3) return;
+    setImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const uploadImages = async () => {
+    for (const img of images) {
+      if (!img.file) continue;
+
+      const formData = new FormData();
+      formData.append("image", img.file);
+      formData.append("uploadSessionId", uploadSessionId);
+
+      const res = await fetchWithAuth(UPLOAD_IMAGE_API, {
+        method: "POST",
+        body: formData,
+      });
+
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error("Image upload failed");
+      }
+    }
+  };
+
+  const handleSelectImage = (idx: number) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+
+    input.onchange = (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      setImages((prev) => {
+        const copy = [...prev];
+        copy[idx] = {
+          file,
+          previewUrl: URL.createObjectURL(file),
+        };
+        return copy;
+      });
     };
 
-    console.log("CREATE AUCTION:", payload);
+    input.click();
   };
+
+  /* ====== SUBMIT ====== */
+  const handleConfirmCreate = async () => {
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+
+    try {
+      await uploadImages();
+
+      const res = await fetchWithAuth(CREATE_AUCTION_API, {
+        method: "POST",
+        body: JSON.stringify({
+          title,
+          categoryId: Number(categoryId),
+          startPrice: startingBid,
+          bidStep,
+          buyNowPrice: enableBuyNow ? buyNow : null,
+          auctionType: enableBuyNow ? "buy_now" : "traditional",
+          description,
+          autoExtend: enableAutoExtend,
+          durationMinutes: computeDurationMinutes(),
+          uploadSessionId, // 🔥 QUAN TRỌNG
+        }),
+      });
+
+      const json = await res.json();
+      if (!json.success) {
+        toast.error(json.message || "Create auction failed");
+        return;
+      }
+
+      toast.success("Auction created successfully 🎉");
+      resetForm();
+    } catch (err: any) {
+      toast.error(err.message || "Something went wrong");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  /* ================= RENDER ================= */
 
   return (
     <div className="space-y-6">
@@ -117,8 +273,38 @@ export function CreateAuction() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="bg-secondary/50 border-border/50"
-                  placeholder="e.g. Rolex Submariner 116610LN"
+                  placeholder="Auction title"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-yellow-500 mb-2">Category *</Label>
+
+                <Select value={categoryId} onValueChange={setCategoryId}>
+                  {/* TRIGGER */}
+                  <SelectTrigger className="bg-black/60 border border-[#fbbf24]/20 text-gray-300 hover:bg-black/80 focus:ring-0">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+
+                  {/* DROPDOWN */}
+                  <SelectContent className="bg-[#0a0a0a] border border-[#fbbf24]/30 shadow-xl">
+                    {categories.map((sub) => {
+                      const isActive = categoryId === String(sub.id);
+
+                      return (
+                        <SelectItem
+                          key={sub.id}
+                          value={String(sub.id)}
+                          className={`cursor-pointer text-gray-300 focus:bg-[#fbbf24]/20 focus:text-[#fbbf24] hover:bg-[#fbbf24]/20 hover:text-[#fbbf24] ${
+                            isActive ? "bg-[#fbbf24]/25 text-[#fbbf24]" : ""
+                          }`}
+                        >
+                          {sub.label}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
@@ -154,54 +340,65 @@ export function CreateAuction() {
           </div>
 
           {/* IMAGES */}
-          <div className="bg-card border border-border/50 rounded-xl p-6 space-y-4">
-            <h2 className="text-yellow-500">Images *</h2>
+          <div className="bg-card border border-border/50 rounded-xl p-6 space-y-3">
+            <Label className="text-yellow-500">Images *</Label>
 
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={(e) =>
-                setImages(e.target.files ? Array.from(e.target.files) : [])
-              }
-              className="hidden"
-              id="image-upload"
-            />
-
-            <label
-              htmlFor="image-upload"
-              className="flex cursor-pointer items-center gap-2 text-muted-foreground hover:text-foreground"
-            >
-              <Upload className="h-5 w-5" />
-              Upload images
-            </label>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {imagePreviews.map((src, i) => (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+              {images.map((img, idx) => (
                 <div
-                  key={i}
-                  className="relative aspect-square border border-border/50 rounded-lg overflow-hidden"
+                  key={idx}
+                  className="relative aspect-square rounded-lg border border-dashed border-border/50 flex items-center justify-center bg-black/40 hover:bg-black/60 transition cursor-pointer"
+                  onClick={() => handleSelectImage(idx)}
                 >
-                  <img src={src} className="w-full h-full object-cover" />
-                  <button
-                    onClick={() =>
-                      setImages(images.filter((_, idx) => idx !== i))
-                    }
-                    className="absolute top-2 right-2 bg-black/60 h-6 w-6 rounded-full flex items-center justify-center"
-                  >
-                    <X className="h-4 w-4 text-white" />
-                  </button>
-                  {i === 0 && (
-                    <Badge className="absolute bottom-2 left-2 bg-[#fbbf24] text-black">
-                      Primary
-                    </Badge>
+                  {/* IMAGE PREVIEW */}
+                  {img.previewUrl ? (
+                    <>
+                      <img
+                        src={img.previewUrl}
+                        alt={`preview-${idx}`}
+                        className="absolute inset-0 w-full h-full object-cover rounded-lg"
+                      />
+
+                      {/* REMOVE */}
+                      {idx >= 3 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeImage(idx);
+                          }}
+                          className="absolute top-1 right-1 bg-black/70 rounded-full p-1 text-red-500 hover:bg-black"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {/* UPLOAD PLACEHOLDER */}
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <Upload size={20} />
+                        <span className="text-xs">Upload</span>
+                      </div>
+                    </>
                   )}
                 </div>
               ))}
+
+              {/* ADD MORE */}
+              {images.length < 5 && (
+                <button
+                  type="button"
+                  onClick={addImage}
+                  className="aspect-square rounded-lg border border-dashed border-border/50 flex items-center justify-center text-muted-foreground hover:bg-black/40 transition"
+                >
+                  <Plus size={20} />
+                </button>
+              )}
             </div>
 
-            <p className="text-muted-foreground">
-              Min 3 imgs required & 5 Max imgs allowed ({images.length}/5)
+            <p className="text-muted-foreground text-xs">
+              Minimum 3 images, maximum 5
             </p>
           </div>
         </div>
@@ -304,19 +501,6 @@ export function CreateAuction() {
                 )}
               </div>
 
-              <div>
-                <Label className="text-yellow-500 mb-2">Start Date *</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="datetime-local"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="pl-10 bg-secondary/50 border-border/50"
-                  />
-                </div>
-              </div>
-
               <Separator className="bg-border/50" />
 
               {/* ===== AUTO EXTEND ===== */}
@@ -324,37 +508,34 @@ export function CreateAuction() {
                 <input
                   type="checkbox"
                   checked={enableAutoExtend}
-                  onChange={(e) => setEnableAutoExtend(e.target.checked)}
+                  onChange={(e) => handleToggleAutoExtend(e.target.checked)}
                   className="accent-[#fbbf24] rounded w-4 h-4"
                 />
                 Enable Auto Extend
               </label>
 
-              {enableAutoExtend && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Input
-                      placeholder="Extend by"
-                      value={extendMinutes}
-                      onChange={(e) => {
-                        const raw = digitsOnly(e.target.value);
-                        setExtendMinutes(raw === "" ? "" : Number(raw));
-                      }}
-                    />
-                    <span className="text-muted-foreground">mins</span>
-                  </div>
+              {enableAutoExtend && autoExtendConfig && (
+                <div className="bg-black/40 border border-[#fbbf24]/20 rounded-lg p-4 text-sm">
+                  <p className="text-gray-300">
+                    If a bid is placed within{" "}
+                    <span className="text-[#fbbf24] font-semibold">
+                      {autoExtendConfig.thresholdMinutes} minutes
+                    </span>{" "}
+                    before the auction ends,
+                  </p>
 
-                  <div className="flex items-center gap-2">
-                    <Input
-                      placeholder="If bid placed within"
-                      value={extendThreshold}
-                      onChange={(e) => {
-                        const raw = digitsOnly(e.target.value);
-                        setExtendThreshold(raw === "" ? "" : Number(raw));
-                      }}
-                    />
-                    <span className="text-muted-foreground">mins</span>
-                  </div>
+                  <p className="text-gray-300">
+                    the auction will be automatically extended by{" "}
+                    <span className="text-[#fbbf24] font-semibold">
+                      {autoExtendConfig.durationMinutes} minutes
+                    </span>
+                    .
+                  </p>
+
+                  <p className="text-gray-500 mt-2 text-xs">
+                    These values are set by the administrator and apply to all
+                    auctions.
+                  </p>
                 </div>
               )}
             </div>
@@ -374,24 +555,33 @@ export function CreateAuction() {
           {/* ===== ACTIONS ===== */}
           {showConfirm && (
             <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-              <div className="bg-card border border-border/50 rounded-xl p-6 w-[420px] space-y-4">
+              <div className="bg-card border border-border/50 rounded-xl p-6 w-[420px] space-y-4 relative">
+                {isSubmitting && (
+                  <div className="absolute inset-0 bg-black/70 flex items-center justify-center rounded-xl z-10">
+                    <LoadingSpinner />
+                  </div>
+                )}
+
                 <h3 className="text-foreground text-lg">Confirm Creation</h3>
                 <p className="text-muted-foreground">
                   Are you sure you want to create this auction? This action
                   cannot be undone.
                 </p>
+
                 <div className="flex justify-end gap-3">
                   <Button
                     variant="outline"
+                    disabled={isSubmitting}
                     onClick={() => setShowConfirm(false)}
                   >
                     Cancel
                   </Button>
                   <Button
+                    disabled={isSubmitting}
                     className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black"
                     onClick={handleConfirmCreate}
                   >
-                    Confirm
+                    {isSubmitting ? "Submitting..." : "Submit"}
                   </Button>
                 </div>
               </div>
