@@ -74,9 +74,10 @@ export function ProductInfo({ product, seller, bidCount }: ProductInfoProps) {
 
         {/* Description */}
         <TabsContent value="description" className="mt-4">
-          <p className="text-foreground whitespace-pre-line leading-relaxed">
-            {product.description}
-          </p>
+          <p
+            className="text-foreground leading-relaxed description-content"
+            dangerouslySetInnerHTML={{ __html: product.description }}
+          ></p>
         </TabsContent>
 
         {/* Auction info */}

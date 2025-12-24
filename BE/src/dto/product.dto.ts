@@ -176,6 +176,7 @@ export interface SellerActiveProductDTO {
   currentBid: number;
   startingBid: number;
   bid_count: string;
+  bid_step: number;
 
   buyNowPrice: number | null;
 
@@ -183,4 +184,20 @@ export interface SellerActiveProductDTO {
 
   endDate: string;
   timeLeft: number;
+}
+
+export interface EndedAuctionRow {
+  id: string;
+  title: string;
+
+  current_price: number;
+  end_time: Date;
+
+  image: string | null;
+
+  buyer_id: string;
+  buyer_name: string;
+
+  buyer_rating_score: number;
+  buyer_rating_total: number;
 }

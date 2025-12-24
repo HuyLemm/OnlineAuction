@@ -1,5 +1,9 @@
 import { db } from "../config/db";
-import { CreateAuctionDTO, SellerActiveProductDTO } from "../dto/product.dto";
+import {
+  CreateAuctionDTO,
+  SellerActiveProductDTO,
+  type EndedAuctionRow,
+} from "../dto/product.dto";
 
 import { supabase } from "../config/supabase";
 import crypto from "crypto";
@@ -26,6 +30,8 @@ type ActiveListingRow = {
   start_price: number;
   current_price: number | null;
   buy_now_price: number | null;
+
+  bid_step: number;
 
   end_time: Date;
 
@@ -289,6 +295,7 @@ export class SellerService {
         "p.description",
         "p.start_price",
         "p.current_price",
+        "p.bid_step",
         "p.buy_now_price",
         "p.end_time",
         "c.name as category",
@@ -312,6 +319,8 @@ export class SellerService {
 
       bid_count: row.bid_count,
 
+      bid_step: Number(row.bid_step),
+
       buyNowPrice:
         row.buy_now_price !== null ? Number(row.buy_now_price) : null,
 
@@ -323,5 +332,90 @@ export class SellerService {
         Math.floor((new Date(row.end_time).getTime() - Date.now()) / 1000)
       ),
     }));
+  }
+
+  static async appendProductDescription(params: {
+    sellerId: string;
+    productId: string;
+    content: string;
+  }) {
+    const { sellerId, productId, content } = params;
+
+    return await db.transaction(async (trx) => {
+      const product = await trx("products")
+        .select("id", "description", "seller_id", "status")
+        .where({ id: productId })
+        .first();
+
+      if (!product) throw new Error("Product not found");
+      if (product.seller_id !== sellerId) throw new Error("Not allowed");
+      if (product.status !== "active")
+        throw new Error("Cannot edit inactive auction");
+
+      const today = new Date().toLocaleDateString("vi-VN");
+
+      const appendedBlock = `
+      <hr />
+      <p><strong>${today}</strong> - ${content}</p>
+    `;
+
+      const newDescription = (product.description ?? "") + appendedBlock;
+
+      await trx("products").where({ id: productId }).update({
+        description: newDescription,
+      });
+
+      return { success: true };
+    });
+  }
+
+  /* ===============================
+   * Get ended auctions with winner + rating
+   * =============================== */
+  static async getEndedAuctions(sellerId: string): Promise<EndedAuctionRow[]> {
+    const rows = (await db("products as p")
+      .join("users as u", "u.id", "p.highest_bidder_id")
+
+      // main image
+      .leftJoin("product_images as img", function () {
+        this.on("img.product_id", "p.id").andOn("img.is_main", db.raw("true"));
+      })
+
+      // rating aggregate subquery
+      .leftJoin(
+        db("ratings")
+          .select(
+            "to_user",
+            db.raw("COALESCE(SUM(score), 0) AS score"),
+            db.raw("COUNT(*) AS total")
+          )
+          .groupBy("to_user")
+          .as("r"),
+        "r.to_user",
+        "u.id"
+      )
+
+      .where("p.seller_id", sellerId) // 🔒 đúng seller
+      .andWhere("p.status", "ended") // 🔒 ended
+      .whereNotNull("p.highest_bidder_id")
+
+      .orderBy("p.end_time", "desc")
+
+      .select(
+        "p.id",
+        "p.title",
+        "p.current_price",
+        "p.end_time",
+
+        "u.id as buyer_id",
+        "u.full_name as buyer_name",
+
+        "img.image_url as image",
+
+        db.raw("COALESCE(r.score, 0) AS buyer_rating_score"),
+        db.raw("COALESCE(r.total, 0) AS buyer_rating_total")
+      )) as EndedAuctionRow[];
+
+    return rows;
   }
 }

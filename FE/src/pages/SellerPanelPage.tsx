@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { SellerPanelLayout } from "../layouts/SellerPanelLayout";
 import { CreateAuction } from "../components/seller/CreateAuction";
-import { ManageListings } from "../components/seller/ManageListings";
+import { ActiveAuctions } from "../components/seller/ActiveAuctions";
 import { EndedAuctionsSection } from "../components/seller/EndedAuctionsSection";
 import { ProfileSettingsSection } from "../components/dashboard/ProfileSettingsSection";
 
@@ -15,7 +15,7 @@ export function SellerPanelPage() {
       case "create":
         return <CreateAuction />;
       case "active":
-        return <ManageListings />;
+        return <ActiveAuctions onCreate={() => setActiveTab("create")} />;
       case "closed":
         return <EndedAuctionsSection />;
       default:

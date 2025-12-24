@@ -30,6 +30,7 @@ import {
   ADD_TO_WATCHLIST_API,
   REMOVE_FROM_WATCHLIST_API,
   GET_WATCHLIST_ID_API,
+  GET_PRODUCT_DETAIL_API,
 } from "../components/utils/api";
 
 export function ProductDetailPage() {
@@ -57,9 +58,7 @@ export function ProductDetailPage() {
     const fetchDetail = async () => {
       try {
         setLoading(true);
-        const res = await fetch(
-          `${API_BASE_URL}/products/${productId}/get-product-detail`
-        );
+        const res = await fetch(GET_PRODUCT_DETAIL_API(productId));
         const json = await res.json();
         setData(json.data);
       } catch (err) {

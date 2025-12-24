@@ -104,4 +104,34 @@ export class SellerController {
       });
     }
   }
+
+  static async appendDescription(req: AuthRequest, res: Response) {
+    const sellerId = req.user!.userId;
+    const { productId } = req.params;
+    const { content } = req.body;
+
+    if (!productId) {
+      return res.status(400).json({
+        success: false,
+        message: "Product id is required",
+      });
+    }
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Content is required",
+      });
+    }
+
+    await SellerService.appendProductDescription({
+      sellerId,
+      productId,
+      content,
+    });
+
+    res.json({ success: true });
+  }
+
+  
 }

@@ -6224,3 +6224,9 @@ html {
   font-size: 14px;
   line-height: 1.5;
 }
+
+/* Giãn giữa các đoạn */
+.description-content p {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}

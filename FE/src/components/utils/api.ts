@@ -3,6 +3,8 @@ export const API_BASE_URL = "http://localhost:3000";
 //Products
 export const SEARCH_PRODUCTS_API = `${API_BASE_URL}/products/search-products`;
 export const GET_BROWSE_PRODUCT_API = `${API_BASE_URL}/products/get-browse-product`;
+export const GET_PRODUCT_DETAIL_API = (productId: string) =>
+  `${API_BASE_URL}/products/${productId}/get-product-detail`;
 
 //Categories
 export const GET_CATEGORIES_FOR_SIDEBAR_API = `${API_BASE_URL}/categories/get-categories-for-sidebar`;
@@ -44,3 +46,6 @@ export const REFRESH_TOKEN_API = `${API_BASE_URL}/users/refresh-token`;
 export const CREATE_AUCTION_API = `${API_BASE_URL}/seller/create-auction`;
 export const GET_AUTO_EXTEND_CONFIG_API = `${API_BASE_URL}/seller/auto-extend-config`;
 export const UPLOAD_IMAGE_API = `${API_BASE_URL}/seller/upload-image`;
+export const GET_ACTIVE_LISTINGS_API = `${API_BASE_URL}/seller/listings-active`;
+export const APPEND_DESCRIPTION_API = (productId: string) =>
+  `${API_BASE_URL}/seller/${productId}/append-description`;

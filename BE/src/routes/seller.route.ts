@@ -25,5 +25,11 @@ router.get(
   SellerController.getMyActiveListings
 );
 
+router.post(
+  "/:productId/append-description",
+  authenticate,
+  authorize("seller"),
+  SellerController.appendDescription
+);
 
 export default router;
