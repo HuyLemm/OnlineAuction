@@ -47,12 +47,16 @@ function formatTimeLeft(seconds: number): string {
 
 interface ActiveAuctionsProps {
   onCreate: () => void;
+  onCountChange?: (count: number) => void;
 }
 
 /* ===============================
  * Component
  * =============================== */
-export function ActiveAuctions({ onCreate }: ActiveAuctionsProps) {
+export function ActiveAuctions({
+  onCreate,
+  onCountChange,
+}: ActiveAuctionsProps) {
   const navigate = useNavigate();
   const [activeListings, setActiveListings] = useState<SellerActiveProduct[]>(
     []
@@ -76,6 +80,7 @@ export function ActiveAuctions({ onCreate }: ActiveAuctionsProps) {
         data: SellerActiveProduct[];
       } = await res.json();
       setActiveListings(json.data);
+      onCountChange?.(json.data.length);
     } catch (err) {
       console.error("Failed to fetch active listings", err);
     } finally {
@@ -218,7 +223,9 @@ export function ActiveAuctions({ onCreate }: ActiveAuctionsProps) {
 
         {/* RIGHT */}
         <div className="md:col-span-1 border border-border/50 rounded-lg p-4">
-          <p className="text-muted-foreground mb-2">Description</p>
+          <p className="text-yellow-500 text-lg font-semibold mb-2">
+            Description
+          </p>
           <div
             className="prose prose-sm max-w-none text-muted-foreground description-content"
             dangerouslySetInnerHTML={{ __html: item.description }}
@@ -244,7 +251,19 @@ export function ActiveAuctions({ onCreate }: ActiveAuctionsProps) {
       <div className="space-y-6">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-foreground mb-2">Active Auctions</h1>
+            <h1 className="text-yellow-500 mb-2 text-2xl">
+              {activeListings.length === 0 ? (
+                "No Auctions Available"
+              ) : (
+                <>
+                  Active Auctions{" "}
+                  <span className="text-foreground text-lg font-normal">
+                    (Total: {activeListings.length}{" "}
+                    {activeListings.length === 1 ? "auction" : "auctions"})
+                  </span>
+                </>
+              )}
+            </h1>
             <p className="text-muted-foreground">
               View and manage your active auctions
             </p>

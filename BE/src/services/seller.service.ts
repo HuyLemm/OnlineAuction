@@ -2,8 +2,10 @@ import { db } from "../config/db";
 import {
   CreateAuctionDTO,
   SellerActiveProductDTO,
-  type EndedAuctionRow,
+  EndedAuctionRow,
 } from "../dto/product.dto";
+
+import { RateWinnerInput } from "../dto/seller.dto";
 
 import { supabase } from "../config/supabase";
 import crypto from "crypto";
@@ -143,6 +145,16 @@ export class SellerService {
     const bucket = supabase.storage.from("product_images");
 
     const { data: files, error } = await bucket.list(`tmp/${uploadSessionId}`);
+
+    if (!files || files.length === 0) {
+      throw new Error("No uploaded images found");
+    }
+
+    files.sort((a, b) => {
+      const t1 = new Date(a.created_at ?? 0).getTime();
+      const t2 = new Date(b.created_at ?? 0).getTime();
+      return t1 - t2;
+    });
 
     if (error) {
       throw new Error("Failed to list uploaded images");
@@ -374,6 +386,7 @@ export class SellerService {
    * =============================== */
   static async getEndedAuctions(sellerId: string): Promise<EndedAuctionRow[]> {
     const rows = (await db("products as p")
+      // winner
       .join("users as u", "u.id", "p.highest_bidder_id")
 
       // main image
@@ -381,7 +394,7 @@ export class SellerService {
         this.on("img.product_id", "p.id").andOn("img.is_main", db.raw("true"));
       })
 
-      // rating aggregate subquery
+      // ⭐ aggregate rating of buyer (all users)
       .leftJoin(
         db("ratings")
           .select(
@@ -390,13 +403,22 @@ export class SellerService {
             db.raw("COUNT(*) AS total")
           )
           .groupBy("to_user")
-          .as("r"),
-        "r.to_user",
+          .as("r_agg"),
+        "r_agg.to_user",
         "u.id"
       )
 
-      .where("p.seller_id", sellerId) // 🔒 đúng seller
-      .andWhere("p.status", "ended") // 🔒 ended
+      // ⭐ rating của CHÍNH seller này cho product này
+      .leftJoin("ratings as r_my", function () {
+        this.on("r_my.product_id", "p.id").andOn(
+          "r_my.from_user",
+          db.raw("?", [sellerId])
+        );
+      })
+
+      // 🔒 quyền + trạng thái
+      .where("p.seller_id", sellerId)
+      .andWhere("p.status", "ended")
       .whereNotNull("p.highest_bidder_id")
 
       .orderBy("p.end_time", "desc")
@@ -412,10 +434,94 @@ export class SellerService {
 
         "img.image_url as image",
 
-        db.raw("COALESCE(r.score, 0) AS buyer_rating_score"),
-        db.raw("COALESCE(r.total, 0) AS buyer_rating_total")
+        // aggregate buyer rating
+        db.raw("COALESCE(r_agg.score, 0) AS buyer_rating_score"),
+        db.raw("COALESCE(r_agg.total, 0) AS buyer_rating_total"),
+
+        // ⭐ rating của seller hiện tại
+        "r_my.score as my_rating_score",
+        "r_my.comment as my_rating_comment"
       )) as EndedAuctionRow[];
 
     return rows;
+  }
+
+  /* ===============================
+   * Rate winner of ended auction
+   * =============================== */
+  static async rateWinner(input: RateWinnerInput) {
+    const { sellerId, productId, score, comment } = input;
+
+    if (![1, -1].includes(score)) {
+      throw new Error("Invalid score");
+    }
+
+    if (!comment || !comment.trim()) {
+      throw new Error("Comment is required");
+    }
+
+    return await db.transaction(async (trx) => {
+      /* 1️⃣ Lấy product + check quyền */
+      const product = await trx("products")
+        .select("id", "seller_id", "status", "highest_bidder_id")
+        .where({ id: productId })
+        .first();
+
+      if (!product) {
+        throw new Error("Product not found");
+      }
+
+      if (product.seller_id !== sellerId) {
+        throw new Error("You are not the seller of this product");
+      }
+
+      if (product.status !== "ended") {
+        throw new Error("Auction is not ended");
+      }
+
+      if (!product.highest_bidder_id) {
+        throw new Error("This auction has no winner");
+      }
+
+      /* 2️⃣ Check rating đã tồn tại chưa */
+      const existing = await trx("ratings")
+        .where({
+          from_user: sellerId,
+          product_id: productId,
+        })
+        .first();
+
+      /* 3️⃣ INSERT hoặc UPDATE */
+      if (existing) {
+        // 👉 UPDATE (EDIT rating)
+        await trx("ratings").where({ id: existing.id }).update({
+          score,
+          comment: comment.trim(),
+          created_at: new Date(), // hoặc updated_at nếu bạn có
+        });
+
+        return {
+          message: "Rating updated successfully",
+          score,
+          updated: true,
+        };
+      }
+
+      // 👉 INSERT (rate lần đầu)
+      await trx("ratings").insert({
+        from_user: sellerId,
+        to_user: product.highest_bidder_id,
+        product_id: productId,
+        score,
+        comment: comment.trim(),
+        created_at: new Date(),
+      });
+
+      return {
+        message: "Rating submitted successfully",
+        score,
+        created: true,
+      };
+    });
   }
 }

@@ -359,7 +359,15 @@ export function CreateAuction() {
                         className="absolute inset-0 w-full h-full object-cover rounded-lg"
                       />
 
-                      {/* REMOVE */}
+                      {/* ⭐ MAIN BADGE */}
+                      {idx === 0 && img.previewUrl && (
+                        <div className="absolute top-2 left-2 z-10">
+                          <Badge className="bg-[#fbbf24] text-black text-xs px-2 py-0.5 shadow">
+                            Main
+                          </Badge>
+                        </div>
+                      )}
+                      {/* REMOVE BUTTON */}
                       {idx >= 3 && (
                         <button
                           type="button"
@@ -374,13 +382,12 @@ export function CreateAuction() {
                       )}
                     </>
                   ) : (
-                    <>
-                      {/* UPLOAD PLACEHOLDER */}
-                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                        <Upload size={20} />
-                        <span className="text-xs">Upload</span>
-                      </div>
-                    </>
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <Upload size={20} />
+                      <span className="text-xs">
+                        {idx === 0 ? "Main image" : "Upload"}
+                      </span>
+                    </div>
                   )}
                 </div>
               ))}

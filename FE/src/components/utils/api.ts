@@ -16,12 +16,17 @@ export const GET_TOP_5_ENDING_SOON_API = `${API_BASE_URL}/home/top-5-ending-soon
 export const GET_TOP_5_MOST_BIDS_API = `${API_BASE_URL}/home/top-5-most-bids`;
 export const GET_TOP_5_HIGHEST_PRICE_API = `${API_BASE_URL}/home/top-5-highest-price`;
 
-//Users
-export const REGISTER_API = `${API_BASE_URL}/users/register`;
-export const LOGIN_API = `${API_BASE_URL}/users/login`;
-export const VERIFY_OTP_API = `${API_BASE_URL}/users/verify-otp`;
-export const RESEND_OTP_API = `${API_BASE_URL}/users/resend-otp`;
+//Auth
+export const REGISTER_API = `${API_BASE_URL}/auth/register`;
+export const LOGIN_API = `${API_BASE_URL}/auth/login`;
+export const VERIFY_OTP_API = `${API_BASE_URL}/auth/verify-otp`;
+export const RESEND_OTP_API = `${API_BASE_URL}/auth/resend-otp`;
+export const FORGOT_PASSWORD_API = `${API_BASE_URL}/auth/forgot-password`;
+export const VERIFY_FORGOT_PASSWORD_OTP_API = `${API_BASE_URL}/auth/forgot-password/verify-otp`;
+export const RESET_FORGOT_PASSWORD_API = `${API_BASE_URL}/auth/forgot-password/reset`;
+export const REFRESH_TOKEN_API = `${API_BASE_URL}/auth/refresh-token`;
 
+//Users
 export const GET_WATCHLIST_API = `${API_BASE_URL}/users/watchlists`;
 export const ADD_TO_WATCHLIST_API = `${API_BASE_URL}/users/watchlists`;
 export const REMOVE_FROM_WATCHLIST_API = `${API_BASE_URL}/users/watchlists`;
@@ -40,8 +45,6 @@ export const GET_ACTIVE_BIDS_API = `${API_BASE_URL}/users/my-bidding-products`;
 export const REQUEST_BECOME_SELLER_API = `${API_BASE_URL}/users/request-upgrade-seller`;
 export const GET_SELLER_UPGRADE_STATUS_API = `${API_BASE_URL}/users/upgrade-seller-status`;
 
-export const REFRESH_TOKEN_API = `${API_BASE_URL}/users/refresh-token`;
-
 //Seller
 export const CREATE_AUCTION_API = `${API_BASE_URL}/seller/create-auction`;
 export const GET_AUTO_EXTEND_CONFIG_API = `${API_BASE_URL}/seller/auto-extend-config`;
@@ -49,3 +52,19 @@ export const UPLOAD_IMAGE_API = `${API_BASE_URL}/seller/upload-image`;
 export const GET_ACTIVE_LISTINGS_API = `${API_BASE_URL}/seller/listings-active`;
 export const APPEND_DESCRIPTION_API = (productId: string) =>
   `${API_BASE_URL}/seller/${productId}/append-description`;
+
+export const GET_ENDED_LISTINGS_API = `${API_BASE_URL}/seller/listings-ended`;
+export const RATE_WINNER_API = (productId: string) =>
+  `${API_BASE_URL}/seller/rate-winner/${productId}`;
+
+//Admin
+export const CREATE_PARENT_CATEGORY_API = `${API_BASE_URL}/admin/categories/parent`;
+export const CREATE_SUB_CATEGORY_API = `${API_BASE_URL}/admin/categories/sub`;
+export const UPDATE_PARENT_CATEGORY_API = (categoryId: number) =>
+  `${API_BASE_URL}/admin/categories/parent/${categoryId}`;
+export const UPDATE_SUB_CATEGORY_API = (categoryId: number) =>
+  `${API_BASE_URL}/admin/categories/sub/${categoryId}`;
+export const DELETE_PARENT_CATEGORY_API = (categoryId: number) =>
+  `${API_BASE_URL}/admin/categories/parent/${categoryId}`;
+export const DELETE_SUB_CATEGORY_API = (categoryId: number) =>
+  `${API_BASE_URL}/admin/categories/sub/${categoryId}`;

@@ -133,5 +133,73 @@ export class SellerController {
     res.json({ success: true });
   }
 
-  
+  // ===============================
+  // Get my ended auctions (with winner + rating)
+  // ===============================
+  static async getMyEndedAuctions(req: AuthRequest, res: Response) {
+    try {
+      const sellerId = req.user!.userId;
+
+      const auctions = await SellerService.getEndedAuctions(sellerId);
+
+      return res.json({
+        success: true,
+        data: auctions,
+      });
+    } catch (err: any) {
+      return res.status(500).json({
+        success: false,
+        message: err?.message ?? "Failed to get ended auctions",
+      });
+    }
+  }
+
+  // ===============================
+  // Rate winner of ended auction
+  // ===============================
+  static async rateWinner(req: AuthRequest, res: Response) {
+    try {
+      const sellerId = req.user!.userId;
+      const { productId } = req.params;
+      const { score, comment } = req.body;
+
+      if (!productId) {
+        return res.status(400).json({
+          success: false,
+          message: "Product id is required",
+        });
+      }
+
+      if (score !== 1 && score !== -1) {
+        return res.status(400).json({
+          success: false,
+          message: "Score must be +1 or -1",
+        });
+      }
+
+      if (!comment || !comment.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Comment is required",
+        });
+      }
+
+      const result = await SellerService.rateWinner({
+        sellerId,
+        productId,
+        score,
+        comment,
+      });
+
+      return res.json({
+        success: true,
+        data: result, // { message, score, created? updated? }
+      });
+    } catch (err: any) {
+      return res.status(400).json({
+        success: false,
+        message: err?.message ?? "Failed to rate winner",
+      });
+    }
+  }
 }

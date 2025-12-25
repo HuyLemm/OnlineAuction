@@ -32,4 +32,19 @@ router.post(
   SellerController.appendDescription
 );
 
+router.get(
+  "/listings-ended",
+  authenticate,
+  authorize("seller"),
+  SellerController.getMyEndedAuctions
+);
+
+router.post(
+  "/rate-winner/:productId",
+  authenticate,
+  authorize("seller"),
+  SellerController.rateWinner
+);
+
+
 export default router;

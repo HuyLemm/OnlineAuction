@@ -1,22 +1,20 @@
 import { useState } from "react";
-import {
-  PlusCircle,
-  List,
-  CheckCircle,
-  Settings,
-  Package,
-} from "lucide-react";
+import { PlusCircle, List, CheckCircle, Settings, Package } from "lucide-react";
 
 interface SellerPanelLayoutProps {
   children: React.ReactNode;
   activeTab: string;
   onTabChange: (tab: string) => void;
+  activeCount?: number;
+  endedCount?: number;
 }
 
 export function SellerPanelLayout({
   children,
   activeTab,
   onTabChange,
+  activeCount,
+  endedCount,
 }: SellerPanelLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -33,13 +31,15 @@ export function SellerPanelLayout({
     },
     {
       id: "active",
-      label: "My Auctions (Open)",
+      label: "My Auctions (Active)",
       icon: List,
+      badge: activeCount,
     },
     {
       id: "closed",
-      label: "My Auctions (Closed & Won)",
+      label: "My Auctions (Ended)",
       icon: CheckCircle,
+      badge: endedCount,
     },
   ];
 
@@ -66,14 +66,22 @@ export function SellerPanelLayout({
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
                   isActive
                     ? "bg-gradient-to-r from-[#fbbf24]/10 to-[#f59e0b]/10 text-[#fbbf24] border border-[#fbbf24]/20"
                     : "text-foreground/80 hover:text-foreground hover:bg-secondary/50"
                 }`}
               >
-                <Icon className="h-5 w-5" />
-                <span>{item.label}</span>
+                <div className="flex items-center gap-3">
+                  <Icon className="h-5 w-5" />
+                  <span>{item.label}</span>
+                </div>
+
+                {typeof item.badge === "number" && item.badge > 0 && (
+                  <span className="ml-2 rounded-full bg-[#fbbf24] text-black text-xs font-semibold px-2 py-0.5">
+                    {item.badge}
+                  </span>
+                )}
               </button>
             );
           })}

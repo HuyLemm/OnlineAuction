@@ -1,4 +1,9 @@
-import { useRef, useState, type KeyboardEvent, type ClipboardEvent } from "react";
+import {
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ClipboardEvent,
+} from "react";
 
 interface OTPInputProps {
   length?: number;
@@ -41,7 +46,7 @@ export function OTPInput({ length = 6, onComplete, error }: OTPInputProps) {
   const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData("text/plain").slice(0, length);
-    
+
     if (!/^\d+$/.test(pastedData)) return;
 
     const newOtp = [...otp];
@@ -68,7 +73,9 @@ export function OTPInput({ length = 6, onComplete, error }: OTPInputProps) {
         {otp.map((digit, index) => (
           <input
             key={index}
-            ref={(el) => (inputRefs.current[index] = el)}
+            ref={(el) => {
+              inputRefs.current[index] = el;
+            }}
             type="text"
             inputMode="numeric"
             maxLength={1}
@@ -79,9 +86,10 @@ export function OTPInput({ length = 6, onComplete, error }: OTPInputProps) {
             className={`
               w-12 h-14 text-center rounded-lg
               bg-secondary/50 border-2 transition-all
-              ${error 
-                ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20" 
-                : digit 
+              ${
+                error
+                  ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+                  : digit
                   ? "border-[#fbbf24] focus:border-[#fbbf24] focus:ring-2 focus:ring-[#fbbf24]/20"
                   : "border-border/50 focus:border-[#fbbf24] focus:ring-2 focus:ring-[#fbbf24]/20"
               }
@@ -91,9 +99,7 @@ export function OTPInput({ length = 6, onComplete, error }: OTPInputProps) {
           />
         ))}
       </div>
-      {error && (
-        <p className="text-sm text-red-500 text-center">{error}</p>
-      )}
+      {error && <p className="text-sm text-red-500 text-center">{error}</p>}
     </div>
   );
 }

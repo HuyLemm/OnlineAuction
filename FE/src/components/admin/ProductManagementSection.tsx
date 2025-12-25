@@ -21,7 +21,7 @@ interface Product {
   reason?: string;
 }
 
-export function ProductModerationSection() {
+export function ProductManagementSection() {
   const [products, setProducts] = useState<Product[]>([
     {
       id: "1",

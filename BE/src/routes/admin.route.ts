@@ -26,4 +26,44 @@ router.post(
   AdminController.rejectUpgrade
 );
 
+router.post(
+  "/categories/parent",
+  authenticate,
+  authorize("admin"),
+  AdminController.createParentCategory
+);
+
+router.post(
+  "/categories/sub",
+  authenticate,
+  authorize("admin"),
+  AdminController.createSubcategory
+);
+
+router.put(
+  "/categories/parent/:id",
+  authenticate,
+  authorize("admin"),
+  AdminController.updateParentCategory
+);
+router.put(
+  "/categories/sub/:id",
+  authenticate,
+  authorize("admin"),
+  AdminController.updateSubcategory
+);
+
+router.delete(
+  "/categories/parent/:id",
+  authenticate,
+  authorize("admin"),
+  AdminController.deleteParentCategory
+);
+router.delete(
+  "/categories/sub/:id",
+  authenticate,
+  authorize("admin"),
+  AdminController.deleteSubcategory
+);
+
 export default router;

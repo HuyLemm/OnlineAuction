@@ -50,7 +50,6 @@ export function OTPVerificationPage() {
         throw new Error(data.message || "OTP verification failed");
       }
 
-      console.log("OTP verified:", data);
       login({
         accessToken: data.accessToken,
         refreshToken: data.refreshToken,
@@ -105,7 +104,7 @@ export function OTPVerificationPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-6 py-12 bg-[#1a1a1a]">
+    <div className="verify-page-wrapper">
       <div className="otp-container">
         <div className="curved-shape-otp"></div>
         <div className="curved-shape2-otp"></div>
