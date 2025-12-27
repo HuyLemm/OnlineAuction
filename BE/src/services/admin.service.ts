@@ -288,4 +288,259 @@ export class AdminService {
       return { message: "Parent category deleted" };
     });
   }
+
+  // ===============================
+  // Get products for admin dashboard
+  // ===============================
+  static async getAdminProducts(params: {
+    parentCategoryId?: number;
+    sortBy?: string;
+    minPrice?: number;
+    maxPrice?: number;
+  }) {
+    const { parentCategoryId, sortBy = "newest", minPrice, maxPrice } = params;
+
+    const query = db("products as p")
+      // ===== MAIN IMAGE =====
+      .leftJoin("product_images as img", function () {
+        this.on("img.product_id", "p.id").andOn("img.is_main", db.raw("true"));
+      })
+
+      // ===== SUB CATEGORY =====
+      .leftJoin("categories as sub", "sub.id", "p.category_id")
+
+      // ===== PARENT CATEGORY =====
+      .leftJoin("categories as parent", "parent.id", "sub.parent_id")
+
+      // ===== SELLER =====
+      .leftJoin("users as u", "u.id", "p.seller_id")
+
+      // ===== BIDS =====
+      .leftJoin("bids as b", "b.product_id", "p.id")
+
+      .select(
+        "p.id",
+        "p.title",
+        "p.start_price",
+        "p.current_price",
+        "p.buy_now_price",
+        "p.status",
+        "p.created_at",
+        "p.end_time",
+        "p.description",
+        "p.auction_type",
+
+        "img.image_url as image",
+
+        "sub.id as subcategory_id",
+        "sub.name as subcategory_name",
+
+        "parent.id as parent_category_id",
+        "parent.name as parent_category_name",
+
+        "u.full_name as seller_name",
+        "u.email as seller_email"
+      )
+      .countDistinct("b.id as total_bids")
+      .groupBy("p.id", "img.image_url", "sub.id", "parent.id", "u.id");
+
+    // ================= FILTER =================
+    if (parentCategoryId) {
+      query.where("parent.id", parentCategoryId);
+    }
+
+    if (minPrice !== undefined) {
+      query.where("p.current_price", ">=", minPrice);
+    }
+
+    if (maxPrice !== undefined) {
+      query.where("p.current_price", "<=", maxPrice);
+    }
+
+    // ================= SORT =================
+    switch (sortBy) {
+      case "ending_soon":
+        query.orderBy("p.end_time", "asc");
+        break;
+
+      case "most_bids":
+        query.orderBy("total_bids", "desc");
+        break;
+
+      case "price_high":
+        query.orderBy("p.current_price", "desc");
+        break;
+
+      case "price_low":
+        query.orderBy("p.current_price", "asc");
+        break;
+
+      case "newest":
+      default:
+        query.orderBy("p.created_at", "desc");
+    }
+
+    return query;
+  }
+
+  // ===============================
+  // Update product (admin)
+  // ===============================
+  static async updateProduct(
+    productId: string,
+    data: {
+      title: string;
+      description?: string;
+      buyNowPrice?: number | null;
+      status: "active" | "inactive" | "ended";
+    }
+  ) {
+    const { title, description, buyNowPrice, status } = data;
+
+    if (!title?.trim()) {
+      throw new Error("Product title is required");
+    }
+
+    const product = await db("products").where({ id: productId }).first();
+
+    if (!product) {
+      throw new Error("Product not found");
+    }
+
+    // ❗ Nếu auction đã ended thì không cho sửa status nữa (optional nhưng rất nên)
+    if (product.status === "ended" && status !== "ended") {
+      throw new Error("Cannot change status of an ended product");
+    }
+
+    await db("products")
+      .where({ id: productId })
+      .update({
+        title: title.trim(),
+        description: description ?? null,
+        buy_now_price: buyNowPrice ?? null,
+        status,
+      });
+
+    return { message: "Product updated successfully" };
+  }
+
+  // ===============================
+  // Delete product (admin)
+  // ===============================
+  static async deleteProduct(productId: string) {
+    return await db.transaction(async (trx) => {
+      const product = await trx("products").where({ id: productId }).first();
+
+      if (!product) {
+        throw new Error("Product not found");
+      }
+
+      // ❗ Không cho delete nếu có bids
+      const hasBids = await trx("bids")
+        .where({ product_id: productId })
+        .first();
+
+      if (hasBids) {
+        throw new Error("Cannot delete product with existing bids");
+      }
+
+      // 1️⃣ Delete images
+      await trx("product_images").where({ product_id: productId }).del();
+
+      // 2️⃣ Delete product
+      await trx("products").where({ id: productId }).del();
+
+      return { message: "Product deleted successfully" };
+    });
+  }
+
+  // ===============================
+  // Get users for admin management
+  // ===============================
+  static async getAdminUsers() {
+    const rows = await db("users as u")
+      // ===== BIDDER: products joined =====
+      .leftJoin(
+        db("bids")
+          .select("bidder_id")
+          .countDistinct("product_id as products_joined")
+          .groupBy("bidder_id")
+          .as("bid_stats"),
+        "bid_stats.bidder_id",
+        "u.id"
+      )
+
+      // ===== BIDDER: products won =====
+      .leftJoin(
+        db("products")
+          .select("highest_bidder_id")
+          .count("id as products_won")
+          .whereNotNull("highest_bidder_id")
+          .groupBy("highest_bidder_id")
+          .as("win_stats"),
+        "win_stats.highest_bidder_id",
+        "u.id"
+      )
+
+      // ===== SELLER: products sold =====
+      .leftJoin(
+        db("products")
+          .select("seller_id")
+          .count("id as products_sold")
+          .groupBy("seller_id")
+          .as("seller_stats"),
+        "seller_stats.seller_id",
+        "u.id"
+      )
+
+      // ===== SELLER REQUESTS =====
+      .leftJoin(
+        db("seller_upgrade_requests")
+          .select("user_id")
+          .count("id as total_requests")
+          .max("requested_at as last_requested_at")
+          .groupBy("user_id")
+          .as("req_stats"),
+        "req_stats.user_id",
+        "u.id"
+      )
+
+      // ===== LATEST REQUEST STATUS =====
+      .leftJoin(
+        db("seller_upgrade_requests as r2")
+          .select("r2.user_id", "r2.status")
+          .whereRaw(
+            `
+          r2.requested_at = (
+            SELECT MAX(r3.requested_at)
+            FROM seller_upgrade_requests r3
+            WHERE r3.user_id = r2.user_id
+          )
+        `
+          )
+          .as("latest_req"),
+        "latest_req.user_id",
+        "u.id"
+      )
+
+      .select(
+        "u.id",
+        "u.full_name",
+        "u.email",
+        "u.role",
+        "u.is_blocked",
+        "u.created_at",
+
+        db.raw("COALESCE(bid_stats.products_joined, 0) as products_joined"),
+        db.raw("COALESCE(win_stats.products_won, 0) as products_won"),
+        db.raw("COALESCE(seller_stats.products_sold, 0) as products_sold"),
+
+        db.raw("COALESCE(req_stats.total_requests, 0) as seller_request_count"),
+        "latest_req.status as latest_seller_request_status"
+      )
+
+      .orderBy("u.created_at", "desc");
+
+    return rows;
+  }
 }

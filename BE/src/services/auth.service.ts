@@ -105,6 +105,7 @@ export class AuthService {
           role: "bidder",
           is_verified: false,
           last_otp_sent_at: now, // ⏱ mốc xoá account
+          created_at: now,
         })
         .returning(["id", "email"]);
 

@@ -68,3 +68,11 @@ export const DELETE_PARENT_CATEGORY_API = (categoryId: number) =>
   `${API_BASE_URL}/admin/categories/parent/${categoryId}`;
 export const DELETE_SUB_CATEGORY_API = (categoryId: number) =>
   `${API_BASE_URL}/admin/categories/sub/${categoryId}`;
+
+export const GET_PRODUCTS_FOR_ADMIN_API = `${API_BASE_URL}/admin/products`;
+export const UPDATE_PRODUCTS_FOR_ADMIN_API = (productId: string) =>
+  `${API_BASE_URL}/admin/products/${productId}`;
+export const DELETE_PRODUCTS_FOR_ADMIN_API = (productId: string) =>
+  `${API_BASE_URL}/admin/products/${productId}`;
+
+export const GET_USERS_FOR_ADMIN_API = `${API_BASE_URL}/admin/get-users`;

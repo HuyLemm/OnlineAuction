@@ -66,4 +66,31 @@ router.delete(
   AdminController.deleteSubcategory
 );
 
+router.get(
+  "/products",
+  authenticate,
+  authorize("admin"),
+  AdminController.getAdminProducts
+);
+
+router.put(
+  "/products/:id",
+  authenticate,
+  authorize("admin"),
+  AdminController.updateProduct
+);
+router.delete(
+  "/products/:id",
+  authenticate,
+  authorize("admin"),
+  AdminController.deleteProduct
+);
+
+router.get(
+  "/get-users",
+  authenticate,
+  authorize("admin"),
+  AdminController.getAdminUsers
+);
+
 export default router;

@@ -1,14 +1,42 @@
-import { useState } from "react";
-import { Search, MoreVertical, Ban, CheckCircle, Shield, User, Mail, Calendar } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  Search,
+  MoreVertical,
+  Ban,
+  CheckCircle,
+  Shield,
+  User,
+  Mail,
+  Calendar,
+  UserCheck,
+  X,
+} from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { toast } from "sonner";
+
+import { fetchWithAuth } from "../utils/fetchWithAuth";
+import { GET_USERS_FOR_ADMIN_API } from "../utils/api";
+
+/* ================= TYPES ================= */
 
 interface UserData {
   id: string;
@@ -17,141 +45,142 @@ interface UserData {
   role: "buyer" | "seller" | "admin";
   status: "active" | "suspended" | "banned";
   joinedDate: string;
-  totalBids: number;
-  totalPurchases: number;
-  totalSales: number;
+
+  totalBids: number; // products_joined
+  totalPurchases: number; // products_won
+  totalSales: number; // products_sold
+
   avatarUrl?: string;
   verificationStatus: "verified" | "unverified";
+
+  sellerApprovalStatus?: "none" | "pending" | "approved" | "rejected";
+  sellerApprovalDate?: string;
 }
+
+/* ================= COMPONENT ================= */
 
 export function UserManagementSection() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
-  const [users, setUsers] = useState<UserData[]>([
-    {
-      id: "1",
-      name: "John Doe",
-      email: "john.doe@example.com",
-      role: "seller",
-      status: "active",
-      joinedDate: "2024-01-15",
-      totalBids: 45,
-      totalPurchases: 12,
-      totalSales: 28,
-      verificationStatus: "verified"
-    },
-    {
-      id: "2",
-      name: "Jane Smith",
-      email: "jane.smith@example.com",
-      role: "buyer",
-      status: "active",
-      joinedDate: "2024-02-20",
-      totalBids: 32,
-      totalPurchases: 8,
-      totalSales: 0,
-      verificationStatus: "verified"
-    },
-    {
-      id: "3",
-      name: "Mike Johnson",
-      email: "mike.j@example.com",
-      role: "seller",
-      status: "suspended",
-      joinedDate: "2024-03-10",
-      totalBids: 18,
-      totalPurchases: 5,
-      totalSales: 15,
-      verificationStatus: "unverified"
-    },
-    {
-      id: "4",
-      name: "Sarah Williams",
-      email: "sarah.w@example.com",
-      role: "buyer",
-      status: "active",
-      joinedDate: "2024-04-05",
-      totalBids: 67,
-      totalPurchases: 23,
-      totalSales: 0,
-      verificationStatus: "verified"
-    },
-    {
-      id: "5",
-      name: "Tom Brown",
-      email: "tom.brown@example.com",
-      role: "admin",
-      status: "active",
-      joinedDate: "2023-12-01",
-      totalBids: 0,
-      totalPurchases: 0,
-      totalSales: 0,
-      verificationStatus: "verified"
-    },
-  ]);
+  const [users, setUsers] = useState<UserData[]>([]);
 
-  const handleSuspendUser = (userId: string) => {
-    setUsers(users.map(user =>
-      user.id === userId ? { ...user, status: "suspended" as const } : user
-    ));
-    toast.success("User suspended successfully");
+  /* ================= FETCH USERS ================= */
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetchWithAuth(GET_USERS_FOR_ADMIN_API);
+      const json = await res.json();
+
+      if (!json.success) {
+        throw new Error(json.message || "Failed to load users");
+      }
+
+      const mapped: UserData[] = json.data.map((u: any) => ({
+        id: u.id,
+        name: u.full_name,
+        email: u.email,
+
+        role: u.role,
+
+        status: u.is_blocked ? "banned" : "active",
+
+        joinedDate: u.created_at.split("T")[0],
+
+        totalBids: Number(u.products_joined),
+        totalPurchases: Number(u.products_won),
+        totalSales: Number(u.products_sold),
+
+        verificationStatus: "verified",
+
+        sellerApprovalStatus:
+          u.latest_seller_request_status === "pending"
+            ? "pending"
+            : u.latest_seller_request_status === "approved"
+            ? "approved"
+            : u.latest_seller_request_status === "rejected"
+            ? "rejected"
+            : "none",
+      }));
+
+      setUsers(mapped);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load users");
+    }
   };
 
-  const handleActivateUser = (userId: string) => {
-    setUsers(users.map(user =>
-      user.id === userId ? { ...user, status: "active" as const } : user
-    ));
-    toast.success("User activated successfully");
-  };
+  /* ================= FILTER ================= */
 
-  const handleBanUser = (userId: string) => {
-    setUsers(users.map(user =>
-      user.id === userId ? { ...user, status: "banned" as const } : user
-    ));
-    toast.success("User banned");
-  };
-
-  const handlePromoteToSeller = (userId: string) => {
-    setUsers(users.map(user =>
-      user.id === userId ? { ...user, role: "seller" as const } : user
-    ));
-    toast.success("User promoted to seller");
-  };
-
-  const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredUsers = users.filter(
+    (u) =>
+      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const pendingSellerApprovals = filteredUsers.filter(
+    (u) => u.sellerApprovalStatus === "pending"
+  );
+
+  const regularUsers = filteredUsers.filter(
+    (u) => u.sellerApprovalStatus !== "pending"
+  );
+
+  const totalUsers = filteredUsers.length;
+
+  const activeUsers = filteredUsers.filter((u) => u.status === "active").length;
+
+  const sellerCount = filteredUsers.filter((u) => u.role === "seller").length;
+
+  const pendingCount = filteredUsers.filter(
+    (u) => u.sellerApprovalStatus === "pending"
+  ).length;
+
+  /* ================= BADGES ================= */
+
   const getRoleBadge = (role: string) => {
-    switch (role) {
-      case "admin":
-        return <Badge className="bg-purple-500/10 text-purple-500 border-0"><Shield className="h-3 w-3 mr-1" />Admin</Badge>;
-      case "seller":
-        return <Badge className="bg-[#fbbf24]/10 text-[#fbbf24] border-0">Seller</Badge>;
-      case "buyer":
-        return <Badge className="bg-blue-500/10 text-blue-500 border-0">Buyer</Badge>;
-      default:
-        return null;
-    }
+    if (role === "admin")
+      return (
+        <Badge className="bg-purple-500/10 text-purple-500 border-0">
+          Admin
+        </Badge>
+      );
+    if (role === "seller")
+      return (
+        <Badge className="bg-[#fbbf24]/10 text-[#fbbf24] border-0">
+          Seller
+        </Badge>
+      );
+    return (
+      <Badge className="bg-blue-500/10 text-blue-500 border-0">Buyer</Badge>
+    );
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "active":
-        return <Badge className="bg-green-500/10 text-green-500 border-0">Active</Badge>;
-      case "suspended":
-        return <Badge className="bg-[#f59e0b]/10 text-[#f59e0b] border-0">Suspended</Badge>;
-      case "banned":
-        return <Badge className="bg-red-500/10 text-red-500 border-0">Banned</Badge>;
-      default:
-        return null;
-    }
+    if (status === "active")
+      return (
+        <Badge className="bg-green-500/10 text-green-500 border-0">
+          Active
+        </Badge>
+      );
+    if (status === "suspended")
+      return (
+        <Badge className="bg-[#f59e0b]/10 text-[#f59e0b] border-0">
+          Suspended
+        </Badge>
+      );
+    return (
+      <Badge className="bg-red-500/10 text-red-500 border-0">Banned</Badge>
+    );
   };
+
+  /* ================= RENDER ================= */
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* HEADER */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-foreground mb-2">User Management</h1>
@@ -159,64 +188,217 @@ export function UserManagementSection() {
             Manage platform users and permissions
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search users..."
-              className="pl-10 w-64 bg-secondary/50 border-border/50"
-            />
-          </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search users..."
+            className="pl-10 w-64 bg-secondary/50 border-border/50"
+          />
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* STATS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* TOTAL USERS */}
         <Card className="p-6 bg-card border-border/50">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm mb-1">Total Users</p>
-              <h3 className="text-foreground">{users.length}</h3>
+              <h3 className="text-foreground">{totalUsers}</h3>
             </div>
             <User className="h-8 w-8 text-[#fbbf24]" />
           </div>
         </Card>
+
+        {/* ACTIVE USERS */}
         <Card className="p-6 bg-card border-border/50">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm mb-1">Active Users</p>
-              <h3 className="text-foreground">{users.filter(u => u.status === "active").length}</h3>
+              <h3 className="text-foreground">
+                <h3 className="text-foreground">{activeUsers}</h3>
+              </h3>
             </div>
             <CheckCircle className="h-8 w-8 text-green-500" />
           </div>
         </Card>
+
+        {/* SELLERS */}
         <Card className="p-6 bg-card border-border/50">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm mb-1">Sellers</p>
-              <h3 className="text-foreground">{users.filter(u => u.role === "seller").length}</h3>
+              <h3 className="text-foreground">
+                <h3 className="text-foreground">{sellerCount}</h3>
+              </h3>
             </div>
-            <Badge className="bg-[#fbbf24]/10 text-[#fbbf24] border-0 h-8 px-3">Verified</Badge>
+            <Badge className="bg-[#fbbf24]/10 text-[#fbbf24] border-0 h-8 px-3">
+              Verified
+            </Badge>
           </div>
         </Card>
+
+        {/* PENDING APPROVAL */}
         <Card className="p-6 bg-card border-border/50">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-muted-foreground text-sm mb-1">Suspended</p>
-              <h3 className="text-foreground">{users.filter(u => u.status === "suspended").length}</h3>
+              <p className="text-muted-foreground text-sm mb-1">
+                Pending Approvals
+              </p>
+              <h3 className="text-foreground">
+                <h3 className="text-foreground">{pendingCount}</h3>
+              </h3>
             </div>
-            <Ban className="h-8 w-8 text-red-500" />
+            <UserCheck className="h-8 w-8 text-[#d4a446]" />
           </div>
         </Card>
       </div>
 
-      {/* Users Table */}
-      <Card className="bg-card border-border/50">
+      {/* ================= PENDING SELLER APPROVAL REQUESTS ================= */}
+      {pendingSellerApprovals.length > 0 && (
+        <Card className=" bg-card bg-[#d4a446]/10">
+          {/* HEADER */}
+          <div className="p-4 border-b border-[#d4a446]/30 flex items-center gap-2">
+            <UserCheck className="h-5 w-5 text-[#d4a446]" />
+            <h3 className="text-foreground">
+              Pending Seller Approval Requests
+            </h3>
+            <Badge className="bg-[#d4a446]/20 text-[#d4a446] border-0">
+              {pendingSellerApprovals.length}
+            </Badge>
+          </div>
+
+          {/* TABLE */}
+          <Table>
+            <TableHeader>
+              <TableRow className="border-[#d4a446]/20">
+                <TableHead>User</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Joined</TableHead>
+                <TableHead>Activity</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+
+            <TableBody>
+              {pendingSellerApprovals.map((user) => (
+                <TableRow
+                  key={user.id}
+                  className="border-[#d4a446]/20 hover:bg-[#d4a446]/10 transition"
+                >
+                  {/* USER */}
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10 ring-2 ring-[#d4a446]/60">
+                        <AvatarImage src={user.avatarUrl} />
+                        <AvatarFallback className="bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] text-black">
+                          {user.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </AvatarFallback>
+                      </Avatar>
+
+                      <div>
+                        <p className="text-foreground">{user.name}</p>
+                        <Badge className="bg-[#d4a446]/20 text-[#d4a446] border-0 text-xs mt-1 inline-flex items-center gap-1">
+                          <UserCheck className="h-3 w-3" />
+                          Seller Request
+                        </Badge>
+                      </div>
+                    </div>
+                  </TableCell>
+
+                  {/* EMAIL */}
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Mail className="h-4 w-4" />
+                      {user.email}
+                    </div>
+                  </TableCell>
+
+                  {/* ROLE */}
+                  <TableCell>
+                    <Badge className="bg-blue-500/10 text-blue-400 border-0">
+                      Buyer
+                    </Badge>
+                  </TableCell>
+
+                  {/* STATUS */}
+                  <TableCell>
+                    <Badge className="bg-green-500/10 text-green-400 border-0">
+                      Active
+                    </Badge>
+                  </TableCell>
+
+                  {/* JOINED */}
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      {user.joinedDate}
+                    </div>
+                  </TableCell>
+
+                  {/* ACTIVITY */}
+                  <TableCell>
+                    <div className="space-y-1 text-sm">
+                      <p className="text-muted-foreground">
+                        Bids: {user.totalBids}
+                      </p>
+                      <p className="text-muted-foreground">
+                        Purchases: {user.totalPurchases}
+                      </p>
+                    </div>
+                  </TableCell>
+
+                  {/* ACTIONS */}
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        size="sm"
+                        className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90"
+                        // onClick={() => handleApproveSellerRequest(user.id)}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Approve
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-red-500/50 text-red-500 hover:bg-red-500/10"
+                        // onClick={() => handleRejectSellerRequest(user.id)}
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Reject
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="hover:bg-[#d4a446]/10"
+                        onClick={() => setSelectedUser(user)}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+
+      {/* USERS TABLE */}
+      <Card>
         <Table>
           <TableHeader>
-            <TableRow className="border-border/50 hover:bg-transparent">
+            <TableRow>
               <TableHead>User</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
@@ -227,22 +409,30 @@ export function UserManagementSection() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredUsers.map((user) => (
-              <TableRow key={user.id} className="border-border/50 hover:bg-secondary/30">
+            {regularUsers.map((user) => (
+              <TableRow key={user.id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={user.avatarUrl} />
+                    <Avatar>
                       <AvatarFallback className="bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] text-black">
-                        {user.name.split(' ').map(n => n[0]).join('')}
+                        {user.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="text-foreground">{user.name}</p>
-                      {user.verificationStatus === "verified" && (
+                      <p>{user.name}</p>
+                      {user.role === "seller" && (
                         <Badge className="bg-blue-500/10 text-blue-500 border-0 text-xs">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Verified
+                        </Badge>
+                      )}
+                      {user.role === "admin" && (
+                        <Badge className="bg-[#d4a446]/20 text-[#d4a446] border-0 text-xs">
+                          <UserCheck className="h-3 w-3 mr-1" />
+                          Boss
                         </Badge>
                       )}
                     </div>
@@ -263,52 +453,30 @@ export function UserManagementSection() {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="space-y-1 text-sm">
-                    <p className="text-muted-foreground">Bids: {user.totalBids}</p>
-                    <p className="text-muted-foreground">
-                      {user.role === "seller" ? `Sales: ${user.totalSales}` : `Purchases: ${user.totalPurchases}`}
-                    </p>
-                  </div>
+                  {user.role !== "admin" &&
+                    (user.role === "seller" ? (
+                      <p className="text-muted-foreground">
+                        Products Sold: {user.totalSales}
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-muted-foreground">
+                          Products Joined: {user.totalBids}
+                        </p>
+                        <p className="text-muted-foreground">
+                          Products Won: {user.totalPurchases}
+                        </p>
+                      </>
+                    ))}
                 </TableCell>
                 <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-card border-border/50">
-                      <DropdownMenuItem onClick={() => setSelectedUser(user)}>
-                        View Details
-                      </DropdownMenuItem>
-                      {user.role === "buyer" && (
-                        <DropdownMenuItem onClick={() => handlePromoteToSeller(user.id)}>
-                          Promote to Seller
-                        </DropdownMenuItem>
-                      )}
-                      {user.status === "active" ? (
-                        <DropdownMenuItem 
-                          onClick={() => handleSuspendUser(user.id)}
-                          className="text-[#f59e0b]"
-                        >
-                          Suspend User
-                        </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem 
-                          onClick={() => handleActivateUser(user.id)}
-                          className="text-green-500"
-                        >
-                          Activate User
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem 
-                        onClick={() => handleBanUser(user.id)}
-                        className="text-red-500"
-                      >
-                        Ban User
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedUser(user)}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -316,49 +484,27 @@ export function UserManagementSection() {
         </Table>
       </Card>
 
-      {/* User Details Dialog */}
+      {/* USER DETAILS DIALOG */}
       {selectedUser && (
-        <Dialog open={!!selectedUser} onOpenChange={() => setSelectedUser(null)}>
-          <DialogContent className="bg-card border-border/50 max-w-2xl">
+        <Dialog open onOpenChange={() => setSelectedUser(null)}>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>User Details</DialogTitle>
             </DialogHeader>
-            <div className="space-y-6">
-              <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={selectedUser.avatarUrl} />
-                  <AvatarFallback className="bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] text-black text-xl">
-                    {selectedUser.name.split(' ').map(n => n[0]).join('')}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="text-foreground mb-1">{selectedUser.name}</h3>
-                  <p className="text-muted-foreground">{selectedUser.email}</p>
-                  <div className="flex gap-2 mt-2">
-                    {getRoleBadge(selectedUser.role)}
-                    {getStatusBadge(selectedUser.status)}
-                  </div>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <Card className="p-4 bg-secondary/30 border-border/50">
-                  <p className="text-sm text-muted-foreground mb-1">Total Bids</p>
-                  <p className="text-foreground text-xl">{selectedUser.totalBids}</p>
-                </Card>
-                <Card className="p-4 bg-secondary/30 border-border/50">
-                  <p className="text-sm text-muted-foreground mb-1">Total Purchases</p>
-                  <p className="text-foreground text-xl">{selectedUser.totalPurchases}</p>
-                </Card>
-                <Card className="p-4 bg-secondary/30 border-border/50">
-                  <p className="text-sm text-muted-foreground mb-1">Total Sales</p>
-                  <p className="text-foreground text-xl">{selectedUser.totalSales}</p>
-                </Card>
-                <Card className="p-4 bg-secondary/30 border-border/50">
-                  <p className="text-sm text-muted-foreground mb-1">Member Since</p>
-                  <p className="text-foreground">{selectedUser.joinedDate}</p>
-                </Card>
-              </div>
+            <div className="space-y-4">
+              <p>
+                <strong>Name:</strong> {selectedUser.name}
+              </p>
+              <p>
+                <strong>Email:</strong> {selectedUser.email}
+              </p>
+              <p>
+                <strong>Role:</strong> {selectedUser.role}
+              </p>
+              <p>
+                <strong>Status:</strong> {selectedUser.status}
+              </p>
             </div>
           </DialogContent>
         </Dialog>

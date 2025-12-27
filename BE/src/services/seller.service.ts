@@ -244,7 +244,7 @@ export class SellerService {
           bid_step: dto.bidStep,
           buy_now_price: dto.buyNowPrice ?? null,
 
-          current_price: null,
+          current_price: dto.startPrice,
           highest_bidder_id: null,
 
           auction_type: dto.auctionType,

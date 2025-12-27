@@ -6,7 +6,7 @@ import { EndedAuctions } from "../components/seller/EndedAuctions";
 import { ProfileSettingsSection } from "../components/dashboard/ProfileSettingsSection";
 
 export function SellerPanelPage() {
-  const [activeTab, setActiveTab] = useState("active");
+  const [activeTab, setActiveTab] = useState("profile");
   const [activeCount, setActiveCount] = useState(0);
   const [endedCount, setEndedCount] = useState(0);
 

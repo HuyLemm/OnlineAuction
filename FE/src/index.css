@@ -2111,6 +2111,14 @@
     background-color: #d4a446;
   }
 
+  .bg-\[\#d4a446\]\/10 {
+    background-color: oklab(74.5817% 0.0183483 0.122419 / 0.1);
+  }
+
+  .bg-\[\#d4a446\]\/5 {
+    background-color: oklab(74.5817% 0.0183483 0.122419 / 0.05);
+  }
+
   .bg-\[\#d4a446\]\/20 {
     background-color: oklab(74.5817% 0.0183483 0.122419 / 0.2);
   }

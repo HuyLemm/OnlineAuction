@@ -248,4 +248,163 @@ export class AdminController {
       return res.status(400).json({ success: false, message: error.message });
     }
   }
+
+  // ==================================================
+  // GET /admin/products
+  // ==================================================
+  static async getAdminProducts(req: AuthRequest, res: Response) {
+    try {
+      const adminId = req.user?.userId;
+      if (!adminId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
+      }
+
+      const { parentCategoryId, sortBy, minPrice, maxPrice } = req.query;
+
+      const params: any = {};
+
+      if (parentCategoryId) {
+        params.parentCategoryId = Number(parentCategoryId);
+      }
+
+      if (sortBy) {
+        params.sortBy = String(sortBy);
+      }
+
+      if (minPrice) {
+        params.minPrice = Number(minPrice);
+      }
+
+      if (maxPrice) {
+        params.maxPrice = Number(maxPrice);
+      }
+
+      const data = await AdminService.getAdminProducts(params);
+
+      return res.status(200).json({
+        success: true,
+        data,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Failed to load products",
+      });
+    }
+  }
+
+  // ==================================================
+  // PUT /admin/products/:id
+  // ==================================================
+  static async updateProduct(req: AuthRequest, res: Response) {
+    try {
+      const adminId = req.user?.userId;
+      const { id } = req.params;
+      const { title, description, buyNowPrice, status } = req.body;
+
+      if (!adminId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
+      }
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "Product id is required",
+        });
+      }
+
+      if (!title || !status) {
+        return res.status(400).json({
+          success: false,
+          message: "Title and status are required",
+        });
+      }
+
+      const result = await AdminService.updateProduct(id, {
+        title,
+        description,
+        buyNowPrice,
+        status,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        success: false,
+        message: error.message || "Update product failed",
+      });
+    }
+  }
+
+  // ==================================================
+  // DELETE /admin/products/:id
+  // ==================================================
+  static async deleteProduct(req: AuthRequest, res: Response) {
+    try {
+      const adminId = req.user?.userId;
+      const { id } = req.params;
+
+      if (!adminId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
+      }
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "Product id is required",
+        });
+      }
+
+      const result = await AdminService.deleteProduct(id);
+
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        success: false,
+        message: error.message || "Delete product failed",
+      });
+    }
+  }
+  // ==================================================
+  // GET /admin/users
+  // ==================================================
+  static async getAdminUsers(req: AuthRequest, res: Response) {
+    try {
+      const adminId = req.user?.userId;
+
+      if (!adminId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
+      }
+
+      const data = await AdminService.getAdminUsers();
+
+      return res.status(200).json({
+        success: true,
+        data,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Failed to load users",
+      });
+    }
+  }
 }
