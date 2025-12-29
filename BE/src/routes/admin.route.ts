@@ -13,17 +13,17 @@ router.get(
 );
 
 router.post(
-  "/seller-upgrade-requests/:requestId/approve",
+  "/seller-upgrade-requests/:id/approve",
   authenticate,
   authorize("admin"),
-  AdminController.approveUpgradeRequest
+  AdminController.approveSellerUpgrade
 );
 
 router.post(
-  "/seller-upgrade-requests/:requestId/reject",
+  "/seller-upgrade-requests/:id/reject",
   authenticate,
   authorize("admin"),
-  AdminController.rejectUpgrade
+  AdminController.rejectSellerUpgrade
 );
 
 router.post(
@@ -91,6 +91,37 @@ router.get(
   authenticate,
   authorize("admin"),
   AdminController.getAdminUsers
+);
+
+router.get(
+  "/users/:id",
+  authenticate,
+  authorize("admin"),
+  AdminController.getUserDetails
+);
+router.put(
+  "/users/:id",
+  authenticate,
+  authorize("admin"),
+  AdminController.updateUser
+);
+router.post(
+  "/users/:id/ban",
+  authenticate,
+  authorize("admin"),
+  AdminController.banUser
+);
+router.post(
+  "/users/:id/unban",
+  authenticate,
+  authorize("admin"),
+  AdminController.unbanUser
+);
+router.delete(
+  "/users/:id",
+  authenticate,
+  authorize("admin"),
+  AdminController.deleteUser
 );
 
 export default router;

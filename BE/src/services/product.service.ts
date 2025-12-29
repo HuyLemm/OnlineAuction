@@ -247,7 +247,7 @@ export class ProductService {
     };
   }
 
-  static async getProductDetail(productId: string) {
+  static async getProductDetail(productId: string, viewerUserId?: string) {
     // ----------------------------
     // Product core info
     // ----------------------------
@@ -270,6 +270,28 @@ export class ProductService {
       .first();
 
     if (!product) throw new Error("Product not found");
+
+    // ----------------------------
+    // Viewer (current logged-in user)
+    // ----------------------------
+    let viewer: {
+      id: string;
+      role: "seller" | "bidder" | "admin";
+    } | null = null;
+
+    if (viewerUserId) {
+      const viewerRaw = await db("users")
+        .select("id", "role")
+        .where("id", viewerUserId)
+        .first();
+
+      if (viewerRaw) {
+        viewer = {
+          id: viewerRaw.id,
+          role: viewerRaw.role,
+        };
+      }
+    }
 
     // ----------------------------
     // Images
@@ -396,60 +418,87 @@ export class ProductService {
     }));
 
     // ----------------------------
-    // Q&A
+    // Q&A (Conversation style)
     // ----------------------------
+
+    // 1️⃣ Lấy questions
     const questionsRaw = await db("questions as q")
       .join("users as u", "u.id", "q.user_id")
       .where("q.product_id", productId)
       .select(
-        "q.id",
-        "q.content",
-        "q.created_at",
+        "q.id as questionId",
+        "q.content as questionContent",
+        "q.created_at as questionCreatedAt",
         "u.id as askerId",
         "u.full_name as askerName"
-      );
+      )
+      .orderBy("q.created_at", "asc");
 
+    // 2️⃣ Lấy tất cả answers thuộc các questions đó
     const answersRaw = questionsRaw.length
       ? await db("answers as a")
-          .join("users as u", "u.id", "a.seller_id")
+          .join("users as u", "u.id", "a.user_id")
           .whereIn(
             "a.question_id",
-            questionsRaw.map((q) => q.id)
+            questionsRaw.map((q) => q.questionId)
           )
           .select(
-            "a.question_id",
+            "a.id as answerId",
+            "a.question_id as questionId",
             "a.content",
             "a.created_at",
-            "u.id as sellerId",
-            "u.full_name as sellerName"
+            "a.role",
+            "u.id as userId",
+            "u.full_name as userName"
           )
+          .orderBy("a.created_at", "asc")
       : [];
 
-    const questions = questionsRaw.map((q) => {
-      const ans = answersRaw.find((a) => a.question_id === q.id);
+    // 3️⃣ Group answers theo question
+    const answersByQuestion = new Map<
+      string,
+      {
+        id: string;
+        content: string;
+        createdAt: string;
+        sender: {
+          id: string;
+          name: string;
+          role: "seller" | "bidder";
+        };
+      }[]
+    >();
 
-      return {
-        id: q.id,
-        question: {
-          content: q.content,
-          askedBy: {
-            id: q.askerId,
-            name: q.askerName,
-          },
-          askedAt: q.created_at,
+    for (const ans of answersRaw) {
+      if (!answersByQuestion.has(ans.questionId)) {
+        answersByQuestion.set(ans.questionId, []);
+      }
+
+      answersByQuestion.get(ans.questionId)!.push({
+        id: ans.answerId,
+        content: ans.content,
+        createdAt: ans.created_at,
+        sender: {
+          id: ans.userId,
+          name: ans.userName,
+          role: ans.role,
         },
-        ...(ans && {
-          answer: {
-            content: ans.content,
-            answeredBy: {
-              id: ans.sellerId,
-              name: ans.sellerName,
-            },
-            answeredAt: ans.created_at,
-          },
-        }),
-      };
-    });
+      });
+    }
+
+    // 4️⃣ Build final questions DTO
+    const questions = questionsRaw.map((q) => ({
+      id: q.questionId,
+      question: {
+        content: q.questionContent,
+        askedBy: {
+          id: q.askerId,
+          name: q.askerName,
+        },
+        askedAt: q.questionCreatedAt,
+      },
+      messages: answersByQuestion.get(q.questionId) ?? [],
+    }));
 
     // ----------------------------
     // Related products
@@ -492,6 +541,7 @@ export class ProductService {
     // FINAL RAW RESULT
     // ----------------------------
     return {
+      viewer,
       product,
       images,
       seller: {

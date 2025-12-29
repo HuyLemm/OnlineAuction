@@ -87,4 +87,17 @@ router.get(
   UserController.getMyBiddingProducts
 );
 
+// routes/user.routes.ts
+router.post("/questions", authenticate, UserController.askQuestion);
+
+/* ===============================
+ * Q&A - Bidder reply
+ * =============================== */
+router.post(
+  "/questions/:questionId/reply",
+  authenticate,
+  authorize("bidder"),
+  UserController.replyQuestion
+);
+
 export default router;

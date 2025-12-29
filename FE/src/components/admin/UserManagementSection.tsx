@@ -10,6 +10,7 @@ import {
   Calendar,
   UserCheck,
   X,
+  Trash2,
 } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
@@ -30,11 +31,28 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../ui/dialog";
 import { toast } from "sonner";
 
 import { fetchWithAuth } from "../utils/fetchWithAuth";
-import { GET_USERS_FOR_ADMIN_API } from "../utils/api";
+import {
+  GET_USERS_FOR_ADMIN_API,
+  APPROVE_SELLER_UPGRADE_API,
+  REJECT_SELLER_UPGRADE_API,
+  GET_USER_DETAILS_API,
+  UPDATE_USER_DETAILS_API,
+  BAN_USER_API,
+  UNBAN_USER_API,
+  DELETE_USER_API,
+} from "../utils/api";
+
+import { LoadingSpinner } from "../state";
 
 /* ================= TYPES ================= */
 
@@ -55,6 +73,8 @@ interface UserData {
 
   sellerApprovalStatus?: "none" | "pending" | "approved" | "rejected";
   sellerApprovalDate?: string;
+
+  sellerRequestId?: string;
 }
 
 /* ================= COMPONENT ================= */
@@ -63,6 +83,13 @@ export function UserManagementSection() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [users, setUsers] = useState<UserData[]>([]);
+  const [editingUser, setEditingUser] = useState<UserData | null>(null);
+  const [deletingUser, setDeletingUser] = useState<UserData | null>(null);
+
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [viewLoading, setViewLoading] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   /* ================= FETCH USERS ================= */
 
@@ -72,6 +99,8 @@ export function UserManagementSection() {
 
   const fetchUsers = async () => {
     try {
+      setLoadingUsers(true);
+
       const res = await fetchWithAuth(GET_USERS_FOR_ADMIN_API);
       const json = await res.json();
 
@@ -96,6 +125,7 @@ export function UserManagementSection() {
 
         verificationStatus: "verified",
 
+        sellerRequestId: u.latest_seller_request_id,
         sellerApprovalStatus:
           u.latest_seller_request_status === "pending"
             ? "pending"
@@ -109,6 +139,166 @@ export function UserManagementSection() {
       setUsers(mapped);
     } catch (err: any) {
       toast.error(err.message || "Failed to load users");
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  /* ================= APPROVE / REJECT SELLER ================= */
+
+  const handleApproveSellerRequest = async (requestUserId: string) => {
+    try {
+      const res = await fetchWithAuth(
+        APPROVE_SELLER_UPGRADE_API(requestUserId),
+        {
+          method: "POST",
+        }
+      );
+
+      const json = await res.json();
+
+      if (!json.success) {
+        throw new Error(json.message || "Approve failed");
+      }
+
+      toast.success("Seller request approved");
+
+      // refresh list
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err.message || "Approve seller failed");
+    }
+  };
+
+  const handleRejectSellerRequest = async (requestUserId: string) => {
+    try {
+      const res = await fetchWithAuth(
+        REJECT_SELLER_UPGRADE_API(requestUserId),
+        {
+          method: "POST",
+        }
+      );
+
+      const json = await res.json();
+
+      if (!json.success) {
+        throw new Error(json.message || "Reject failed");
+      }
+
+      toast.success("Seller request rejected");
+
+      // refresh list
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err.message || "Reject seller failed");
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  /* ================= OPEN DIALOGS ================= */
+
+  const openViewDialog = async (user: UserData) => {
+    try {
+      setViewLoading(true);
+      setSelectedUser(null);
+
+      const res = await fetchWithAuth(GET_USER_DETAILS_API(user.id));
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message);
+
+      const u = json.data;
+      setSelectedUser({
+        id: u.id,
+        name: u.full_name,
+        email: u.email,
+        role: u.role,
+        status: u.is_blocked ? "banned" : "active",
+        joinedDate: u.created_at.split("T")[0],
+
+        totalBids: Number(u.products_joined),
+        totalPurchases: Number(u.products_won),
+        totalSales: Number(u.products_sold),
+
+        verificationStatus: u.is_verified ? "verified" : "unverified",
+      });
+    } catch (e: any) {
+      toast.error(e.message || "Load user failed");
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  const openEditDialog = (user: UserData) => {
+    setEditingUser(user);
+  };
+
+  const openDeleteDialog = (user: UserData) => {
+    setDeletingUser(user);
+  };
+
+  /* ================= API ACTIONS ================= */
+
+  const handleSaveUser = async () => {
+    if (!editingUser) return;
+    try {
+      setEditLoading(true);
+      const res = await fetchWithAuth(UPDATE_USER_DETAILS_API(editingUser.id), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: editingUser.name,
+          email: editingUser.email,
+          role: editingUser.role,
+          isBlocked: editingUser.status === "banned",
+          isVerified: editingUser.verificationStatus === "verified",
+        }),
+      });
+
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message);
+
+      toast.success("User updated");
+      setEditingUser(null);
+      fetchUsers();
+    } catch (e: any) {
+      toast.error(e.message || "Update failed");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleBanUser = async (userId: string) => {
+    await fetchWithAuth(BAN_USER_API(userId), { method: "POST" });
+    toast.success("User banned");
+    fetchUsers();
+  };
+
+  const handleUnbanUser = async (userId: string) => {
+    await fetchWithAuth(UNBAN_USER_API(userId), { method: "POST" });
+    toast.success("User unbanned");
+    fetchUsers();
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deletingUser) return;
+
+    try {
+      setDeleteLoading(true);
+      const res = await fetchWithAuth(DELETE_USER_API(deletingUser.id), {
+        method: "DELETE",
+      });
+
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message);
+
+      toast.success("User deleted permanently");
+      setDeletingUser(null);
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err.message || "Delete user failed");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -175,6 +365,8 @@ export function UserManagementSection() {
       <Badge className="bg-red-500/10 text-red-500 border-0">Banned</Badge>
     );
   };
+
+  if (loadingUsers) return <LoadingSpinner />;
 
   /* ================= RENDER ================= */
 
@@ -361,7 +553,9 @@ export function UserManagementSection() {
                       <Button
                         size="sm"
                         className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90"
-                        // onClick={() => handleApproveSellerRequest(user.id)}
+                        onClick={() =>
+                          handleApproveSellerRequest(user.sellerRequestId!)
+                        }
                       >
                         <CheckCircle className="h-4 w-4 mr-1" />
                         Approve
@@ -371,7 +565,9 @@ export function UserManagementSection() {
                         size="sm"
                         variant="outline"
                         className="border-red-500/50 text-red-500 hover:bg-red-500/10"
-                        // onClick={() => handleRejectSellerRequest(user.id)}
+                        onClick={() =>
+                          handleRejectSellerRequest(user.sellerRequestId!)
+                        }
                       >
                         <X className="h-4 w-4 mr-1" />
                         Reject
@@ -395,6 +591,7 @@ export function UserManagementSection() {
       )}
 
       {/* USERS TABLE */}
+
       <Card>
         <Table>
           <TableHeader>
@@ -470,13 +667,81 @@ export function UserManagementSection() {
                     ))}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSelectedUser(user)}
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+
+                    <DropdownMenuContent align="end" className="w-44">
+                      {/* VIEW */}
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          openViewDialog(user);
+                        }}
+                      >
+                        <User className="h-4 w-4 mr-2" />
+                        View Details
+                      </DropdownMenuItem>
+
+                      {/* UPDATE */}
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          openEditDialog(user);
+                        }}
+                      >
+                        <Shield className="h-4 w-4 mr-2" />
+                        Update User
+                      </DropdownMenuItem>
+
+                      {/* BAN */}
+                      {user.status !== "banned" && (
+                        <DropdownMenuItem
+                          className="text-red-500"
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            handleBanUser(user.id);
+                          }}
+                        >
+                          <Ban className="h-4 w-4 mr-2" />
+                          Ban User
+                        </DropdownMenuItem>
+                      )}
+
+                      {/* UNBAN */}
+                      {user.status === "banned" && (
+                        <DropdownMenuItem
+                          className="text-green-500"
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            handleUnbanUser(user.id);
+                          }}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Unban User
+                        </DropdownMenuItem>
+                      )}
+
+                      {/* DELETE */}
+                      <DropdownMenuItem
+                        className="text-red-600"
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          openDeleteDialog(user);
+                        }}
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Delete Account
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))}
@@ -484,28 +749,263 @@ export function UserManagementSection() {
         </Table>
       </Card>
 
-      {/* USER DETAILS DIALOG */}
+      {/* VIEW DIALOG */}
       {selectedUser && (
-        <Dialog open onOpenChange={() => setSelectedUser(null)}>
-          <DialogContent className="max-w-2xl">
+        <Dialog
+          open={!!selectedUser}
+          onOpenChange={() => setSelectedUser(null)}
+        >
+          <DialogContent className="max-w-2xl bg-[#0a0a0a] border-[#fbbf24]/20">
+            {viewLoading ? (
+              <div className="flex items-center justify-center h-64 bg-black">
+                <LoadingSpinner />
+              </div>
+            ) : (
+              <>
+                <DialogHeader className="bg-black">
+                  <DialogTitle className="flex items-center gap-2 text-[#d4a446]">
+                    <User className="h-5 w-5 text-[#d4a446]" />
+                    User Details
+                  </DialogTitle>
+                </DialogHeader>
+
+                <div className="space-y-6 bg-black">
+                  {/* Header */}
+                  <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-black to-[#d4a446]/20 rounded-lg border border-[#d4a446]/50 ">
+                    <Avatar className="h-20 w-20 ring-2 ring-[#d4a446]/70">
+                      <AvatarFallback className="bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] text-black">
+                        {selectedUser.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
+
+                    <div className="flex-1 ">
+                      <h3 className="text-white mb-1">{selectedUser.name}</h3>
+                      <p className="text-gray-300 text-sm mb-2">
+                        {selectedUser.email}
+                      </p>
+                      <div className="flex gap-2">
+                        {getRoleBadge(selectedUser.role)}
+                        {getStatusBadge(selectedUser.status)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 gap-4 ">
+                    <Card className="p-4 bg-gray-800 border border-[#d4a446]/30 bg-gradient-to-r from-black to-[#d4a446]/20 rounded-lg border border-[#d4a446]/50 ">
+                      <p className="text-gray-400 text-sm">Total Bids</p>
+                      <p className="text-white text-2xl">
+                        {selectedUser.totalBids}
+                      </p>
+                    </Card>
+                    <Card className="p-4 bg-gray-800 border border-[#d4a446]/30 bg-gradient-to-r from-black to-[#d4a446]/20 rounded-lg border border-[#d4a446]/50 ">
+                      <p className="text-gray-400 text-sm">Total Purchases</p>
+                      <p className="text-white text-2xl">
+                        {selectedUser.totalPurchases}
+                      </p>
+                    </Card>
+                    <Card className="p-4 bg-gray-800 border border-[#d4a446]/30 bg-gradient-to-r from-black to-[#d4a446]/20 rounded-lg border border-[#d4a446]/50 ">
+                      <p className="text-gray-400 text-sm">Total Sales</p>
+                      <p className="text-white text-2xl">
+                        {selectedUser.totalSales}
+                      </p>
+                    </Card>
+                    <Card className="p-4 bg-gray-800 border border-[#d4a446]/30 bg-gradient-to-r from-black to-[#d4a446]/20 rounded-lg border border-[#d4a446]/50 ">
+                      <p className="text-gray-400 text-sm">Member Since</p>
+                      <p className="text-white">
+                        <Calendar className="h-4 w-4 mb-1 inline" />{" "}
+                        {selectedUser.joinedDate}
+                      </p>
+                    </Card>
+                  </div>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* EDIT DIALOG */}
+      {editingUser && (
+        <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
+          <DialogContent className="bg-[#0a0a0a] border-[#fbbf24]/20 max-w-2xl">
             <DialogHeader>
-              <DialogTitle>User Details</DialogTitle>
+              <DialogTitle className="flex items-center gap-2 text-[#d4a446]">
+                <Shield className="h-5 w-5 text-[#d4a446]" />
+                Update User Information
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* User Header */}
+              <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-black to-[#d4a446]/20 rounded-lg border border-[#d4a446]/50">
+                <Avatar className="h-16 w-16 ring-2 ring-[#d4a446]/50">
+                  <AvatarFallback className="bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] text-black">
+                    {editingUser.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm text-muted-foreground">User ID</p>
+                  <p className="text-white">{editingUser.id}</p>
+                  <div className="flex gap-2 mt-2">
+                    {getRoleBadge(editingUser.role)}
+                    {getStatusBadge(editingUser.status)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Form */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-yellow-500 font-semibold">
+                    Full Name
+                  </label>
+                  <Input
+                    value={editingUser.name}
+                    onChange={(e) =>
+                      setEditingUser({ ...editingUser, name: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-yellow-500 font-semibold">
+                    Email
+                  </label>
+                  <Input
+                    value={editingUser.email}
+                    onChange={(e) =>
+                      setEditingUser({ ...editingUser, email: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-yellow-500 font-semibold">
+                    Role
+                  </label>
+                  <select
+                    value={editingUser.role}
+                    onChange={(e) =>
+                      setEditingUser({
+                        ...editingUser,
+                        role: e.target.value as any,
+                      })
+                    }
+                    className="w-full h-10 rounded-md bg-secondary border border-border px-3"
+                  >
+                    <option value="buyer">Buyer</option>
+                    <option value="seller">Seller</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm text-yellow-500 font-semibold">
+                    Status
+                  </label>
+                  <select
+                    value={editingUser.status}
+                    onChange={(e) =>
+                      setEditingUser({
+                        ...editingUser,
+                        status: e.target.value as any,
+                      })
+                    }
+                    className="w-full h-10 rounded-md bg-secondary border border-border px-3"
+                  >
+                    <option value="active">Active</option>
+                    <option value="banned">Banned</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingUser(null)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveUser}
+                disabled={editLoading}
+                className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90"
+              >
+                {editLoading ? (
+                  <LoadingSpinner size="sm" />
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* DELETE DIALOG */}
+      {deletingUser && (
+        <Dialog
+          open={!!deletingUser}
+          onOpenChange={() => setDeletingUser(null)}
+        >
+          <DialogContent className=" bg-[#0a0a0a] border-[#fbbf24]/20 border-red-500/30 max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-500">
+                <X className="h-5 w-5" />
+                Delete User Account
+              </DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4">
-              <p>
-                <strong>Name:</strong> {selectedUser.name}
-              </p>
-              <p>
-                <strong>Email:</strong> {selectedUser.email}
-              </p>
-              <p>
-                <strong>Role:</strong> {selectedUser.role}
-              </p>
-              <p>
-                <strong>Status:</strong> {selectedUser.status}
+              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-black to-[#d4a446]/20 rounded-lg border border-[#d4a446]/50">
+                <Avatar>
+                  <AvatarFallback className="bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] text-black">
+                    {deletingUser.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-lg text-white font-semibold">{deletingUser.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {deletingUser.email}
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-sm text-red-400">
+                ⚠️ This action cannot be undone.
               </p>
             </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeletingUser(null)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDeleteUser}
+                disabled={deleteLoading}
+                className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90"
+              >
+                {deleteLoading ? (
+                  <LoadingSpinner size="sm" />
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete User
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}

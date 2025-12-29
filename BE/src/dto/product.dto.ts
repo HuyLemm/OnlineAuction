@@ -42,6 +42,11 @@ export interface ProductDetailDTO {
     bidStep: number;
   };
 
+  viewer: {
+    id: string;
+    role: "seller" | "bidder" | "admin";
+  } | null;
+
   images: {
     primary: string;
     gallery: string[]; // >= 3 images
@@ -97,14 +102,16 @@ export interface QuestionWithAnswerDTO {
     askedAt: string;
   };
 
-  answer?: {
+  messages: {
+    id: string;
     content: string;
-    answeredBy: {
+    createdAt: string;
+    sender: {
       id: string;
       name: string;
+      role: "seller" | "bidder";
     };
-    answeredAt: string;
-  };
+  }[];
 }
 
 export interface RelatedProductDTO {

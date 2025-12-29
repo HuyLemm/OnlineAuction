@@ -22,7 +22,6 @@ import {
 
 import type { ProductDetailDTO, BidStatusDTO } from "../types/dto";
 import { LoadingSpinner } from "../components/state";
-import { API_BASE_URL } from "../components/utils/api";
 import { toast } from "sonner";
 
 import { fetchWithAuth } from "../components/utils/fetchWithAuth";
@@ -37,10 +36,23 @@ export function ProductDetailPage() {
   const { id: productId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isFavorite, setIsFavorite] = useState(false);
+  const [watchlistIds, setWatchlistIds] = useState<Set<string>>(new Set());
 
   const [data, setData] = useState<ProductDetailDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [userMaxBid, setUserMaxBid] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    const loadWatchlistIds = async () => {
+      try {
+        const res = await fetchWithAuth(GET_WATCHLIST_ID_API);
+        const data = await res.json();
+        setWatchlistIds(new Set(data.data));
+      } catch {}
+    };
+
+    loadWatchlistIds();
+  }, []);
 
   /* ---------------- Fetch product detail ---------------- */
   useEffect(() => {
@@ -58,9 +70,10 @@ export function ProductDetailPage() {
     const fetchDetail = async () => {
       try {
         setLoading(true);
-        const res = await fetch(GET_PRODUCT_DETAIL_API(productId));
+        const res = await fetchWithAuth(GET_PRODUCT_DETAIL_API(productId));
         const json = await res.json();
         setData(json.data);
+        console.log(json);
       } catch (err) {
         console.error("Failed to load product detail", err);
       } finally {
@@ -290,7 +303,16 @@ export function ProductDetailPage() {
           {/* 🔥 Bid history real data */}
           <BidHistory bids={data.bidHistory} />
 
-          <QASection questions={data.questions} />
+          <QASection
+            questions={data.questions}
+            productId={data.product.id}
+            currentUserRole={data.viewer?.role ?? null}
+            onQuestionSubmitted={async () => {
+              const res = await fetchWithAuth(GET_PRODUCT_DETAIL_API(data.product.id));
+              const json = await res.json();
+              setData(json.data);
+            }}
+          />
         </div>
 
         <SellerInfo
@@ -319,6 +341,8 @@ export function ProductDetailPage() {
           highestBidderName: p.highestBidderName ?? null,
           postedDate: p.postedDate ?? data.product.postedDate,
         }))}
+        watchlistIds={watchlistIds}
+        setWatchlistIds={setWatchlistIds}
       />
     </div>
   );

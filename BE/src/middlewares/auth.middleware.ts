@@ -46,3 +46,36 @@ export function authenticate(
     });
   }
 }
+
+// authenticateOptional.ts (hoặc cùng file)
+
+export function authenticateOptional(
+  req: AuthRequest,
+  _res: Response,
+  next: NextFunction
+) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    delete req.user;
+    return next();
+  }
+
+  const token = authHeader.split(" ")[1];
+  if (!token) {
+    delete req.user;
+    return next();
+  }
+
+  try {
+    const payload = verifyAccessToken(token);
+    req.user = {
+      userId: payload.userId,
+      role: payload.role,
+    };
+  } catch {
+    delete req.user;
+  }
+
+  next();
+}

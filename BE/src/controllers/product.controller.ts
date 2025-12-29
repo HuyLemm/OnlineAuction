@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { AuthRequest } from "../middlewares/auth.middleware";
 import dayjs from "dayjs";
 
 import { ProductService } from "../services/product.service";
@@ -119,8 +120,9 @@ export class ProductController {
   // ===============================
   // GET /products/:productId/get-product-detail
   // ===============================
-  static async getProductDetail(req: Request, res: Response) {
+  static async getProductDetail(req: AuthRequest, res: Response) {
     try {
+      const viewerUserId = req.user?.userId;
       const { productId } = req.params;
 
       if (!productId) {
@@ -130,7 +132,10 @@ export class ProductController {
         });
       }
 
-      const raw = await ProductService.getProductDetail(productId);
+      const raw = await ProductService.getProductDetail(
+        productId,
+        viewerUserId
+      );
 
       const dto: ProductDetailDTO = {
         product: {
@@ -146,6 +151,8 @@ export class ProductController {
           currentBid: raw.product.currentBid,
           bidStep: raw.product.bidStep,
         },
+
+        viewer: raw.viewer ?? null,
 
         images: {
           primary: raw.images.find((i: any) => i.is_main)?.image_url || "",

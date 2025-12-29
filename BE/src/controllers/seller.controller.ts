@@ -202,4 +202,46 @@ export class SellerController {
       });
     }
   }
+
+  // ===============================
+  // Answer question (Seller)
+  // POST /seller/questions/:questionId/answer
+  // ===============================
+  static async answerQuestion(req: AuthRequest, res: Response) {
+    try {
+      const sellerId = req.user!.userId;
+      const { questionId } = req.params;
+      const { content } = req.body;
+
+      if (!questionId) {
+        return res.status(400).json({
+          success: false,
+          message: "Question id is required",
+        });
+      }
+
+      if (!content || !content.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Answer content is required",
+        });
+      }
+
+      const result = await SellerService.answerQuestion({
+        sellerId,
+        questionId,
+        content,
+      });
+
+      return res.status(201).json({
+        success: true,
+        data: result,
+      });
+    } catch (err: any) {
+      return res.status(400).json({
+        success: false,
+        message: err?.message ?? "Failed to answer question",
+      });
+    }
+  }
 }

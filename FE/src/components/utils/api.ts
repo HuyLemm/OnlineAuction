@@ -45,6 +45,10 @@ export const GET_ACTIVE_BIDS_API = `${API_BASE_URL}/users/my-bidding-products`;
 export const REQUEST_BECOME_SELLER_API = `${API_BASE_URL}/users/request-upgrade-seller`;
 export const GET_SELLER_UPGRADE_STATUS_API = `${API_BASE_URL}/users/upgrade-seller-status`;
 
+export const QUESTION_API = `${API_BASE_URL}/users/questions`;
+export const BIDDER_REPLY_QUESTION_API = (questionId: string) =>
+  `${API_BASE_URL}/users/questions/${questionId}/reply`;
+
 //Seller
 export const CREATE_AUCTION_API = `${API_BASE_URL}/seller/create-auction`;
 export const GET_AUTO_EXTEND_CONFIG_API = `${API_BASE_URL}/seller/auto-extend-config`;
@@ -56,6 +60,9 @@ export const APPEND_DESCRIPTION_API = (productId: string) =>
 export const GET_ENDED_LISTINGS_API = `${API_BASE_URL}/seller/listings-ended`;
 export const RATE_WINNER_API = (productId: string) =>
   `${API_BASE_URL}/seller/rate-winner/${productId}`;
+
+export const SELLER_REPLY_QUESTION_API = (questionId: string) =>
+  `${API_BASE_URL}/seller/questions/${questionId}/answer`;
 
 //Admin
 export const CREATE_PARENT_CATEGORY_API = `${API_BASE_URL}/admin/categories/parent`;
@@ -76,3 +83,23 @@ export const DELETE_PRODUCTS_FOR_ADMIN_API = (productId: string) =>
   `${API_BASE_URL}/admin/products/${productId}`;
 
 export const GET_USERS_FOR_ADMIN_API = `${API_BASE_URL}/admin/get-users`;
+
+export const APPROVE_SELLER_UPGRADE_API = (id: string) =>
+  `${API_BASE_URL}/admin/seller-upgrade-requests/${id}/approve`;
+export const REJECT_SELLER_UPGRADE_API = (id: string) =>
+  `${API_BASE_URL}/admin/seller-upgrade-requests/${id}/reject`;
+
+export const GET_USER_DETAILS_API = (id: string) =>
+  `${API_BASE_URL}/admin/users/${id}`;
+
+export const UPDATE_USER_DETAILS_API = (id: string) =>
+  `${API_BASE_URL}/admin/users/${id}`;
+
+export const BAN_USER_API = (id: string) =>
+  `${API_BASE_URL}/admin/users/${id}/ban`;
+
+export const UNBAN_USER_API = (id: string) =>
+  `${API_BASE_URL}/admin/users/${id}/unban`;
+
+export const DELETE_USER_API = (id: string) =>
+  `${API_BASE_URL}/admin/users/${id}`;

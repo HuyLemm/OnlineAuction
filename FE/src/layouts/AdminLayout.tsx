@@ -35,7 +35,7 @@ export function AdminLayout({
     { id: "profile", label: "Profile Settings", icon: User },
     { id: "categories", label: "Category Management", icon: FolderTree },
     { id: "products", label: "Product Management", icon: Package },
-    { id: "users", label: "User Management", icon: Users, badge: 5 },
+    { id: "users", label: "User Management", icon: Users },
   ];
 
   const NavContent = () => (

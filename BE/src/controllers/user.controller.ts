@@ -324,4 +324,94 @@ export class UserController {
       });
     }
   }
+
+  // ===============================
+  // POST /users/questions
+  // Ask seller about product
+  // ===============================
+  static async askQuestion(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.userId;
+      const { productId, content } = req.body;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
+      }
+
+      if (!productId || !content) {
+        return res.status(400).json({
+          success: false,
+          message: "productId and content are required",
+        });
+      }
+
+      const question = await UserService.askQuestion(
+        userId,
+        productId,
+        content
+      );
+
+      return res.status(201).json({
+        success: true,
+        data: question,
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        success: false,
+        message: error.message || "Failed to ask question",
+      });
+    }
+  }
+
+  // ===============================
+  // POST /users/questions/:questionId/reply
+  // Bidder reply in Q&A thread
+  // ===============================
+  static async replyQuestion(req: AuthRequest, res: Response) {
+    try {
+      const bidderId = req.user?.userId;
+      const { questionId } = req.params;
+      const { content } = req.body;
+
+      if (!bidderId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
+      }
+
+      if (!questionId) {
+        return res.status(400).json({
+          success: false,
+          message: "questionId is required",
+        });
+      }
+
+      if (!content || !content.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Content is required",
+        });
+      }
+
+      const result = await UserService.replyQuestionAsBidder({
+        bidderId,
+        questionId,
+        content,
+      });
+
+      return res.status(201).json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        success: false,
+        message: error.message || "Failed to reply question",
+      });
+    }
+  }
 }

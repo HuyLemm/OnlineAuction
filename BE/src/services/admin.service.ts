@@ -21,50 +21,6 @@ export class AdminService {
   }
 
   // ===============================
-  // Approve upgrade request
-  // ===============================
-  static async approveUpgradeRequest(requestId: string, adminId: string) {
-    return await db.transaction(async (trx) => {
-      const req = await trx("seller_upgrade_requests")
-        .where({ id: requestId, status: "pending" })
-        .first();
-
-      if (!req) throw new Error("Request not found or already processed");
-
-      // 1️⃣ Update request
-      await trx("seller_upgrade_requests").where({ id: requestId }).update({
-        status: "approved",
-        reviewed_at: new Date(),
-        reviewed_by: adminId,
-      });
-
-      // 2️⃣ Upgrade user role
-      await trx("users").where({ id: req.user_id }).update({ role: "seller" });
-
-      return { message: "Request approved" };
-    });
-  }
-
-  // ===============================
-  // Reject upgrade request
-  // ===============================
-  static async rejectUpgradeRequest(requestId: string, adminId: string) {
-    const updated = await db("seller_upgrade_requests")
-      .where({ id: requestId, status: "pending" })
-      .update({
-        status: "rejected",
-        reviewed_at: new Date(),
-        reviewed_by: adminId,
-      });
-
-    if (!updated) {
-      throw new Error("Request not found or already processed");
-    }
-
-    return { message: "Request rejected" };
-  }
-
-  // ===============================
   // Create parent category
   // ===============================
   static async createParentCategory(name: string) {
@@ -493,30 +449,29 @@ export class AdminService {
         "u.id"
       )
 
-      // ===== SELLER REQUESTS =====
+      // ===== SELLER REQUEST STATS =====
       .leftJoin(
         db("seller_upgrade_requests")
           .select("user_id")
-          .count("id as total_requests")
-          .max("requested_at as last_requested_at")
+          .count("id as seller_request_count")
           .groupBy("user_id")
           .as("req_stats"),
         "req_stats.user_id",
         "u.id"
       )
 
-      // ===== LATEST REQUEST STATUS =====
+      // ===== LATEST SELLER REQUEST (ID + STATUS) =====
       .leftJoin(
         db("seller_upgrade_requests as r2")
-          .select("r2.user_id", "r2.status")
+          .select("r2.id", "r2.user_id", "r2.status")
           .whereRaw(
             `
-          r2.requested_at = (
-            SELECT MAX(r3.requested_at)
-            FROM seller_upgrade_requests r3
-            WHERE r3.user_id = r2.user_id
-          )
-        `
+            r2.requested_at = (
+              SELECT MAX(r3.requested_at)
+              FROM seller_upgrade_requests r3
+              WHERE r3.user_id = r2.user_id
+            )
+          `
           )
           .as("latest_req"),
         "latest_req.user_id",
@@ -535,12 +490,247 @@ export class AdminService {
         db.raw("COALESCE(win_stats.products_won, 0) as products_won"),
         db.raw("COALESCE(seller_stats.products_sold, 0) as products_sold"),
 
-        db.raw("COALESCE(req_stats.total_requests, 0) as seller_request_count"),
+        db.raw(
+          "COALESCE(req_stats.seller_request_count, 0) as seller_request_count"
+        ),
+
+        "latest_req.id as latest_seller_request_id",
         "latest_req.status as latest_seller_request_status"
       )
-
       .orderBy("u.created_at", "desc");
 
     return rows;
+  }
+
+  // ===============================
+  // Approve seller upgrade request
+  // ===============================
+  static async approveUpgradeRequest(requestId: string, adminId: string) {
+    return await db.transaction(async (trx) => {
+      // 1️⃣ Lấy request pending
+      const req = await trx("seller_upgrade_requests")
+        .where({ id: requestId, status: "pending" })
+        .first();
+
+      if (!req) {
+        throw new Error("Request not found or already processed");
+      }
+
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      // 2️⃣ Update request
+      await trx("seller_upgrade_requests").where({ id: requestId }).update({
+        status: "approved",
+        reviewed_at: now,
+        reviewed_by: adminId,
+      });
+
+      // 3️⃣ Update user → seller có hạn 7 ngày
+      await trx("users").where({ id: req.user_id }).update({
+        role: "seller",
+        seller_approved_at: now,
+        seller_expires_at: expiresAt,
+      });
+
+      return {
+        message: "Seller upgrade approved",
+        seller_expires_at: expiresAt,
+      };
+    });
+  }
+
+  // ===============================
+  // Reject seller upgrade request
+  // ===============================
+  static async rejectUpgradeRequest(requestId: string, adminId: string) {
+    const updated = await db("seller_upgrade_requests")
+      .where({ id: requestId, status: "pending" })
+      .update({
+        status: "rejected",
+        reviewed_at: new Date(),
+        reviewed_by: adminId,
+      });
+
+    if (!updated) {
+      throw new Error("Request not found or already processed");
+    }
+
+    return { message: "Seller upgrade rejected" };
+  }
+
+  // ===============================
+  // Get single user details (admin)
+  // ===============================
+  static async getUserById(userId: string) {
+    const row = await db("users as u")
+      // ===== BIDDER: products joined =====
+      .leftJoin(
+        db("bids")
+          .select("bidder_id")
+          .countDistinct("product_id as products_joined")
+          .groupBy("bidder_id")
+          .as("bid_stats"),
+        "bid_stats.bidder_id",
+        "u.id"
+      )
+
+      // ===== BIDDER: products won =====
+      .leftJoin(
+        db("products")
+          .select("highest_bidder_id")
+          .count("id as products_won")
+          .whereNotNull("highest_bidder_id")
+          .groupBy("highest_bidder_id")
+          .as("win_stats"),
+        "win_stats.highest_bidder_id",
+        "u.id"
+      )
+
+      // ===== SELLER: products sold =====
+      .leftJoin(
+        db("products")
+          .select("seller_id")
+          .count("id as products_sold")
+          .groupBy("seller_id")
+          .as("seller_stats"),
+        "seller_stats.seller_id",
+        "u.id"
+      )
+
+      .where("u.id", userId)
+
+      .select(
+        "u.id",
+        "u.full_name",
+        "u.email",
+        "u.role",
+        "u.is_blocked",
+        "u.created_at",
+        "u.address",
+        "u.dob",
+        "u.is_verified",
+        "u.seller_approved_at",
+        "u.seller_expires_at",
+
+        db.raw("COALESCE(bid_stats.products_joined, 0) as products_joined"),
+        db.raw("COALESCE(win_stats.products_won, 0) as products_won"),
+        db.raw("COALESCE(seller_stats.products_sold, 0) as products_sold")
+      )
+      .first();
+
+    if (!row) {
+      throw new Error("User not found");
+    }
+
+    return row;
+  }
+
+  // ===============================
+  // Update user (admin)
+  // ===============================
+  static async updateUser(
+    userId: string,
+    data: {
+      fullName: string;
+      email: string;
+      role: "buyer" | "seller" | "admin";
+      isBlocked: boolean;
+      isVerified: boolean;
+      dob?: string | null;
+      address?: string | null;
+    }
+  ) {
+    const user = await db("users").where({ id: userId }).first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // ❗ Không cho admin tự hạ quyền admin khác (optional nhưng nên có)
+    if (user.role === "admin" && data.role !== "admin") {
+      throw new Error("Cannot downgrade admin role");
+    }
+
+    await db("users")
+      .where({ id: userId })
+      .update({
+        full_name: data.fullName.trim(),
+        email: data.email.toLowerCase().trim(),
+        role: data.role,
+        is_blocked: data.isBlocked,
+        is_verified: data.isVerified,
+        dob: data.dob ?? null,
+        address: data.address ?? null,
+      });
+
+    return { message: "User updated successfully" };
+  }
+
+  // ===============================
+  // Ban / Unban user
+  // ===============================
+  static async toggleBanUser(userId: string, ban: boolean) {
+    const user = await db("users").where({ id: userId }).first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (user.role === "admin") {
+      throw new Error("Cannot ban admin");
+    }
+
+    await db("users")
+      .where({ id: userId })
+      .update({
+        is_blocked: ban,
+        allow_bid: ban ? false : true,
+      });
+
+    return {
+      message: ban ? "User banned successfully" : "User unbanned successfully",
+    };
+  }
+
+  // ===============================
+  // Delete user account (admin)
+  // ===============================
+  static async deleteUser(userId: string) {
+    return await db.transaction(async (trx) => {
+      const user = await trx("users").where({ id: userId }).first();
+
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      if (user.role === "admin") {
+        throw new Error("Cannot delete admin account");
+      }
+
+      // ❗ Check bids
+      const hasBids = await trx("bids").where({ bidder_id: userId }).first();
+
+      if (hasBids) {
+        throw new Error("Cannot delete user with bid history");
+      }
+
+      // ❗ Check products (seller)
+      const hasProducts = await trx("products")
+        .where({ seller_id: userId })
+        .first();
+
+      if (hasProducts) {
+        throw new Error("Cannot delete seller with products");
+      }
+
+      // ❗ Delete seller requests
+      await trx("seller_upgrade_requests").where({ user_id: userId }).del();
+
+      // ❗ Delete user
+      await trx("users").where({ id: userId }).del();
+
+      return { message: "User deleted permanently" };
+    });
   }
 }

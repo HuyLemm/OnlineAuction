@@ -57,9 +57,7 @@ export function BrowseItemsPage() {
         const res = await fetchWithAuth(GET_WATCHLIST_ID_API);
         const data = await res.json();
         setWatchlistIds(new Set(data.data));
-      } catch {
-        // chưa login / refresh fail → bỏ qua
-      }
+      } catch {}
     };
 
     loadWatchlistIds();

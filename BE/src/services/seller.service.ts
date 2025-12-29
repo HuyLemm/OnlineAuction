@@ -11,6 +11,8 @@ import { supabase } from "../config/supabase";
 import crypto from "crypto";
 import path from "path";
 
+import { sendQuestionNotificationMail } from "../utils/sendOtpMail";
+
 /* ===============================
  * Types
  * =============================== */
@@ -521,6 +523,105 @@ export class SellerService {
         message: "Rating submitted successfully",
         score,
         created: true,
+      };
+    });
+  }
+
+  /* ===============================
+   * Q&A - Seller answer question
+   * =============================== */
+  static async answerQuestion(params: {
+    sellerId: string;
+    questionId: string;
+    content: string;
+  }) {
+    const { sellerId, questionId, content } = params;
+
+    if (!content || !content.trim()) {
+      throw new Error("Answer content is required");
+    }
+
+    return await db.transaction(async (trx) => {
+      /* =============================
+       * 1️⃣ Check seller
+       * ============================= */
+      const seller = await trx("users")
+        .select("id", "role", "is_blocked", "full_name")
+        .where({ id: sellerId })
+        .first();
+
+      if (!seller) throw new Error("Seller not found");
+      if (seller.role !== "seller") {
+        throw new Error("Only sellers can answer questions");
+      }
+      if (seller.is_blocked) {
+        throw new Error("Your account is blocked");
+      }
+
+      /* =============================
+       * 2️⃣ Get question + product + bidder
+       * ============================= */
+      const question = await trx("questions as q")
+        .join("products as p", "p.id", "q.product_id")
+        .join("users as u", "u.id", "q.user_id") // bidder
+        .select(
+          "q.id as questionId",
+          "q.product_id as productId",
+
+          "p.title as productTitle",
+          "p.seller_id as sellerId",
+          "p.status as productStatus",
+
+          "u.id as bidderId",
+          "u.full_name as bidderName",
+          "u.email as bidderEmail"
+        )
+        .where("q.id", questionId)
+        .first();
+
+      if (!question) {
+        throw new Error("Question not found");
+      }
+
+      if (question.sellerId !== sellerId) {
+        throw new Error("You are not the seller of this product");
+      }
+
+      if (question.productStatus !== "active") {
+        throw new Error("Cannot answer question for inactive product");
+      }
+
+      /* =============================
+       * 3️⃣ Insert answer (timeline)
+       * ============================= */
+      const [answer] = await trx("answers")
+        .insert({
+          question_id: questionId,
+          user_id: sellerId,
+          role: "seller",
+          content: content.trim(),
+          created_at: new Date(),
+        })
+        .returning(["id", "content", "created_at"]);
+
+      /* =============================
+       * 4️⃣ Send mail to bidder
+       * ============================= */
+      if (question.bidderEmail) {
+        await sendQuestionNotificationMail({
+          to: question.bidderEmail,
+          receiverName: question.bidderName,
+          senderName: seller.full_name,
+          productTitle: question.productTitle,
+          productId: question.productId,
+          message: content,
+        });
+      }
+
+      return {
+        id: answer.id,
+        content: answer.content,
+        createdAt: answer.created_at,
       };
     });
   }

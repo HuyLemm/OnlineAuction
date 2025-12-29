@@ -1,0 +1,15 @@
+"use strict";
+exports.__esModule = true;
+var express_1 = require("express");
+var seller_controller_1 = require("../controllers/seller.controller");
+var auth_middleware_1 = require("../middlewares/auth.middleware");
+var authorize_middleware_1 = require("../middlewares/authorize.middleware");
+var router = express_1.Router();
+router.post("/create-auction", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.createAuction);
+router.get("/auto-extend-config", auth_middleware_1.authenticate, seller_controller_1.SellerController.getAutoExtendConfig);
+router.get("/listings-active", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.getMyActiveListings);
+router.post("/:productId/append-description", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.appendDescription);
+router.get("/listings-ended", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.getMyEndedAuctions);
+router.post("/rate-winner/:productId", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.rateWinner);
+router.post("/questions/:questionId/answer", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.answerQuestion);
+exports["default"] = router;

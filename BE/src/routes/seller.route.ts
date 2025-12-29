@@ -46,5 +46,11 @@ router.post(
   SellerController.rateWinner
 );
 
+router.post(
+  "/questions/:questionId/answer",
+  authenticate,
+  authorize("seller"),
+  SellerController.answerQuestion
+);
 
 export default router;

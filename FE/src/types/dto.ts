@@ -52,6 +52,11 @@ export interface ProductDetailDTO {
     bidStep: number;
   };
 
+  viewer?: {
+    id: string;
+    role: "seller" | "bidder" | "admin";
+  } | null;
+
   images: {
     primary: string;
     gallery: string[];
@@ -109,15 +114,16 @@ export interface ProductDetailDTO {
       };
       askedAt: string;
     };
-
-    answer?: {
+    messages: {
+      id: string;
       content: string;
-      answeredBy: {
+      createdAt: string;
+      sender: {
         id: string;
         name: string;
+        role: "seller" | "bidder";
       };
-      answeredAt: string;
-    };
+    }[];
   }[];
 
   relatedProducts: {
@@ -142,6 +148,3 @@ export type BidStatusDTO =
   | "auto_active"
   | "leading_auto"
   | "winning";
-
-
-  

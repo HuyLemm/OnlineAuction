@@ -22,78 +22,6 @@ export class AdminController {
     }
   }
 
-  // ===============================
-  // POST /admin/seller-upgrade-requests/:id/approve
-  // ===============================
-  static async approveUpgradeRequest(req: AuthRequest, res: Response) {
-    try {
-      const { id } = req.params;
-      const adminId = req.user?.userId;
-
-      if (!id) {
-        return res.status(400).json({
-          success: false,
-          message: "Request id is required",
-        });
-      }
-
-      if (!adminId) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized",
-        });
-      }
-
-      const result = await AdminService.approveUpgradeRequest(id, adminId);
-
-      return res.status(200).json({
-        success: true,
-        message: "Upgrade request approved",
-        data: result,
-      });
-    } catch (error: any) {
-      return res.status(400).json({
-        success: false,
-        message: error.message || "Approve upgrade request failed",
-      });
-    }
-  }
-
-  // ===============================
-  // POST /admin/seller-upgrade-requests/:id/reject
-  // ===============================
-  static async rejectUpgrade(req: AuthRequest, res: Response) {
-    try {
-      const adminId = req.user?.userId;
-      const { id } = req.params;
-
-      if (!adminId) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized",
-        });
-      }
-
-      if (!id) {
-        return res.status(400).json({
-          success: false,
-          message: "Request id is required",
-        });
-      }
-
-      const result = await AdminService.rejectUpgradeRequest(id, adminId);
-
-      return res.status(200).json({
-        success: true,
-        message: result.message,
-      });
-    } catch (error: any) {
-      return res.status(400).json({
-        success: false,
-        message: error.message || "Reject failed",
-      });
-    }
-  }
   // ==================================================
   // POST /admin/categories/parent
   // ==================================================
@@ -385,25 +313,249 @@ export class AdminController {
   // ==================================================
   static async getAdminUsers(req: AuthRequest, res: Response) {
     try {
-      const adminId = req.user?.userId;
-
-      if (!adminId) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized",
-        });
+      if (!req.user?.userId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Unauthorized" });
       }
 
       const data = await AdminService.getAdminUsers();
+
+      return res.json({ success: true, data });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, message: e.message });
+    }
+  }
+
+  // ==================================================
+  // POST /admin/seller-upgrade-requests/:id/approve
+  // ==================================================
+  static async approveSellerUpgrade(req: AuthRequest, res: Response) {
+    try {
+      const adminId = req.user?.userId;
+      const { id } = req.params;
+
+      if (!adminId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Unauthorized" });
+      }
+
+      if (!id) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Request id is required" });
+      }
+
+      const result = await AdminService.approveUpgradeRequest(id, adminId);
+
+      return res.json({ success: true, message: result.message });
+    } catch (e: any) {
+      return res.status(400).json({ success: false, message: e.message });
+    }
+  }
+  // ==================================================
+  // POST /admin/seller-upgrade-requests/:id/reject
+  // ==================================================
+  static async rejectSellerUpgrade(req: AuthRequest, res: Response) {
+    try {
+      const adminId = req.user?.userId;
+      const { id } = req.params;
+
+      if (!adminId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Unauthorized" });
+      }
+
+      if (!id) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Request id is required" });
+      }
+
+      const result = await AdminService.rejectUpgradeRequest(id, adminId);
+
+      return res.json({ success: true, message: result.message });
+    } catch (e: any) {
+      return res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
+  // ==================================================
+  // GET /admin/users/:id
+  // ==================================================
+  static async getUserDetails(req: AuthRequest, res: Response) {
+    try {
+      const adminId = req.user?.userId;
+      const { id } = req.params;
+
+      if (!adminId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Unauthorized" });
+      }
+
+      if (!id) {
+        return res
+          .status(400)
+          .json({ success: false, message: "User id is required" });
+      }
+
+      const data = await AdminService.getUserById(id);
 
       return res.status(200).json({
         success: true,
         data,
       });
-    } catch (error: any) {
-      return res.status(500).json({
+    } catch (e: any) {
+      return res.status(404).json({ success: false, message: e.message });
+    }
+  }
+
+  // ==================================================
+  // PUT /admin/users/:id
+  // ==================================================
+  static async updateUser(req: AuthRequest, res: Response) {
+    try {
+      const adminId = req.user?.userId;
+      const { id } = req.params;
+      const { fullName, email, role, isBlocked, isVerified, dob, address } =
+        req.body;
+
+      if (!adminId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Unauthorized" });
+      }
+
+      if (!id || !fullName || !email || !role) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields",
+        });
+      }
+
+      const result = await AdminService.updateUser(id, {
+        fullName,
+        email,
+        role,
+        isBlocked: Boolean(isBlocked),
+        isVerified: Boolean(isVerified),
+        dob,
+        address,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (e: any) {
+      return res.status(400).json({
         success: false,
-        message: error.message || "Failed to load users",
+        message: e.message,
+      });
+    }
+  }
+
+  // ==================================================
+  // POST /admin/users/:id/ban
+  // ==================================================
+  static async banUser(req: AuthRequest, res: Response) {
+    try {
+      const adminId = req.user?.userId;
+      const { id } = req.params;
+
+      if (!adminId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Unauthorized" });
+      }
+
+      if (!id) {
+        return res
+          .status(400)
+          .json({ success: false, message: "User id is required" });
+      }
+
+      const result = await AdminService.toggleBanUser(id, true);
+
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (e: any) {
+      return res.status(400).json({
+        success: false,
+        message: e.message,
+      });
+    }
+  }
+
+  // ==================================================
+  // POST /admin/users/:id/unban
+  // ==================================================
+  static async unbanUser(req: AuthRequest, res: Response) {
+    try {
+      const adminId = req.user?.userId;
+      const { id } = req.params;
+
+      if (!adminId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Unauthorized" });
+      }
+
+      if (!id) {
+        return res
+          .status(400)
+          .json({ success: false, message: "User id is required" });
+      }
+
+      const result = await AdminService.toggleBanUser(id, false);
+
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (e: any) {
+      return res.status(400).json({
+        success: false,
+        message: e.message,
+      });
+    }
+  }
+
+  // ==================================================
+  // DELETE /admin/users/:id
+  // ==================================================
+  static async deleteUser(req: AuthRequest, res: Response) {
+    try {
+      const adminId = req.user?.userId;
+      const { id } = req.params;
+
+      if (!adminId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Unauthorized" });
+      }
+
+      if (!id) {
+        return res
+          .status(400)
+          .json({ success: false, message: "User id is required" });
+      }
+
+      const result = await AdminService.deleteUser(id);
+
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (e: any) {
+      return res.status(400).json({
+        success: false,
+        message: e.message,
       });
     }
   }
