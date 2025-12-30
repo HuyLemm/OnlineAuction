@@ -49,6 +49,7 @@ export const QUESTION_API = `${API_BASE_URL}/users/questions`;
 export const BIDDER_REPLY_QUESTION_API = (questionId: string) =>
   `${API_BASE_URL}/users/questions/${questionId}/reply`;
 
+export const PLACE_AUTOBID_API = `${API_BASE_URL}/users/place-autobid`;
 //Seller
 export const CREATE_AUCTION_API = `${API_BASE_URL}/seller/create-auction`;
 export const GET_AUTO_EXTEND_CONFIG_API = `${API_BASE_URL}/seller/auto-extend-config`;
@@ -64,9 +65,13 @@ export const RATE_WINNER_API = (productId: string) =>
 export const SELLER_REPLY_QUESTION_API = (questionId: string) =>
   `${API_BASE_URL}/seller/questions/${questionId}/answer`;
 
+export const BLOCK_BIDDER_AUTOBID_API = (productId: string) =>
+  `${API_BASE_URL}/seller/${productId}/block-bidder`;
+
 //Admin
 export const CREATE_PARENT_CATEGORY_API = `${API_BASE_URL}/admin/categories/parent`;
 export const CREATE_SUB_CATEGORY_API = `${API_BASE_URL}/admin/categories/sub`;
+
 export const UPDATE_PARENT_CATEGORY_API = (categoryId: number) =>
   `${API_BASE_URL}/admin/categories/parent/${categoryId}`;
 export const UPDATE_SUB_CATEGORY_API = (categoryId: number) =>

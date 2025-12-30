@@ -605,9 +605,6 @@ var UserService = /** @class */ (function () {
     /* ===============================
      * Q&A - Bidder reply question
      * =============================== */
-    /* ===============================
-     * Q&A - Bidder reply question
-     * =============================== */
     UserService.replyQuestionAsBidder = function (params) {
         return __awaiter(this, void 0, void 0, function () {
             var bidderId, questionId, content;
@@ -700,6 +697,312 @@ var UserService = /** @class */ (function () {
                                                 id: reply.id,
                                                 content: reply.content,
                                                 createdAt: reply.created_at
+                                            }];
+                                    }
+                                });
+                            }); })];
+                    case 1: return [2 /*return*/, _a.sent()];
+                }
+            });
+        });
+    };
+    // ===============================
+    // Get system settings by keys
+    // ===============================
+    UserService.getSystemSettings = function (keys, trx) {
+        return __awaiter(this, void 0, Promise, function () {
+            var query, rows, map, _i, rows_2, row, num;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        query = trx !== null && trx !== void 0 ? trx : db_1.db;
+                        return [4 /*yield*/, query("system_settings")
+                                .whereIn("key", keys)
+                                .select("key", "value")];
+                    case 1:
+                        rows = _a.sent();
+                        map = {};
+                        for (_i = 0, rows_2 = rows; _i < rows_2.length; _i++) {
+                            row = rows_2[_i];
+                            num = Number(row.value);
+                            if (!Number.isNaN(num)) {
+                                map[row.key] = num;
+                            }
+                        }
+                        return [2 /*return*/, map];
+                }
+            });
+        });
+    };
+    // ===============================
+    // Auto Bid - Place max bid (CORE)
+    // ===============================
+    UserService.placeAutoBid = function (params) {
+        return __awaiter(this, void 0, void 0, function () {
+            var userId, productId, maxPrice;
+            var _this = this;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        userId = params.userId, productId = params.productId, maxPrice = params.maxPrice;
+                        if (!Number.isFinite(maxPrice) || maxPrice <= 0) {
+                            throw new Error("Invalid max price");
+                        }
+                        return [4 /*yield*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
+                                var bidder, product, blocked, existingAutoBid, autoBids, bidStep, startPrice, previousPrice, newCurrentPrice, highestBidderId, a, b, winner, loser, aMax, bMax, winnerMax, loserMax, priceChanged, winnerChanged, loser, settings, cfg, thresholdMs, durationMs, now, endTime;
+                                var _a, _b;
+                                return __generator(this, function (_c) {
+                                    switch (_c.label) {
+                                        case 0: return [4 /*yield*/, trx("users")
+                                                .select("id", "role", "allow_bid", "is_blocked")
+                                                .where({ id: userId })
+                                                .first()];
+                                        case 1:
+                                            bidder = _c.sent();
+                                            if (!bidder)
+                                                throw new Error("User not found");
+                                            if (bidder.role !== "bidder")
+                                                throw new Error("Only bidders can bid");
+                                            if (!bidder.allow_bid)
+                                                throw new Error("You are not allowed to bid");
+                                            if (bidder.is_blocked)
+                                                throw new Error("Your account is blocked");
+                                            return [4 /*yield*/, trx("products")
+                                                    .select("id", "seller_id", "status", "start_price", "bid_step", "current_price", "highest_bidder_id", "buy_now_price", "end_time", "auto_extend")
+                                                    .where({ id: productId })
+                                                    .first()];
+                                        case 2:
+                                            product = _c.sent();
+                                            if (!product)
+                                                throw new Error("Product not found");
+                                            if (product.status !== "active")
+                                                throw new Error("Auction is not active");
+                                            if (product.seller_id === userId)
+                                                throw new Error("You cannot bid on your own product");
+                                            return [4 /*yield*/, trx("blocked_bidders")
+                                                    .where({ product_id: productId, bidder_id: userId })
+                                                    .first()];
+                                        case 3:
+                                            blocked = _c.sent();
+                                            if (blocked) {
+                                                throw new Error(blocked.reason || "You are blocked from bidding");
+                                            }
+                                            return [4 /*yield*/, trx("auto_bids")
+                                                    .where({ product_id: productId, bidder_id: userId })
+                                                    .first()];
+                                        case 4:
+                                            existingAutoBid = _c.sent();
+                                            if (existingAutoBid && maxPrice <= Number(existingAutoBid.max_price)) {
+                                                throw new Error("New max bid must be higher than your current max (" + existingAutoBid.max_price + ")");
+                                            }
+                                            /* =============================
+                                             * 5️⃣ Upsert auto_bids
+                                             * ============================= */
+                                            return [4 /*yield*/, trx("auto_bids")
+                                                    .insert({
+                                                    product_id: productId,
+                                                    bidder_id: userId,
+                                                    max_price: maxPrice,
+                                                    created_at: new Date()
+                                                })
+                                                    .onConflict(["product_id", "bidder_id"])
+                                                    .merge({
+                                                    max_price: maxPrice,
+                                                    created_at: new Date()
+                                                })];
+                                        case 5:
+                                            /* =============================
+                                             * 5️⃣ Upsert auto_bids
+                                             * ============================= */
+                                            _c.sent();
+                                            return [4 /*yield*/, trx("auto_bid_events").insert({
+                                                    product_id: productId,
+                                                    bidder_id: userId,
+                                                    type: existingAutoBid ? "max_bid_updated" : "max_bid_set",
+                                                    max_bid: maxPrice,
+                                                    description: existingAutoBid
+                                                        ? "Updated maximum auto bid"
+                                                        : "Set maximum auto bid"
+                                                })];
+                                        case 6:
+                                            _c.sent();
+                                            return [4 /*yield*/, trx("auto_bids")
+                                                    .where({ product_id: productId })
+                                                    .select("bidder_id", "max_price", "created_at")
+                                                    .orderBy([
+                                                    { column: "max_price", order: "desc" },
+                                                    { column: "created_at", order: "asc" },
+                                                ])
+                                                    .limit(2)];
+                                        case 7:
+                                            autoBids = _c.sent();
+                                            bidStep = Number(product.bid_step);
+                                            startPrice = Number(product.start_price);
+                                            previousPrice = product.current_price !== null
+                                                ? Number(product.current_price)
+                                                : startPrice;
+                                            newCurrentPrice = previousPrice;
+                                            highestBidderId = product.highest_bidder_id;
+                                            if (!(autoBids.length === 1)) return [3 /*break*/, 8];
+                                            newCurrentPrice = startPrice + bidStep;
+                                            highestBidderId = autoBids[0].bidder_id;
+                                            return [3 /*break*/, 12];
+                                        case 8:
+                                            if (!(autoBids.length === 2)) return [3 /*break*/, 12];
+                                            a = autoBids[0], b = autoBids[1];
+                                            winner = a;
+                                            loser = b;
+                                            aMax = Number(a.max_price);
+                                            bMax = Number(b.max_price);
+                                            if (!(bMax > aMax)) return [3 /*break*/, 9];
+                                            winner = b;
+                                            loser = a;
+                                            return [3 /*break*/, 11];
+                                        case 9:
+                                            if (!(aMax === bMax)) return [3 /*break*/, 11];
+                                            if (new Date(b.created_at) < new Date(a.created_at)) {
+                                                winner = b;
+                                                loser = a;
+                                            }
+                                            return [4 /*yield*/, trx("auto_bid_events").insert({
+                                                    product_id: productId,
+                                                    bidder_id: winner.bidder_id,
+                                                    type: "tie_break_win",
+                                                    max_bid: aMax,
+                                                    description: "Won tie-break by placing max bid earlier"
+                                                })];
+                                        case 10:
+                                            _c.sent();
+                                            _c.label = 11;
+                                        case 11:
+                                            highestBidderId = winner.bidder_id;
+                                            winnerMax = Number(winner.max_price);
+                                            loserMax = Number(loser.max_price);
+                                            /**
+                                             * RULE GIÁ (QUAN TRỌNG):
+                                             * - Nếu userId (người vừa đặt/update auto bid) THẮNG
+                                             *   → chỉ cần vượt người cũ 1 step
+                                             *   → min(winnerMax, loserMax + bidStep)
+                                             *
+                                             * - Nếu userId THUA
+                                             *   → giá = max của người mới (loser)
+                                             */
+                                            if (winner.bidder_id === userId) {
+                                                newCurrentPrice = Math.min(winnerMax, loserMax + bidStep);
+                                            }
+                                            else {
+                                                newCurrentPrice = loserMax;
+                                            }
+                                            // ❌ không cho giảm giá
+                                            if (newCurrentPrice < previousPrice) {
+                                                newCurrentPrice = previousPrice;
+                                            }
+                                            _c.label = 12;
+                                        case 12:
+                                            if (!(product.buy_now_price && maxPrice >= Number(product.buy_now_price))) return [3 /*break*/, 16];
+                                            return [4 /*yield*/, trx("products").where({ id: productId }).update({
+                                                    current_price: product.buy_now_price,
+                                                    highest_bidder_id: userId,
+                                                    status: "closed"
+                                                })];
+                                        case 13:
+                                            _c.sent();
+                                            return [4 /*yield*/, trx("bids").insert({
+                                                    product_id: productId,
+                                                    bidder_id: userId,
+                                                    bid_amount: product.buy_now_price,
+                                                    bid_time: new Date()
+                                                })];
+                                        case 14:
+                                            _c.sent();
+                                            return [4 /*yield*/, trx("auto_bid_events").insert({
+                                                    product_id: productId,
+                                                    bidder_id: userId,
+                                                    type: "winning",
+                                                    amount: product.buy_now_price,
+                                                    description: "Won instantly via Buy Now"
+                                                })];
+                                        case 15:
+                                            _c.sent();
+                                            return [2 /*return*/, {
+                                                    productId: productId,
+                                                    currentPrice: product.buy_now_price,
+                                                    highestBidderId: userId,
+                                                    isBuyNow: true
+                                                }];
+                                        case 16:
+                                            priceChanged = newCurrentPrice > previousPrice;
+                                            winnerChanged = highestBidderId !== product.highest_bidder_id;
+                                            if (!(priceChanged || winnerChanged)) return [3 /*break*/, 18];
+                                            return [4 /*yield*/, trx("products").where({ id: productId }).update({
+                                                    current_price: newCurrentPrice,
+                                                    highest_bidder_id: highestBidderId
+                                                })];
+                                        case 17:
+                                            _c.sent();
+                                            _c.label = 18;
+                                        case 18:
+                                            if (!priceChanged) return [3 /*break*/, 22];
+                                            return [4 /*yield*/, trx("bids").insert({
+                                                    product_id: productId,
+                                                    bidder_id: highestBidderId,
+                                                    bid_amount: newCurrentPrice,
+                                                    bid_time: new Date()
+                                                })];
+                                        case 19:
+                                            _c.sent();
+                                            return [4 /*yield*/, trx("auto_bid_events").insert({
+                                                    product_id: productId,
+                                                    bidder_id: highestBidderId,
+                                                    type: "auto_bid",
+                                                    amount: newCurrentPrice,
+                                                    description: "System automatically placed a bid"
+                                                })];
+                                        case 20:
+                                            _c.sent();
+                                            loser = autoBids.find(function (b) { return b.bidder_id !== highestBidderId; });
+                                            if (!loser) return [3 /*break*/, 22];
+                                            return [4 /*yield*/, trx("auto_bid_events").insert({
+                                                    product_id: productId,
+                                                    bidder_id: loser.bidder_id,
+                                                    type: "outbid_instantly",
+                                                    amount: newCurrentPrice,
+                                                    related_bidder_id: highestBidderId,
+                                                    description: "Your bid was instantly surpassed by an existing auto bid"
+                                                })];
+                                        case 21:
+                                            _c.sent();
+                                            _c.label = 22;
+                                        case 22:
+                                            if (!product.auto_extend) return [3 /*break*/, 25];
+                                            return [4 /*yield*/, trx("system_settings")
+                                                    .whereIn("key", [
+                                                    "auto_extend_threshold_minutes",
+                                                    "auto_extend_duration_minutes",
+                                                ])
+                                                    .select("key", "value")];
+                                        case 23:
+                                            settings = _c.sent();
+                                            cfg = Object.fromEntries(settings.map(function (s) { return [s.key, Number(s.value)]; }));
+                                            thresholdMs = ((_a = cfg.auto_extend_threshold_minutes) !== null && _a !== void 0 ? _a : 5) * 60000;
+                                            durationMs = ((_b = cfg.auto_extend_duration_minutes) !== null && _b !== void 0 ? _b : 10) * 60000;
+                                            now = Date.now();
+                                            endTime = new Date(product.end_time).getTime();
+                                            if (!(endTime - now <= thresholdMs)) return [3 /*break*/, 25];
+                                            return [4 /*yield*/, trx("products")
+                                                    .where({ id: productId })
+                                                    .update({
+                                                    end_time: new Date(endTime + durationMs)
+                                                })];
+                                        case 24:
+                                            _c.sent();
+                                            _c.label = 25;
+                                        case 25: return [2 /*return*/, {
+                                                productId: productId,
+                                                currentPrice: newCurrentPrice,
+                                                highestBidderId: highestBidderId,
+                                                isBuyNow: false,
+                                                isUpdate: !!existingAutoBid
                                             }];
                                     }
                                 });

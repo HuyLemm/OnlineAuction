@@ -12,4 +12,5 @@ router.post("/:productId/append-description", auth_middleware_1.authenticate, au
 router.get("/listings-ended", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.getMyEndedAuctions);
 router.post("/rate-winner/:productId", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.rateWinner);
 router.post("/questions/:questionId/answer", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.answerQuestion);
+router.post("/products/:id/block-bidder", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.blockBidder);
 exports["default"] = router;

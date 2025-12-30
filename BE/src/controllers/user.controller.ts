@@ -414,4 +414,45 @@ export class UserController {
       });
     }
   }
+
+  // ===============================
+  // POST /users/bid
+  // Place AUTO BID (max price)
+  // ===============================
+  static async placeAutoBid(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.userId;
+      const { productId, maxPrice } = req.body;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
+      }
+
+      if (!productId || typeof maxPrice !== "number") {
+        return res.status(400).json({
+          success: false,
+          message: "productId and maxPrice are required",
+        });
+      }
+
+      const result = await UserService.placeAutoBid({
+        userId,
+        productId,
+        maxPrice,
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        success: false,
+        message: error.message || "Failed to place bid",
+      });
+    }
+  }
 }

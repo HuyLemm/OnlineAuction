@@ -567,6 +567,54 @@ var UserController = /** @class */ (function () {
             });
         });
     };
+    // ===============================
+    // POST /users/bid
+    // Place AUTO BID (max price)
+    // ===============================
+    UserController.placeAutoBid = function (req, res) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function () {
+            var userId, _b, productId, maxPrice, result, error_10;
+            return __generator(this, function (_c) {
+                switch (_c.label) {
+                    case 0:
+                        _c.trys.push([0, 2, , 3]);
+                        userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+                        _b = req.body, productId = _b.productId, maxPrice = _b.maxPrice;
+                        if (!userId) {
+                            return [2 /*return*/, res.status(401).json({
+                                    success: false,
+                                    message: "Unauthorized"
+                                })];
+                        }
+                        if (!productId || typeof maxPrice !== "number") {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "productId and maxPrice are required"
+                                })];
+                        }
+                        return [4 /*yield*/, user_service_1.UserService.placeAutoBid({
+                                userId: userId,
+                                productId: productId,
+                                maxPrice: maxPrice
+                            })];
+                    case 1:
+                        result = _c.sent();
+                        return [2 /*return*/, res.status(200).json({
+                                success: true,
+                                data: result
+                            })];
+                    case 2:
+                        error_10 = _c.sent();
+                        return [2 /*return*/, res.status(400).json({
+                                success: false,
+                                message: error_10.message || "Failed to place bid"
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
     return UserController;
 }());
 exports.UserController = UserController;

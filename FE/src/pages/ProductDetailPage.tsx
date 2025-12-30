@@ -30,6 +30,7 @@ import {
   REMOVE_FROM_WATCHLIST_API,
   GET_WATCHLIST_ID_API,
   GET_PRODUCT_DETAIL_API,
+  PLACE_AUTOBID_API,
 } from "../components/utils/api";
 
 export function ProductDetailPage() {
@@ -84,6 +85,14 @@ export function ProductDetailPage() {
     fetchDetail();
     checkFavorite();
   }, [productId]);
+
+  useEffect(() => {
+    if (data?.myAutoBid) {
+      setUserMaxBid(data.myAutoBid.maxPrice);
+    } else {
+      setUserMaxBid(undefined);
+    }
+  }, [data?.myAutoBid]);
 
   const handleToggleFavorite = async () => {
     try {
@@ -151,15 +160,15 @@ export function ProductDetailPage() {
   const bidders = Array.from(bidderMap.values()).map((b) => ({
     ...b,
     currentBid,
-    isWinning: b.maxBid === currentBid,
+    isWinning: b.id === data.product.highestBidderId,
     // isYou: b.id === currentUserId (nếu có auth sau)
   }));
 
   const bidStatus: BidStatusDTO = (() => {
     if (!userMaxBid) return "no_bid";
-    if (userMaxBid < currentBid) return "outbid";
-    if (userMaxBid >= currentBid) return "leading_auto";
-    return "auto_active";
+    if (!data.product.highestBidderId) return "auto_active";
+    if (data.product.highestBidderId !== data.viewer?.id) return "outbid";
+    return "leading_auto";
   })();
 
   const endTimeInfo = getRelativeEndTime(data.product.endTime);
@@ -174,6 +183,36 @@ export function ProductDetailPage() {
     setTimeout(() => {
       console.log("Redirecting to checkout...");
     }, 2000);
+  };
+
+  const handlePlaceAutoBid = async (maxBid: number) => {
+    try {
+      const res = await fetchWithAuth(PLACE_AUTOBID_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId,
+          maxPrice: maxBid,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.message || "Failed to place auto bid");
+      }
+
+      toast.success("✅ Auto bid placed successfully");
+
+      // 🔄 Reload product detail
+      const refreshed = await fetchWithAuth(GET_PRODUCT_DETAIL_API(productId!));
+      const refreshedJson = await refreshed.json();
+      setData(refreshedJson.data);
+
+      // Update local max bid
+      setUserMaxBid(maxBid);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to place auto bid");
+    }
   };
 
   const handleBack = () => {
@@ -270,7 +309,7 @@ export function ProductDetailPage() {
             bidStep={bidStep}
             userMaxBid={userMaxBid}
             isUserWinning={bidStatus === "leading_auto"}
-            onSetMaxBid={setUserMaxBid}
+            onSetMaxBid={handlePlaceAutoBid}
           />
           <PriceDisplay
             currentPrice={currentBid}
@@ -308,7 +347,9 @@ export function ProductDetailPage() {
             productId={data.product.id}
             currentUserRole={data.viewer?.role ?? null}
             onQuestionSubmitted={async () => {
-              const res = await fetchWithAuth(GET_PRODUCT_DETAIL_API(data.product.id));
+              const res = await fetchWithAuth(
+                GET_PRODUCT_DETAIL_API(data.product.id)
+              );
               const json = await res.json();
               setData(json.data);
             }}

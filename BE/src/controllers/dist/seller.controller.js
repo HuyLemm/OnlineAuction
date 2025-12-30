@@ -351,6 +351,56 @@ var SellerController = /** @class */ (function () {
             });
         });
     };
+    // ===============================
+    // POST /seller/products/:id/block-bidder
+    // ===============================
+    SellerController.blockBidder = function (req, res) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function () {
+            var sellerId, productId, _b, bidderId, reason, err_8;
+            return __generator(this, function (_c) {
+                switch (_c.label) {
+                    case 0:
+                        _c.trys.push([0, 2, , 3]);
+                        sellerId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+                        productId = req.params.id;
+                        _b = req.body, bidderId = _b.bidderId, reason = _b.reason;
+                        if (!sellerId) {
+                            return [2 /*return*/, res.status(401).json({ message: "Unauthorized" })];
+                        }
+                        if (!bidderId) {
+                            return [2 /*return*/, res.status(400).json({
+                                    message: "bidderId is required"
+                                })];
+                        }
+                        if (!productId) {
+                            return [2 /*return*/, res.status(400).json({
+                                    message: "productId is required"
+                                })];
+                        }
+                        return [4 /*yield*/, seller_service_1.SellerService.blockBidder({
+                                sellerId: sellerId,
+                                productId: productId,
+                                bidderId: bidderId,
+                                reason: reason
+                            })];
+                    case 1:
+                        _c.sent();
+                        return [2 /*return*/, res.json({
+                                success: true,
+                                message: "Bidder has been blocked from this product"
+                            })];
+                    case 2:
+                        err_8 = _c.sent();
+                        return [2 /*return*/, res.status(400).json({
+                                success: false,
+                                message: err_8.message
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
     return SellerController;
 }());
 exports.SellerController = SellerController;

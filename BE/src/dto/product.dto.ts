@@ -40,12 +40,21 @@ export interface ProductDetailDTO {
 
     currentBid: number;
     bidStep: number;
+
+    highestBidderId: string | null;
   };
 
   viewer: {
     id: string;
     role: "seller" | "bidder" | "admin";
   } | null;
+
+  myAutoBid: {
+    maxPrice: number;
+    createdAt: string;
+  } | null;
+
+  isWinning: boolean;
 
   images: {
     primary: string;
@@ -71,6 +80,8 @@ export interface ProductDetailDTO {
       total: number;
     };
   };
+
+  autoBidEvents: AutoBidEventDTO[];
 
   autoBids: AutoBidDTO[];
 
@@ -208,3 +219,42 @@ export interface EndedAuctionRow {
   buyer_rating_score: number;
   buyer_rating_total: number;
 }
+
+export type AutoBidEventType =
+  | "max_bid_set"
+  | "max_bid_updated"
+  | "auto_bid"
+  | "outbid_instantly"
+  | "tie_break_win"
+  | "winning";
+
+export interface AutoBidEventDTO {
+  id: string;
+  type: AutoBidEventType;
+  bidderId: string;
+  bidderName: string;
+  amount?: number; // giá THỰC (từ bids)
+  maxBid?: number; // chỉ hiện cho owner
+  createdAt: string;
+  isYou: boolean;
+  description: string;
+}
+
+export const AUTO_BID_EVENT_DESCRIPTION: Record<AutoBidEventType, string> = {
+  max_bid_set: "Set maximum auto bid",
+  max_bid_updated: "Updated maximum auto bid",
+  auto_bid: "System automatically placed a bid",
+  outbid_instantly: "Your bid was instantly surpassed",
+  tie_break_win: "You are leading due to earlier max bid",
+  winning: "Currently leading the auction",
+};
+
+export type AutoBidEventRow = {
+  id: string;
+  type: AutoBidEventType;
+  bidderId: string;
+  bidderName: string;
+  amount: number | null;
+  maxBid: number | null;
+  createdAt: Date;
+};

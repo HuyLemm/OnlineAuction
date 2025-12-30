@@ -32,4 +32,5 @@ router.post("/questions", auth_middleware_1.authenticate, user_controller_1.User
  * Q&A - Bidder reply
  * =============================== */
 router.post("/questions/:questionId/reply", auth_middleware_1.authenticate, authorize_middleware_1.authorize("bidder"), user_controller_1.UserController.replyQuestion);
+router.post("/place-autobid", auth_middleware_1.authenticate, authorize_middleware_1.authorize("bidder"), user_controller_1.UserController.placeAutoBid);
 exports["default"] = router;

@@ -50,12 +50,21 @@ export interface ProductDetailDTO {
 
     currentBid: number;
     bidStep: number;
+
+    highestBidderId: string | null;
   };
 
   viewer?: {
     id: string;
     role: "seller" | "bidder" | "admin";
   } | null;
+
+  myAutoBid: {
+    maxPrice: number;
+    createdAt: string;
+  } | null;
+
+  isWinning: boolean;
 
   images: {
     primary: string;
@@ -148,3 +157,23 @@ export type BidStatusDTO =
   | "auto_active"
   | "leading_auto"
   | "winning";
+
+export type AutoBidEventType =
+  | "max_bid_set"
+  | "max_bid_updated"
+  | "auto_bid"
+  | "outbid_instantly"
+  | "tie_break_win"
+  | "winning";
+
+export interface AutoBidEventDTO {
+  id: string;
+  type: AutoBidEventType;
+  bidderId: string;
+  bidderName: string;
+  amount?: number;
+  maxBid?: number;
+  createdAt: string;
+  isYou: boolean;
+  description: string;
+}

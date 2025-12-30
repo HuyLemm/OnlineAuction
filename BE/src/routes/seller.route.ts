@@ -53,4 +53,11 @@ router.post(
   SellerController.answerQuestion
 );
 
+router.post(
+  "/products/:id/block-bidder",
+  authenticate,
+  authorize("seller"),
+  SellerController.blockBidder
+);
+
 export default router;

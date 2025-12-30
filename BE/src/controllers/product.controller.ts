@@ -150,9 +150,19 @@ export class ProductController {
           categoryName: raw.product.categoryName,
           currentBid: raw.product.currentBid,
           bidStep: raw.product.bidStep,
+          highestBidderId: raw.product.highestBidderId,
         },
 
         viewer: raw.viewer ?? null,
+
+        myAutoBid: raw.myAutoBid
+          ? {
+              maxPrice: raw.myAutoBid.maxPrice,
+              createdAt: raw.myAutoBid.createdAt.toISOString(),
+            }
+          : null,
+
+        isWinning: raw.isWinning ?? false,
 
         images: {
           primary: raw.images.find((i: any) => i.is_main)?.image_url || "",
@@ -175,13 +185,8 @@ export class ProductController {
           },
         }),
 
-        autoBids: raw.autoBids.map((b: any) => ({
-          id: b.id,
-          bidderId: b.bidder_id,
-          bidderName: "",
-          maxBid: b.max_bid,
-          createdAt: b.created_at,
-        })),
+        autoBids: raw.autoBids,
+        autoBidEvents: raw.autoBidEvents,
 
         bidHistory: raw.bidHistory,
         questions: raw.questions,
@@ -190,20 +195,14 @@ export class ProductController {
           id: p.id,
           title: p.title,
           image: p.image,
-
           currentBid: Number(p.currentBid),
           bids: Number(p.bids),
-
           endTime: p.endTime,
-
           auctionType: p.auctionType,
           buyNowPrice: p.buyNowPrice ?? null,
-
           postedDate: p.postedDate,
-
           category: p.category,
           categoryId: Number(p.categoryId),
-
           highestBidderName: p.highestBidderName ?? null,
         })),
       };

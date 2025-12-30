@@ -576,9 +576,6 @@ export class UserService {
   /* ===============================
    * Q&A - Bidder reply question
    * =============================== */
-  /* ===============================
-   * Q&A - Bidder reply question
-   * =============================== */
   static async replyQuestionAsBidder(params: {
     bidderId: string;
     questionId: string;
@@ -699,6 +696,344 @@ export class UserService {
         id: reply.id,
         content: reply.content,
         createdAt: reply.created_at,
+      };
+    });
+  }
+
+  // ===============================
+  // Get system settings by keys
+  // ===============================
+  static async getSystemSettings(
+    keys: string[],
+    trx?: any
+  ): Promise<Record<string, number>> {
+    const query = trx ?? db;
+
+    const rows = await query("system_settings")
+      .whereIn("key", keys)
+      .select("key", "value");
+
+    const map: Record<string, number> = {};
+
+    for (const row of rows) {
+      const num = Number(row.value);
+      if (!Number.isNaN(num)) {
+        map[row.key] = num;
+      }
+    }
+
+    return map;
+  }
+
+  // ===============================
+  // Auto Bid - Place max bid (CORE)
+  // ===============================
+  static async placeAutoBid(params: {
+    userId: string;
+    productId: string;
+    maxPrice: number;
+  }) {
+    const { userId, productId, maxPrice } = params;
+
+    if (!Number.isFinite(maxPrice) || maxPrice <= 0) {
+      throw new Error("Invalid max price");
+    }
+
+    return await db.transaction(async (trx) => {
+      /* =============================
+       * 1️⃣ Validate bidder
+       * ============================= */
+      const bidder = await trx("users")
+        .select("id", "role", "allow_bid", "is_blocked")
+        .where({ id: userId })
+        .first();
+
+      if (!bidder) throw new Error("User not found");
+      if (bidder.role !== "bidder") throw new Error("Only bidders can bid");
+      if (!bidder.allow_bid) throw new Error("You are not allowed to bid");
+      if (bidder.is_blocked) throw new Error("Your account is blocked");
+
+      /* =============================
+       * 2️⃣ Load product
+       * ============================= */
+      const product = await trx("products")
+        .select(
+          "id",
+          "seller_id",
+          "status",
+          "start_price",
+          "bid_step",
+          "current_price",
+          "highest_bidder_id",
+          "buy_now_price",
+          "end_time",
+          "auto_extend"
+        )
+        .where({ id: productId })
+        .first();
+
+      if (!product) throw new Error("Product not found");
+      if (product.status !== "active") throw new Error("Auction is not active");
+      if (product.seller_id === userId)
+        throw new Error("You cannot bid on your own product");
+
+      /* =============================
+       * 3️⃣ Blocked bidder
+       * ============================= */
+      const blocked = await trx("blocked_bidders")
+        .where({ product_id: productId, bidder_id: userId })
+        .first();
+
+      if (blocked) {
+        throw new Error(blocked.reason || "You are blocked from bidding");
+      }
+
+      /* =============================
+       * 4️⃣ Existing auto bid
+       * ============================= */
+      const existingAutoBid = await trx("auto_bids")
+        .where({ product_id: productId, bidder_id: userId })
+        .first();
+
+      if (existingAutoBid && maxPrice <= Number(existingAutoBid.max_price)) {
+        throw new Error(
+          `New max bid must be higher than your current max (${existingAutoBid.max_price})`
+        );
+      }
+
+      /* =============================
+       * 5️⃣ Upsert auto_bids
+       * ============================= */
+      await trx("auto_bids")
+        .insert({
+          product_id: productId,
+          bidder_id: userId,
+          max_price: maxPrice,
+          created_at: new Date(),
+        })
+        .onConflict(["product_id", "bidder_id"])
+        .merge({
+          max_price: maxPrice,
+          created_at: new Date(), // chỉ dùng cho tie-break
+        });
+
+      await trx("auto_bid_events").insert({
+        product_id: productId,
+        bidder_id: userId,
+        type: existingAutoBid ? "max_bid_updated" : "max_bid_set",
+        max_bid: maxPrice,
+        description: existingAutoBid
+          ? "Updated maximum auto bid"
+          : "Set maximum auto bid",
+      });
+
+      /* =============================
+       * 6️⃣ Get top 2 auto bids (KHÔNG sort winner ở SQL)
+       * ============================= */
+      const autoBids = await trx("auto_bids")
+        .where({ product_id: productId })
+        .select("bidder_id", "max_price", "created_at")
+        .orderBy([
+          { column: "max_price", order: "desc" },
+          { column: "created_at", order: "asc" }, // chỉ dùng khi max bằng nhau
+        ])
+        .limit(2);
+
+      /* =============================
+       * 7️⃣ Compute winner & price (FINAL – CORRECT)
+       * ============================= */
+
+      const bidStep = Number(product.bid_step);
+      const startPrice = Number(product.start_price);
+
+      const previousPrice =
+        product.current_price !== null
+          ? Number(product.current_price)
+          : startPrice;
+
+      let newCurrentPrice = previousPrice;
+      let highestBidderId = product.highest_bidder_id;
+
+      // CASE 1: chỉ có 1 auto bid
+      if (autoBids.length === 1) {
+        newCurrentPrice = startPrice + bidStep;
+        highestBidderId = autoBids[0].bidder_id;
+      }
+
+      // CASE 2: có 2 auto bids
+      // CASE 2: có 2 auto bids
+      else if (autoBids.length === 2) {
+        let [a, b] = autoBids;
+
+        let winner = a;
+        let loser = b;
+
+        const aMax = Number(a.max_price);
+        const bMax = Number(b.max_price);
+
+        // 1️⃣ ai max lớn hơn → thắng
+        if (bMax > aMax) {
+          winner = b;
+          loser = a;
+        }
+
+        // 2️⃣ max bằng nhau → tie-break theo created_at
+        else if (aMax === bMax) {
+          if (new Date(b.created_at) < new Date(a.created_at)) {
+            winner = b;
+            loser = a;
+          }
+
+          await trx("auto_bid_events").insert({
+            product_id: productId,
+            bidder_id: winner.bidder_id,
+            type: "tie_break_win",
+            max_bid: aMax,
+            description: "Won tie-break by placing max bid earlier",
+          });
+        }
+
+        highestBidderId = winner.bidder_id;
+
+        const winnerMax = Number(winner.max_price);
+        const loserMax = Number(loser.max_price);
+
+        /**
+         * RULE GIÁ (QUAN TRỌNG):
+         * - Nếu userId (người vừa đặt/update auto bid) THẮNG
+         *   → chỉ cần vượt người cũ 1 step
+         *   → min(winnerMax, loserMax + bidStep)
+         *
+         * - Nếu userId THUA
+         *   → giá = max của người mới (loser)
+         */
+        if (winner.bidder_id === userId) {
+          newCurrentPrice = Math.min(winnerMax, loserMax + bidStep);
+        } else {
+          newCurrentPrice = loserMax;
+        }
+
+        // ❌ không cho giảm giá
+        if (newCurrentPrice < previousPrice) {
+          newCurrentPrice = previousPrice;
+        }
+      }
+
+      /* =============================
+       * 8️⃣ BUY NOW
+       * ============================= */
+      if (product.buy_now_price && maxPrice >= Number(product.buy_now_price)) {
+        await trx("products").where({ id: productId }).update({
+          current_price: product.buy_now_price,
+          highest_bidder_id: userId,
+          status: "closed",
+        });
+
+        await trx("bids").insert({
+          product_id: productId,
+          bidder_id: userId,
+          bid_amount: product.buy_now_price,
+          bid_time: new Date(),
+        });
+
+        await trx("auto_bid_events").insert({
+          product_id: productId,
+          bidder_id: userId,
+          type: "winning",
+          amount: product.buy_now_price,
+          description: "Won instantly via Buy Now",
+        });
+
+        return {
+          productId,
+          currentPrice: product.buy_now_price,
+          highestBidderId: userId,
+          isBuyNow: true,
+        };
+      }
+
+      /* =============================
+       * 9️⃣ Apply price change
+       * ============================= */
+      const priceChanged = newCurrentPrice > previousPrice;
+      const winnerChanged = highestBidderId !== product.highest_bidder_id;
+
+      // 👉 Update product nếu CÓ thay đổi
+      if (priceChanged || winnerChanged) {
+        await trx("products").where({ id: productId }).update({
+          current_price: newCurrentPrice,
+          highest_bidder_id: highestBidderId,
+        });
+      }
+
+      // 👉 Chỉ insert bid khi giá tăng
+      if (priceChanged) {
+        await trx("bids").insert({
+          product_id: productId,
+          bidder_id: highestBidderId,
+          bid_amount: newCurrentPrice,
+          bid_time: new Date(),
+        });
+
+        await trx("auto_bid_events").insert({
+          product_id: productId,
+          bidder_id: highestBidderId,
+          type: "auto_bid",
+          amount: newCurrentPrice,
+          description: "System automatically placed a bid",
+        });
+
+        const loser = autoBids.find((b) => b.bidder_id !== highestBidderId);
+
+        if (loser) {
+          await trx("auto_bid_events").insert({
+            product_id: productId,
+            bidder_id: loser.bidder_id,
+            type: "outbid_instantly",
+            amount: newCurrentPrice,
+            related_bidder_id: highestBidderId,
+            description:
+              "Your bid was instantly surpassed by an existing auto bid",
+          });
+        }
+      }
+
+      /* =============================
+       * 🔁 AUTO EXTEND (giữ nguyên)
+       * ============================= */
+      if (product.auto_extend) {
+        const settings = await trx("system_settings")
+          .whereIn("key", [
+            "auto_extend_threshold_minutes",
+            "auto_extend_duration_minutes",
+          ])
+          .select("key", "value");
+
+        const cfg = Object.fromEntries(
+          settings.map((s) => [s.key, Number(s.value)])
+        );
+
+        const thresholdMs = (cfg.auto_extend_threshold_minutes ?? 5) * 60_000;
+        const durationMs = (cfg.auto_extend_duration_minutes ?? 10) * 60_000;
+
+        const now = Date.now();
+        const endTime = new Date(product.end_time).getTime();
+
+        if (endTime - now <= thresholdMs) {
+          await trx("products")
+            .where({ id: productId })
+            .update({
+              end_time: new Date(endTime + durationMs),
+            });
+        }
+      }
+
+      return {
+        productId,
+        currentPrice: newCurrentPrice,
+        highestBidderId,
+        isBuyNow: false,
+        isUpdate: !!existingAutoBid,
       };
     });
   }

@@ -100,4 +100,11 @@ router.post(
   UserController.replyQuestion
 );
 
+router.post(
+  "/place-autobid",
+  authenticate,
+  authorize("bidder"),
+  UserController.placeAutoBid
+);
+
 export default router;

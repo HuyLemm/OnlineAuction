@@ -244,4 +244,49 @@ export class SellerController {
       });
     }
   }
+
+  // ===============================
+// POST /seller/products/:id/block-bidder
+// ===============================
+static async blockBidder(req: AuthRequest, res: Response) {
+  try {
+    const sellerId = req.user?.userId;
+    const { id: productId } = req.params;
+    const { bidderId, reason } = req.body;
+
+    if (!sellerId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!bidderId) {
+      return res.status(400).json({
+        message: "bidderId is required",
+      });
+    }
+
+    if (!productId) {
+      return res.status(400).json({
+        message: "productId is required",
+      });
+    }
+
+    await SellerService.blockBidder({
+      sellerId,
+      productId,
+      bidderId,
+      reason,
+    });
+
+    return res.json({
+      success: true,
+      message: "Bidder has been blocked from this product",
+    });
+  } catch (err: any) {
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+}
+
 }

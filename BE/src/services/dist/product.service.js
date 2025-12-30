@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -45,6 +56,7 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
 exports.__esModule = true;
 exports.ProductService = void 0;
 var db_1 = require("../config/db");
+var product_dto_1 = require("../dto/product.dto");
 var ProductService = /** @class */ (function () {
     function ProductService() {
     }
@@ -252,12 +264,12 @@ var ProductService = /** @class */ (function () {
     ProductService.getProductDetail = function (productId, viewerUserId) {
         var _a, _b, _c, _d, _e, _f;
         return __awaiter(this, void 0, void 0, function () {
-            var product, viewer, viewerRaw, images, seller, sellerRatingRaw, sellerRating, highestBid, highestBidder, highestBidderRating, bidderRatingRaw, autoBids, bidHistoryRaw, bidderRatingMap, _i, bidHistoryRaw_1, bid, ratingRaw, bidHistory, questionsRaw, answersRaw, _g, answersByQuestion, _h, answersRaw_1, ans, questions, relatedProducts;
+            var product, viewer, viewerRaw, myAutoBid, myBid, isWinning, images, seller, sellerRatingRaw, sellerRating, highestBidder, highestBidderRating, bidderRatingRaw, autoBids, bidHistoryRaw, maskName, bidderRatingMap, _i, bidHistoryRaw_1, bid, ratingRaw, bidHistory, questionsRaw, answersRaw, _g, answersByQuestion, _h, answersRaw_1, ans, questions, relatedProducts, autoBidEventsRaw, autoBidEvents;
             return __generator(this, function (_j) {
                 switch (_j.label) {
                     case 0: return [4 /*yield*/, db_1.db("products as p")
                             .leftJoin("categories as c", "c.id", "p.category_id")
-                            .select("p.id", "p.title", "p.description", "p.created_at as postedDate", "p.end_time as endTime", "p.auction_type as auctionType", "p.buy_now_price as buyNowPrice", "p.category_id as categoryId", "c.name as categoryName", "p.bid_step as bidStep", db_1.db.raw("COALESCE(p.current_price, p.start_price)::int AS \"currentBid\""))
+                            .select("p.id", "p.title", "p.description", "p.created_at as postedDate", "p.end_time as endTime", "p.auction_type as auctionType", "p.buy_now_price as buyNowPrice", "p.category_id as categoryId", "c.name as categoryName", "p.bid_step as bidStep", "p.highest_bidder_id as highestBidderId", db_1.db.raw("COALESCE(p.current_price, p.start_price)::int AS \"currentBid\""))
                             .where("p.id", productId)
                             .first()];
                     case 1:
@@ -279,16 +291,38 @@ var ProductService = /** @class */ (function () {
                             };
                         }
                         _j.label = 3;
-                    case 3: return [4 /*yield*/, db_1.db("product_images")
-                            .select("image_url", "is_main")
-                            .where("product_id", productId)];
+                    case 3:
+                        myAutoBid = null;
+                        if (!viewerUserId) return [3 /*break*/, 5];
+                        return [4 /*yield*/, db_1.db("auto_bids")
+                                .where({
+                                product_id: productId,
+                                bidder_id: viewerUserId
+                            })
+                                .first()];
                     case 4:
+                        myBid = _j.sent();
+                        if (myBid) {
+                            myAutoBid = {
+                                maxPrice: Number(myBid.max_price),
+                                createdAt: myBid.created_at
+                            };
+                        }
+                        _j.label = 5;
+                    case 5:
+                        isWinning = !!viewerUserId &&
+                            !!product.highestBidderId &&
+                            viewerUserId === product.highestBidderId;
+                        return [4 /*yield*/, db_1.db("product_images")
+                                .select("image_url", "is_main")
+                                .where("product_id", productId)];
+                    case 6:
                         images = _j.sent();
                         return [4 /*yield*/, db_1.db("users")
                                 .select("id", "full_name")
                                 .where("id", db_1.db("products").select("seller_id").where("id", productId))
                                 .first()];
-                    case 5:
+                    case 7:
                         seller = _j.sent();
                         if (!seller)
                             throw new Error("Seller not found");
@@ -297,76 +331,73 @@ var ProductService = /** @class */ (function () {
                                 .from("ratings")
                                 .where("to_user", seller.id)
                                 .first()];
-                    case 6:
+                    case 8:
                         sellerRatingRaw = (_j.sent());
                         sellerRating = {
                             score: Number((_a = sellerRatingRaw === null || sellerRatingRaw === void 0 ? void 0 : sellerRatingRaw.score) !== null && _a !== void 0 ? _a : 0),
                             total: Number((_b = sellerRatingRaw === null || sellerRatingRaw === void 0 ? void 0 : sellerRatingRaw.total) !== null && _b !== void 0 ? _b : 0)
                         };
-                        return [4 /*yield*/, db_1.db("bids")
-                                .where("product_id", productId)
-                                .orderBy("bid_amount", "desc")
-                                .first()];
-                    case 7:
-                        highestBid = _j.sent();
                         highestBidder = null;
                         highestBidderRating = { score: 0, total: 0 };
-                        if (!highestBid) return [3 /*break*/, 10];
+                        if (!product.highestBidderId) return [3 /*break*/, 11];
                         return [4 /*yield*/, db_1.db("users")
                                 .select("id", "full_name")
-                                .where("id", highestBid.bidder_id)
+                                .where("id", product.highestBidderId)
                                 .first()];
-                    case 8:
+                    case 9:
                         highestBidder = _j.sent();
-                        if (!highestBidder) return [3 /*break*/, 10];
+                        if (!highestBidder) return [3 /*break*/, 11];
                         return [4 /*yield*/, db_1.db
                                 .select(db_1.db.raw("COALESCE(SUM(score), 0) AS score"), db_1.db.raw("COUNT(*) AS total"))
                                 .from("ratings")
-                                .where("to_user", highestBid.bidder_id)
+                                .where("to_user", product.highestBidderId)
                                 .first()];
-                    case 9:
+                    case 10:
                         bidderRatingRaw = (_j.sent());
                         highestBidderRating = {
                             score: Number((_c = bidderRatingRaw === null || bidderRatingRaw === void 0 ? void 0 : bidderRatingRaw.score) !== null && _c !== void 0 ? _c : 0),
                             total: Number((_d = bidderRatingRaw === null || bidderRatingRaw === void 0 ? void 0 : bidderRatingRaw.total) !== null && _d !== void 0 ? _d : 0)
                         };
-                        _j.label = 10;
-                    case 10: return [4 /*yield*/, db_1.db("auto_bids")
+                        _j.label = 11;
+                    case 11: return [4 /*yield*/, db_1.db("auto_bids")
                             .where("product_id", productId)
                             .select("id", "bidder_id", "max_price", "created_at")];
-                    case 11:
+                    case 12:
                         autoBids = _j.sent();
                         return [4 /*yield*/, db_1.db("bids as b")
                                 .join("users as u", "u.id", "b.bidder_id")
                                 .where("b.product_id", productId)
                                 .orderBy("b.bid_time", "desc")
                                 .select("b.id as bidId", "b.bid_amount as amount", "b.bid_time as createdAt", "u.id as bidderId", "u.full_name as bidderName")];
-                    case 12:
+                    case 13:
                         bidHistoryRaw = _j.sent();
+                        maskName = function (name) {
+                            return name.length <= 2 ? "**" : "*".repeat(name.length - 2) + name.slice(-2);
+                        };
                         bidderRatingMap = new Map();
                         _i = 0, bidHistoryRaw_1 = bidHistoryRaw;
-                        _j.label = 13;
-                    case 13:
-                        if (!(_i < bidHistoryRaw_1.length)) return [3 /*break*/, 16];
+                        _j.label = 14;
+                    case 14:
+                        if (!(_i < bidHistoryRaw_1.length)) return [3 /*break*/, 17];
                         bid = bidHistoryRaw_1[_i];
                         if (bidderRatingMap.has(bid.bidderId))
-                            return [3 /*break*/, 15];
+                            return [3 /*break*/, 16];
                         return [4 /*yield*/, db_1.db
                                 .select(db_1.db.raw("COALESCE(SUM(score), 0) AS score"), db_1.db.raw("COUNT(*) AS total"))
                                 .from("ratings")
                                 .where("to_user", bid.bidderId)
                                 .first()];
-                    case 14:
+                    case 15:
                         ratingRaw = (_j.sent());
                         bidderRatingMap.set(bid.bidderId, {
                             score: Number((_e = ratingRaw === null || ratingRaw === void 0 ? void 0 : ratingRaw.score) !== null && _e !== void 0 ? _e : 0),
                             total: Number((_f = ratingRaw === null || ratingRaw === void 0 ? void 0 : ratingRaw.total) !== null && _f !== void 0 ? _f : 0)
                         });
-                        _j.label = 15;
-                    case 15:
-                        _i++;
-                        return [3 /*break*/, 13];
+                        _j.label = 16;
                     case 16:
+                        _i++;
+                        return [3 /*break*/, 14];
+                    case 17:
                         bidHistory = bidHistoryRaw.map(function (b) {
                             var _a;
                             return ({
@@ -375,11 +406,8 @@ var ProductService = /** @class */ (function () {
                                 createdAt: b.createdAt,
                                 bidder: {
                                     id: b.bidderId,
-                                    name: b.bidderName,
-                                    rating: (_a = bidderRatingMap.get(b.bidderId)) !== null && _a !== void 0 ? _a : {
-                                        score: 0,
-                                        total: 0
-                                    }
+                                    name: maskName(b.bidderName),
+                                    rating: (_a = bidderRatingMap.get(b.bidderId)) !== null && _a !== void 0 ? _a : { score: 0, total: 0 }
                                 }
                             });
                         });
@@ -388,21 +416,21 @@ var ProductService = /** @class */ (function () {
                                 .where("q.product_id", productId)
                                 .select("q.id as questionId", "q.content as questionContent", "q.created_at as questionCreatedAt", "u.id as askerId", "u.full_name as askerName")
                                 .orderBy("q.created_at", "asc")];
-                    case 17:
+                    case 18:
                         questionsRaw = _j.sent();
-                        if (!questionsRaw.length) return [3 /*break*/, 19];
+                        if (!questionsRaw.length) return [3 /*break*/, 20];
                         return [4 /*yield*/, db_1.db("answers as a")
                                 .join("users as u", "u.id", "a.user_id")
                                 .whereIn("a.question_id", questionsRaw.map(function (q) { return q.questionId; }))
                                 .select("a.id as answerId", "a.question_id as questionId", "a.content", "a.created_at", "a.role", "u.id as userId", "u.full_name as userName")
                                 .orderBy("a.created_at", "asc")];
-                    case 18:
-                        _g = _j.sent();
-                        return [3 /*break*/, 20];
                     case 19:
-                        _g = [];
-                        _j.label = 20;
+                        _g = _j.sent();
+                        return [3 /*break*/, 21];
                     case 20:
+                        _g = [];
+                        _j.label = 21;
+                    case 21:
                         answersRaw = _g;
                         answersByQuestion = new Map();
                         for (_h = 0, answersRaw_1 = answersRaw; _h < answersRaw_1.length; _h++) {
@@ -449,21 +477,33 @@ var ProductService = /** @class */ (function () {
                                 .andWhereNot("p.id", productId)
                                 .groupBy("p.id", "c.id", "c.name", "pi.image_url", "u.full_name")
                                 .limit(5)];
-                    case 21:
+                    case 22:
                         relatedProducts = _j.sent();
+                        return [4 /*yield*/, db_1.db("auto_bid_events as e")
+                                .join("users as u", "u.id", "e.bidder_id")
+                                .where("e.product_id", productId)
+                                .orderBy("e.created_at", "asc")
+                                .select("e.id", "e.type as type", "e.amount as amount", "e.max_bid as maxBid", "e.created_at as createdAt", "u.id as bidderId", "u.full_name as bidderName")];
+                    case 23:
+                        autoBidEventsRaw = (_j.sent());
+                        autoBidEvents = autoBidEventsRaw.map(function (e) { return (__assign(__assign(__assign({ id: e.id, type: e.type, bidderId: e.bidderId, bidderName: maskName(e.bidderName) }, (e.amount != null && { amount: Number(e.amount) })), (viewerUserId === e.bidderId &&
+                            e.maxBid != null && {
+                            maxBid: Number(e.maxBid)
+                        })), { createdAt: e.createdAt.toISOString(), isYou: viewerUserId === e.bidderId, description: product_dto_1.AUTO_BID_EVENT_DESCRIPTION[e.type] })); });
                         // ----------------------------
-                        // FINAL RAW RESULT
+                        // FINAL RESULT
                         // ----------------------------
                         return [2 /*return*/, {
                                 viewer: viewer,
                                 product: product,
+                                myAutoBid: myAutoBid,
+                                isWinning: isWinning,
                                 images: images,
                                 seller: {
                                     id: seller.id,
                                     name: seller.full_name,
                                     rating: sellerRating
                                 },
-                                highestBid: highestBid,
                                 highestBidder: highestBidder
                                     ? {
                                         id: highestBidder.id,
@@ -472,6 +512,7 @@ var ProductService = /** @class */ (function () {
                                     }
                                     : null,
                                 autoBids: autoBids,
+                                autoBidEvents: autoBidEvents,
                                 bidHistory: bidHistory,
                                 questions: questions,
                                 relatedProducts: relatedProducts

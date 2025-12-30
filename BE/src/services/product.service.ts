@@ -1,5 +1,9 @@
 import { db } from "../config/db";
-
+import {
+  AutoBidEventDTO,
+  AUTO_BID_EVENT_DESCRIPTION,
+  AutoBidEventRow,
+} from "../dto/product.dto";
 export class ProductService {
   // ==================================================
   // 🔧 Helpers
@@ -264,6 +268,7 @@ export class ProductService {
         "p.category_id as categoryId",
         "c.name as categoryName",
         "p.bid_step as bidStep",
+        "p.highest_bidder_id as highestBidderId",
         db.raw(`COALESCE(p.current_price, p.start_price)::int AS "currentBid"`)
       )
       .where("p.id", productId)
@@ -294,6 +299,38 @@ export class ProductService {
     }
 
     // ----------------------------
+    // myAutoBid (max_price của viewer)
+    // ----------------------------
+    let myAutoBid: {
+      maxPrice: number;
+      createdAt: Date;
+    } | null = null;
+
+    if (viewerUserId) {
+      const myBid = await db("auto_bids")
+        .where({
+          product_id: productId,
+          bidder_id: viewerUserId,
+        })
+        .first();
+
+      if (myBid) {
+        myAutoBid = {
+          maxPrice: Number(myBid.max_price),
+          createdAt: myBid.created_at,
+        };
+      }
+    }
+
+    // ----------------------------
+    // isWinning = đang dẫn đầu HIỆN TẠI
+    // ----------------------------
+    const isWinning =
+      !!viewerUserId &&
+      !!product.highestBidderId &&
+      viewerUserId === product.highestBidderId;
+
+    // ----------------------------
     // Images
     // ----------------------------
     const images = await db("product_images")
@@ -311,7 +348,7 @@ export class ProductService {
     if (!seller) throw new Error("Seller not found");
 
     // ----------------------------
-    // Seller rating (SUM score)
+    // Seller rating
     // ----------------------------
     const sellerRatingRaw = (await db
       .select(
@@ -328,23 +365,15 @@ export class ProductService {
     };
 
     // ----------------------------
-    // Highest bid
-    // ----------------------------
-    const highestBid = await db("bids")
-      .where("product_id", productId)
-      .orderBy("bid_amount", "desc")
-      .first();
-
-    // ----------------------------
-    // Highest bidder + rating
+    // Highest bidder (DÙNG product.highestBidderId)
     // ----------------------------
     let highestBidder: { id: string; full_name: string } | null = null;
     let highestBidderRating = { score: 0, total: 0 };
 
-    if (highestBid) {
+    if (product.highestBidderId) {
       highestBidder = await db("users")
         .select("id", "full_name")
-        .where("id", highestBid.bidder_id)
+        .where("id", product.highestBidderId)
         .first();
 
       if (highestBidder) {
@@ -354,7 +383,7 @@ export class ProductService {
             db.raw("COUNT(*) AS total")
           )
           .from("ratings")
-          .where("to_user", highestBid.bidder_id)
+          .where("to_user", product.highestBidderId)
           .first()) as { score: number; total: number } | undefined;
 
         highestBidderRating = {
@@ -365,12 +394,15 @@ export class ProductService {
     }
 
     // ----------------------------
-    // Auto bids
+    // Auto bids (raw – debug / admin)
     // ----------------------------
     const autoBids = await db("auto_bids")
       .where("product_id", productId)
       .select("id", "bidder_id", "max_price", "created_at");
 
+    // ----------------------------
+    // Bid history (MASK NAME)
+    // ----------------------------
     const bidHistoryRaw = await db("bids as b")
       .join("users as u", "u.id", "b.bidder_id")
       .where("b.product_id", productId)
@@ -382,6 +414,9 @@ export class ProductService {
         "u.id as bidderId",
         "u.full_name as bidderName"
       );
+
+    const maskName = (name: string) =>
+      name.length <= 2 ? "**" : "*".repeat(name.length - 2) + name.slice(-2);
 
     const bidderRatingMap = new Map<string, { score: number; total: number }>();
 
@@ -409,19 +444,14 @@ export class ProductService {
       createdAt: b.createdAt,
       bidder: {
         id: b.bidderId,
-        name: b.bidderName,
-        rating: bidderRatingMap.get(b.bidderId) ?? {
-          score: 0,
-          total: 0,
-        },
+        name: maskName(b.bidderName),
+        rating: bidderRatingMap.get(b.bidderId) ?? { score: 0, total: 0 },
       },
     }));
 
     // ----------------------------
-    // Q&A (Conversation style)
+    // Q&A (GIỮ NGUYÊN)
     // ----------------------------
-
-    // 1️⃣ Lấy questions
     const questionsRaw = await db("questions as q")
       .join("users as u", "u.id", "q.user_id")
       .where("q.product_id", productId)
@@ -434,7 +464,6 @@ export class ProductService {
       )
       .orderBy("q.created_at", "asc");
 
-    // 2️⃣ Lấy tất cả answers thuộc các questions đó
     const answersRaw = questionsRaw.length
       ? await db("answers as a")
           .join("users as u", "u.id", "a.user_id")
@@ -454,20 +483,7 @@ export class ProductService {
           .orderBy("a.created_at", "asc")
       : [];
 
-    // 3️⃣ Group answers theo question
-    const answersByQuestion = new Map<
-      string,
-      {
-        id: string;
-        content: string;
-        createdAt: string;
-        sender: {
-          id: string;
-          name: string;
-          role: "seller" | "bidder";
-        };
-      }[]
-    >();
+    const answersByQuestion = new Map<string, any[]>();
 
     for (const ans of answersRaw) {
       if (!answersByQuestion.has(ans.questionId)) {
@@ -486,7 +502,6 @@ export class ProductService {
       });
     }
 
-    // 4️⃣ Build final questions DTO
     const questions = questionsRaw.map((q) => ({
       id: q.questionId,
       question: {
@@ -501,7 +516,7 @@ export class ProductService {
     }));
 
     // ----------------------------
-    // Related products
+    // Related products (GIỮ NGUYÊN)
     // ----------------------------
     const relatedProducts = await db("products as p")
       .leftJoin("categories as c", "c.id", "p.category_id")
@@ -521,12 +536,9 @@ export class ProductService {
         "p.auction_type as auctionType",
         "p.buy_now_price as buyNowPrice",
         "p.created_at as postedDate",
-
         "c.name as category",
         "c.id as categoryId",
-
         "u.full_name as highestBidderName",
-
         db.raw(`COALESCE(p.current_price, p.start_price)::int AS "currentBid"`),
         db.raw(`COALESCE(pi.image_url, '') AS "image"`),
         db.raw(`COUNT(b.id)::int AS "bids"`)
@@ -537,19 +549,52 @@ export class ProductService {
       .groupBy("p.id", "c.id", "c.name", "pi.image_url", "u.full_name")
       .limit(5);
 
+    const autoBidEventsRaw = (await db("auto_bid_events as e")
+      .join("users as u", "u.id", "e.bidder_id")
+      .where("e.product_id", productId)
+      .orderBy("e.created_at", "asc")
+      .select(
+        "e.id",
+        "e.type as type",
+        "e.amount as amount",
+        "e.max_bid as maxBid",
+        "e.created_at as createdAt",
+        "u.id as bidderId",
+        "u.full_name as bidderName"
+      )) as AutoBidEventRow[];
+
+    const autoBidEvents = autoBidEventsRaw.map((e) => ({
+      id: e.id,
+      type: e.type,
+      bidderId: e.bidderId,
+      bidderName: maskName(e.bidderName),
+      ...(e.amount != null && { amount: Number(e.amount) }),
+      ...(viewerUserId === e.bidderId &&
+        e.maxBid != null && {
+          maxBid: Number(e.maxBid),
+        }),
+      createdAt: e.createdAt.toISOString(),
+      isYou: viewerUserId === e.bidderId,
+      description: AUTO_BID_EVENT_DESCRIPTION[e.type],
+    }));
+
     // ----------------------------
-    // FINAL RAW RESULT
+    // FINAL RESULT
     // ----------------------------
+
     return {
       viewer,
       product,
+      myAutoBid,
+      isWinning,
+
       images,
       seller: {
         id: seller.id,
         name: seller.full_name,
         rating: sellerRating,
       },
-      highestBid,
+
       highestBidder: highestBidder
         ? {
             id: highestBidder.id,
@@ -557,7 +602,9 @@ export class ProductService {
             rating: highestBidderRating,
           }
         : null,
+
       autoBids,
+      autoBidEvents,
       bidHistory,
       questions,
       relatedProducts,

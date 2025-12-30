@@ -175,13 +175,13 @@ var ProductController = /** @class */ (function () {
     // GET /products/:productId/get-product-detail
     // ===============================
     ProductController.getProductDetail = function (req, res) {
-        var _a, _b, _c;
+        var _a, _b, _c, _d;
         return __awaiter(this, void 0, void 0, function () {
             var viewerUserId, productId, raw, dto, error_3;
-            return __generator(this, function (_d) {
-                switch (_d.label) {
+            return __generator(this, function (_e) {
+                switch (_e.label) {
                     case 0:
-                        _d.trys.push([0, 2, , 3]);
+                        _e.trys.push([0, 2, , 3]);
                         viewerUserId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
                         productId = req.params.productId;
                         if (!productId) {
@@ -192,7 +192,7 @@ var ProductController = /** @class */ (function () {
                         }
                         return [4 /*yield*/, product_service_1.ProductService.getProductDetail(productId, viewerUserId)];
                     case 1:
-                        raw = _d.sent();
+                        raw = _e.sent();
                         dto = __assign(__assign({ product: {
                                 id: raw.product.id,
                                 title: raw.product.title,
@@ -204,9 +204,15 @@ var ProductController = /** @class */ (function () {
                                 categoryId: raw.product.categoryId,
                                 categoryName: raw.product.categoryName,
                                 currentBid: raw.product.currentBid,
-                                bidStep: raw.product.bidStep
-                            }, viewer: (_b = raw.viewer) !== null && _b !== void 0 ? _b : null, images: {
-                                primary: ((_c = raw.images.find(function (i) { return i.is_main; })) === null || _c === void 0 ? void 0 : _c.image_url) || "",
+                                bidStep: raw.product.bidStep,
+                                highestBidderId: raw.product.highestBidderId
+                            }, viewer: (_b = raw.viewer) !== null && _b !== void 0 ? _b : null, myAutoBid: raw.myAutoBid
+                                ? {
+                                    maxPrice: raw.myAutoBid.maxPrice,
+                                    createdAt: raw.myAutoBid.createdAt.toISOString()
+                                }
+                                : null, isWinning: (_c = raw.isWinning) !== null && _c !== void 0 ? _c : false, images: {
+                                primary: ((_d = raw.images.find(function (i) { return i.is_main; })) === null || _d === void 0 ? void 0 : _d.image_url) || "",
                                 gallery: raw.images
                                     .filter(function (i) { return !i.is_main; })
                                     .map(function (i) { return i.image_url; })
@@ -220,13 +226,7 @@ var ProductController = /** @class */ (function () {
                                 name: raw.highestBidder.name,
                                 rating: raw.highestBidder.rating
                             }
-                        })), { autoBids: raw.autoBids.map(function (b) { return ({
-                                id: b.id,
-                                bidderId: b.bidder_id,
-                                bidderName: "",
-                                maxBid: b.max_bid,
-                                createdAt: b.created_at
-                            }); }), bidHistory: raw.bidHistory, questions: raw.questions, relatedProducts: raw.relatedProducts.map(function (p) {
+                        })), { autoBids: raw.autoBids, autoBidEvents: raw.autoBidEvents, bidHistory: raw.bidHistory, questions: raw.questions, relatedProducts: raw.relatedProducts.map(function (p) {
                                 var _a, _b;
                                 return ({
                                     id: p.id,
@@ -248,7 +248,7 @@ var ProductController = /** @class */ (function () {
                                 data: dto
                             })];
                     case 2:
-                        error_3 = _d.sent();
+                        error_3 = _e.sent();
                         console.error("❌ ProductController.detail:", error_3);
                         return [2 /*return*/, res.status(404).json({
                                 success: false,
