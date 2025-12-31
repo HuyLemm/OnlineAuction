@@ -107,4 +107,11 @@ router.post(
   UserController.placeAutoBid
 );
 
+router.post(
+  "/request-bids",
+  authenticate,
+  authorize("bidder"),
+  UserController.sendBidRequest
+);
+
 export default router;

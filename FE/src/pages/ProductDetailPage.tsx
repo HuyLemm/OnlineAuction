@@ -14,6 +14,9 @@ import { BidComparisonChart } from "../components/detail/BidComparisonChart";
 import { AutoBidHistory } from "../components/detail/AutoBidHistory";
 import { BidStatusIndicator } from "../components/detail/BidStatusIndicator";
 import { PriceDisplay } from "../components/detail/PriceDisplay";
+import { QualifiedNotice } from "../components/detail/QualifiedNotice";
+import { PendingApprovalNotice } from "../components/detail/PendingApprovalNotice";
+import { SellerBidRequestPanel } from "../components/detail/SellerBidRequestPanel";
 
 import {
   getRelativeEndTime,
@@ -31,7 +34,11 @@ import {
   GET_WATCHLIST_ID_API,
   GET_PRODUCT_DETAIL_API,
   PLACE_AUTOBID_API,
+  REQUEST_BIDS_API,
 } from "../components/utils/api";
+
+import { formatCurrency } from "../lib/utils";
+import { AuctionTypeBadge } from "../components/detail/AuctionTypeBadge";
 
 export function ProductDetailPage() {
   const { id: productId } = useParams<{ id: string }>();
@@ -42,6 +49,8 @@ export function ProductDetailPage() {
   const [data, setData] = useState<ProductDetailDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [userMaxBid, setUserMaxBid] = useState<number | undefined>(undefined);
+
+  const [autoBidLoading, setAutoBidLoading] = useState(false);
 
   useEffect(() => {
     const loadWatchlistIds = async () => {
@@ -157,11 +166,14 @@ export function ProductDetailPage() {
     }
   });
 
+  const currentUserId = data.viewer?.id;
+  const currentUserRole = data.viewer?.role;
+
   const bidders = Array.from(bidderMap.values()).map((b) => ({
     ...b,
     currentBid,
     isWinning: b.id === data.product.highestBidderId,
-    // isYou: b.id === currentUserId (nếu có auth sau)
+    isYou: !!currentUserId && b.id === currentUserId,
   }));
 
   const bidStatus: BidStatusDTO = (() => {
@@ -172,6 +184,20 @@ export function ProductDetailPage() {
   })();
 
   const endTimeInfo = getRelativeEndTime(data.product.endTime);
+
+  const auctionRequirement = data.product.bidRequirement ?? "normal";
+
+  const viewer = data.viewer;
+  const bidEligibility = viewer?.bidEligibility;
+
+  const isSeller = viewer?.role === "seller";
+  const isBidder = viewer?.role === "bidder";
+
+  // bidder
+  const canBid = bidEligibility?.status === "allowed";
+  const needApproval = bidEligibility?.status === "need_approval";
+  const isPending = bidEligibility?.status === "pending";
+  const isBlocked = bidEligibility?.status === "blocked";
 
   /* ---------------- Actions ---------------- */
   const handleBuyNow = () => {
@@ -187,6 +213,8 @@ export function ProductDetailPage() {
 
   const handlePlaceAutoBid = async (maxBid: number) => {
     try {
+      setAutoBidLoading(true);
+
       const res = await fetchWithAuth(PLACE_AUTOBID_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -201,17 +229,37 @@ export function ProductDetailPage() {
         throw new Error(json.message || "Failed to place auto bid");
       }
 
-      toast.success("✅ Auto bid placed successfully");
-
-      // 🔄 Reload product detail
       const refreshed = await fetchWithAuth(GET_PRODUCT_DETAIL_API(productId!));
       const refreshedJson = await refreshed.json();
       setData(refreshedJson.data);
 
       // Update local max bid
       setUserMaxBid(maxBid);
+
+      toast.success(
+        `Auto-bidding activated with maximum of ${formatCurrency(maxBid)}`
+      );
     } catch (err: any) {
       toast.error(err.message || "Failed to place auto bid");
+    } finally {
+      setAutoBidLoading(false);
+    }
+  };
+
+  const handleSendBidRequest = async () => {
+    try {
+      await fetchWithAuth(REQUEST_BIDS_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId,
+          message: "I'd like to participate in this auction",
+        }),
+      });
+
+      toast.success("Request sent to seller");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send request");
     }
   };
 
@@ -235,10 +283,16 @@ export function ProductDetailPage() {
       {/* Title */}
       <div className="space-y-1">
         <div className="flex items-start justify-between gap-4">
-          <h1 className="text-foreground text-4xl leading-tight">
-            {data.product.title}
-          </h1>
+          {/* LEFT: Title + Badge */}
+          <div className="flex items-center gap-3">
+            <h1 className="text-foreground text-4xl leading-tight">
+              {data.product.title}
+            </h1>
 
+            <AuctionTypeBadge requirement={auctionRequirement} />
+          </div>
+
+          {/* RIGHT: Favorite */}
           <Button
             variant="ghost"
             onClick={handleToggleFavorite}
@@ -262,6 +316,7 @@ export function ProductDetailPage() {
           </Button>
         </div>
 
+        {/* Time & Posted */}
         <div className="flex items-center justify-between text-lg">
           <div className="flex items-center gap-2">
             <Clock
@@ -304,17 +359,47 @@ export function ProductDetailPage() {
         </div>
 
         <div className="space-y-6">
-          <AutoBidPanel
-            currentBid={currentBid}
-            bidStep={bidStep}
-            userMaxBid={userMaxBid}
-            isUserWinning={bidStatus === "leading_auto"}
-            onSetMaxBid={handlePlaceAutoBid}
-          />
+          {/* ================= SELLER VIEW ================= */}
+          {isSeller && <SellerBidRequestPanel productId={data.product.id} />}
+
+          {/* ================= BIDDER VIEW ================= */}
+          {isBidder && (
+            <>
+              {canBid && (
+                <AutoBidPanel
+                  currentBid={currentBid}
+                  bidStep={bidStep}
+                  userMaxBid={userMaxBid}
+                  isUserWinning={bidStatus === "leading_auto"}
+                  onSetMaxBid={handlePlaceAutoBid}
+                  loading={autoBidLoading}
+                />
+              )}
+
+              {needApproval && (
+                <QualifiedNotice
+                  type="need_approval"
+                  reason={bidEligibility?.reason}
+                  onSendRequest={handleSendBidRequest}
+                />
+              )}
+
+              {isPending && <PendingApprovalNotice />}
+
+              {isBlocked && (
+                <QualifiedNotice
+                  type="blocked"
+                  reason={bidEligibility?.reason}
+                  rating={data.viewer?.rating}
+                />
+              )}
+            </>
+          )}
+
           <PriceDisplay
             currentPrice={currentBid}
             buyNowPrice={buyNowPrice}
-            onBuyNow={handleBuyNow}
+            onBuyNow={canBid ? handleBuyNow : undefined}
           />
         </div>
       </div>
@@ -327,8 +412,12 @@ export function ProductDetailPage() {
 
       {/* 🔥 Comparison + Auto Bid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <BidComparisonChart bidders={bidders} highestBid={currentBid} />
-        <AutoBidHistory events={[]} />
+        <BidComparisonChart bidders={bidders} />
+        <AutoBidHistory
+          events={data.autoBidEvents}
+          currentUserId={currentUserId}
+          currentUserRole={currentUserRole}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -358,8 +447,9 @@ export function ProductDetailPage() {
 
         <SellerInfo
           name={data.seller.name}
-          rating={Number(data.seller.rating.score.toFixed(1))}
-          totalSales={data.seller.rating.total}
+          rating={data.seller.rating}
+          totalSales={data.seller.totalSales}
+          positive={data.seller.positive ?? { rate: 0, votes: 0 }}
           location="Vietnam"
           memberSince={data.product.postedDate}
           verified

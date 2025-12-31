@@ -1012,6 +1012,64 @@ var UserService = /** @class */ (function () {
             });
         });
     };
+    UserService.sendBidRequest = function (params) {
+        return __awaiter(this, void 0, void 0, function () {
+            var productId, bidderId, message;
+            var _this = this;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        productId = params.productId, bidderId = params.bidderId, message = params.message;
+                        return [4 /*yield*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
+                                var product, existing, request;
+                                return __generator(this, function (_a) {
+                                    switch (_a.label) {
+                                        case 0: return [4 /*yield*/, trx("products")
+                                                .select("id", "seller_id", "bid_requirement", "status")
+                                                .where({ id: productId })
+                                                .first()];
+                                        case 1:
+                                            product = _a.sent();
+                                            if (!product)
+                                                throw new Error("Product not found");
+                                            if (product.status !== "active")
+                                                throw new Error("Auction is not active");
+                                            if (product.bid_requirement !== "qualified") {
+                                                throw new Error("This auction does not require approval");
+                                            }
+                                            if (product.seller_id === bidderId) {
+                                                throw new Error("You cannot request bidding on your own product");
+                                            }
+                                            return [4 /*yield*/, trx("bid_requests")
+                                                    .where({
+                                                    product_id: productId,
+                                                    bidder_id: bidderId
+                                                })
+                                                    .first()];
+                                        case 2:
+                                            existing = _a.sent();
+                                            if (existing) {
+                                                throw new Error("You already sent a request (" + existing.status + ")");
+                                            }
+                                            return [4 /*yield*/, trx("bid_requests")
+                                                    .insert({
+                                                    product_id: productId,
+                                                    bidder_id: bidderId,
+                                                    seller_id: product.seller_id,
+                                                    message: message !== null && message !== void 0 ? message : null
+                                                })
+                                                    .returning("*")];
+                                        case 3:
+                                            request = (_a.sent())[0];
+                                            return [2 /*return*/, request];
+                                    }
+                                });
+                            }); })];
+                    case 1: return [2 /*return*/, _a.sent()];
+                }
+            });
+        });
+    };
     return UserService;
 }());
 exports.UserService = UserService;

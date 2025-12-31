@@ -6,6 +6,7 @@ import { Badge } from "../ui/badge";
 import { Separator } from "../ui/separator";
 import { toast } from "sonner";
 import { formatCurrency } from "../../lib/utils";
+import { LoadingSpinner } from "../state";
 
 function parseCurrencyInput(value: string): number | null {
   const cleaned = value.replace(/[^\d]/g, "");
@@ -23,7 +24,8 @@ interface AutoBidPanelProps {
   bidStep: number;
   userMaxBid?: number;
   isUserWinning?: boolean;
-  onSetMaxBid?: (amount: number) => void;
+  onSetMaxBid?: (amount: number) => Promise<void>; // 🔧 async
+  loading?: boolean; // 🔧 loading flag
 }
 
 export function AutoBidPanel({
@@ -31,6 +33,7 @@ export function AutoBidPanel({
   bidStep,
   userMaxBid,
   isUserWinning = false,
+  loading = false,
   onSetMaxBid,
 }: AutoBidPanelProps) {
   const bidStepNum = Number(bidStep) || 0;
@@ -60,9 +63,12 @@ export function AutoBidPanel({
     maxBidValue >= minimumBid &&
     (!userMaxBid || maxBidValue > userMaxBid);
 
-  const handleSubmit = (e: FormEvent) => {
+  /* ================= SUBMIT ================= */
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
+    // ❌ FE validation → toast NGAY
     if (!Number.isFinite(maxBidValue)) {
       toast.error("Please enter a valid number");
       return;
@@ -82,17 +88,19 @@ export function AutoBidPanel({
       return;
     }
 
-    onSetMaxBid?.(maxBidValue);
-    toast.success(
-      `Auto-bidding activated with maximum of ${formatCurrency(maxBidValue)}`
-    );
+    // ✅ Backend → chờ xong, toast sẽ nằm ở parent
+    await onSetMaxBid?.(maxBidValue);
   };
 
   const handleQuickMax = (amount: number) => {
-    setMaxBidText(formatCurrencyInput(amount));
+    if (!loading) {
+      setMaxBidText(formatCurrencyInput(amount));
+    }
   };
 
   const handleChange = (raw: string) => {
+    if (loading) return;
+
     const n = parseCurrencyInput(raw);
     if (!raw || raw.trim() === "") {
       setMaxBidText("");
@@ -206,6 +214,7 @@ export function AutoBidPanel({
               inputMode="numeric"
               value={maxBidText}
               onChange={(e) => handleChange(e.target.value)}
+              disabled={loading}
               className="pl-8 bg-secondary/50 border-border/50 h-12"
               placeholder={formatCurrency(currentBid)}
               required
@@ -255,11 +264,20 @@ export function AutoBidPanel({
 
         <Button
           type="submit"
-          disabled={!isValid}
+          disabled={!isValid || loading}
           className="w-full bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90 h-12"
         >
-          <Zap className="h-4 w-4 mr-2" />
-          {userMaxBid ? "Update" : "Activate"} Auto Bidding
+          {loading ? (
+            <div className="flex items-center justify-center gap-2">
+              <LoadingSpinner size="sm" />
+              <span>Placing bid...</span>
+            </div>
+          ) : (
+            <>
+              <Zap className="h-4 w-4 mr-2" />
+              {userMaxBid ? "Update" : "Activate"} Auto Bidding
+            </>
+          )}
         </Button>
       </form>
 

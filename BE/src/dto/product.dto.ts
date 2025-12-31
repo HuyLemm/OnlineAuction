@@ -42,11 +42,24 @@ export interface ProductDetailDTO {
     bidStep: number;
 
     highestBidderId: string | null;
+    bidRequirement: "qualified" | "normal";
   };
 
   viewer: {
     id: string;
     role: "seller" | "bidder" | "admin";
+
+    rating?: {
+      positiveRate: number;
+      totalVotes: number;
+      positiveVotes: number;
+    };
+
+    bidEligibility?: {
+      requirement: "normal" | "qualified";
+      status: "allowed" | "need_approval" | "blocked" | "pending";
+      reason?: string;
+    };
   } | null;
 
   myAutoBid: {
@@ -58,7 +71,7 @@ export interface ProductDetailDTO {
 
   images: {
     primary: string;
-    gallery: string[]; // >= 3 images
+    gallery: string[];
   };
 
   seller: {
@@ -68,6 +81,13 @@ export interface ProductDetailDTO {
     rating: {
       score: number;
       total: number;
+    };
+
+    totalSales: number;
+
+    positive: {
+      rate: number;
+      votes: number;
     };
   };
 
@@ -238,6 +258,7 @@ export interface AutoBidEventDTO {
   createdAt: string;
   isYou: boolean;
   description: string;
+  relatedBidderId: string;
 }
 
 export const AUTO_BID_EVENT_DESCRIPTION: Record<AutoBidEventType, string> = {
@@ -257,4 +278,22 @@ export type AutoBidEventRow = {
   amount: number | null;
   maxBid: number | null;
   createdAt: Date;
+  relatedBidderId: string;
+};
+
+export type ViewerDTO = {
+  id: string;
+  role: "seller" | "bidder" | "admin";
+
+  rating?: {
+    positiveRate: number;
+    totalVotes: number;
+    positiveVotes: number;
+  };
+
+  bidEligibility?: {
+    requirement: "normal" | "qualified";
+    status: "allowed" | "need_approval" | "blocked" | "pending";
+    reason?: string;
+  };
 };

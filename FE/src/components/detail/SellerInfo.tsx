@@ -7,10 +7,22 @@ import { formatPostedDate } from "../utils/timeUtils";
 interface SellerInfoProps {
   name: string;
   avatar?: string;
-  rating: number;
+
+  rating: {
+    score: number;
+    total: number;
+  };
+
   totalSales: number;
+
+  positive: {
+    rate: number;
+    votes: number;
+  };
+
   location: string;
   memberSince: string;
+
   verified: boolean;
   topRated?: boolean;
 }
@@ -20,12 +32,14 @@ export function SellerInfo({
   avatar,
   rating,
   totalSales,
+  positive = { rate: 0, votes: 0 },
   location,
   memberSince,
   verified,
   topRated,
 }: SellerInfoProps) {
   const formattedMemberSince = formatPostedDate(memberSince);
+
   return (
     <div className="bg-card border border-border/50 rounded-xl p-6 space-y-4">
       <div className="flex items-start gap-4">
@@ -46,15 +60,14 @@ export function SellerInfo({
                 {verified && <Shield className="h-4 w-4 text-[#10b981]" />}
                 {topRated && <Award className="h-4 w-4 text-[#fbbf24]" />}
               </div>
+
+              {/* Rating */}
               <div className="flex items-center gap-2 mt-1">
-                <div className="flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-[#fbbf24] text-[#fbbf24]" />
-                  <span className="text-foreground">Score: {rating}</span>
-                  <span className="text-muted-foreground">
-                    ({totalSales ?? 0}{" "}
-                    {(totalSales ?? 0) <= 1 ? "vote" : "votes"})
-                  </span>
-                </div>
+                <Star className="h-4 w-4 fill-[#fbbf24] text-[#fbbf24]" />
+                <span className="text-foreground">Score: {rating.score}</span>
+                <span className="text-muted-foreground">
+                  ({rating.total} {rating.total <= 1 ? "vote" : "votes"})
+                </span>
               </div>
             </div>
           </div>
@@ -102,10 +115,14 @@ export function SellerInfo({
           <p className="text-foreground">{totalSales}</p>
           <p className="text-muted-foreground">Sales</p>
         </div>
+
         <div className="text-center">
-          <p className="text-foreground">98.5%</p>
+          <p className="text-foreground">
+            {positive.rate}% ({positive.votes} votes)
+          </p>
           <p className="text-muted-foreground">Positive</p>
         </div>
+
         <div className="text-center">
           <p className="text-foreground">24h</p>
           <p className="text-muted-foreground">Response</p>

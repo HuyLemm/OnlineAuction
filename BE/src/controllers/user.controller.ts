@@ -455,4 +455,41 @@ export class UserController {
       });
     }
   }
+
+  static async sendBidRequest(req: AuthRequest, res: Response) {
+    try {
+      const bidderId = req.user?.userId;
+      const { productId, message } = req.body;
+
+      if (!bidderId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
+      }
+
+      if (!productId) {
+        return res.status(400).json({
+          success: false,
+          message: "productId is required",
+        });
+      }
+
+      const request = await UserService.sendBidRequest({
+        productId,
+        bidderId,
+        message,
+      });
+
+      return res.json({
+        success: true,
+        data: request,
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
 }

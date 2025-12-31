@@ -34,6 +34,7 @@ export interface CategoryTreeDTO {
 }
 
 export interface ProductDetailDTO {
+  /* ================= Product ================= */
   product: {
     id: string;
     title: string;
@@ -48,17 +49,32 @@ export interface ProductDetailDTO {
     categoryId: number;
     categoryName: string;
 
-    currentBid: number;
+    currentBid: number; // 🔥 single source of truth
     bidStep: number;
 
     highestBidderId: string | null;
+    bidRequirement: "qualified" | "normal";
   };
 
+  /* ================= Viewer ================= */
   viewer?: {
     id: string;
     role: "seller" | "bidder" | "admin";
+
+    rating?: {
+      positiveRate: number;
+      totalVotes: number;
+      positiveVotes: number;
+    };
+
+    bidEligibility?: {
+      requirement: "normal" | "qualified";
+      status: "allowed" | "need_approval" | "blocked" | "pending";
+      reason?: string;
+    };
   } | null;
 
+  /* ================= My Auto Bid ================= */
   myAutoBid: {
     maxPrice: number;
     createdAt: string;
@@ -66,42 +82,72 @@ export interface ProductDetailDTO {
 
   isWinning: boolean;
 
+  /* ================= Images ================= */
   images: {
     primary: string;
     gallery: string[];
   };
 
+  /* ================= Seller ================= */
   seller: {
     id: string;
     name: string;
+
     rating: {
       score: number;
       total: number;
     };
+
+    totalSales: number;
+
+    positive: {
+      rate: number;
+      votes: number;
+    };
   };
 
-  currentBid: number;
-
-  highestBidder?: {
+  /* ================= Highest Bidder ================= */
+  highestBidder: {
     id: string;
     name: string;
     rating: {
       score: number;
       total: number;
     };
-  };
+  } | null;
 
+  /* ================= Auto Bids (MAX PRICE) ================= */
   autoBids: {
     id: string;
     bidderId: string;
     bidderName: string;
-    maxBid: number;
+    maxPrice: number; // 🔥 rename from maxBid
     createdAt: string;
   }[];
 
+  /* ================= Auto Bid Events (SYSTEM LOG) ================= */
+  autoBidEvents: {
+    id: string;
+    type:
+      | "auto_bid"
+      | "max_bid_set"
+      | "max_bid_updated"
+      | "outbid_instantly"
+      | "tie_break_win"
+      | "winning";
+    bidderId: string;
+    bidderName: string;
+    amount?: number; // current_price at that moment
+    maxBid?: number; // max_price when set/update
+    createdAt: string;
+    isYou?: boolean;
+    description: string;
+  }[];
+
+  /* ================= Bid History (PRICE HISTORY) ================= */
   bidHistory: {
     id: string;
-    amount: number;
+    amount: number; // 🔥 current_price history only
     createdAt: string;
     bidder: {
       id: string;
@@ -113,6 +159,7 @@ export interface ProductDetailDTO {
     };
   }[];
 
+  /* ================= Questions ================= */
   questions: {
     id: string;
     question: {
@@ -135,6 +182,7 @@ export interface ProductDetailDTO {
     }[];
   }[];
 
+  /* ================= Related ================= */
   relatedProducts: {
     id: string;
     title: string;
@@ -176,4 +224,5 @@ export interface AutoBidEventDTO {
   createdAt: string;
   isYou: boolean;
   description: string;
+  relatedBidderId: string;
 }

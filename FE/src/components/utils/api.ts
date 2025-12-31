@@ -50,6 +50,9 @@ export const BIDDER_REPLY_QUESTION_API = (questionId: string) =>
   `${API_BASE_URL}/users/questions/${questionId}/reply`;
 
 export const PLACE_AUTOBID_API = `${API_BASE_URL}/users/place-autobid`;
+export const REQUEST_BIDS_API = `${API_BASE_URL}/users/request-bids`;
+
+
 //Seller
 export const CREATE_AUCTION_API = `${API_BASE_URL}/seller/create-auction`;
 export const GET_AUTO_EXTEND_CONFIG_API = `${API_BASE_URL}/seller/auto-extend-config`;

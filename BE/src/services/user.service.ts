@@ -1037,4 +1037,60 @@ export class UserService {
       };
     });
   }
+
+  static async sendBidRequest(params: {
+    productId: string;
+    bidderId: string;
+    message?: string;
+  }) {
+    const { productId, bidderId, message } = params;
+
+    return await db.transaction(async (trx) => {
+      /* =============================
+       * 1️⃣ Load product
+       * ============================= */
+      const product = await trx("products")
+        .select("id", "seller_id", "bid_requirement", "status")
+        .where({ id: productId })
+        .first();
+
+      if (!product) throw new Error("Product not found");
+      if (product.status !== "active") throw new Error("Auction is not active");
+
+      if (product.bid_requirement !== "qualified") {
+        throw new Error("This auction does not require approval");
+      }
+
+      if (product.seller_id === bidderId) {
+        throw new Error("You cannot request bidding on your own product");
+      }
+
+      /* =============================
+       * 2️⃣ Check existing request
+       * ============================= */
+      const existing = await trx("bid_requests")
+        .where({
+          product_id: productId,
+          bidder_id: bidderId,
+        })
+        .first();
+
+      if (existing) {
+        throw new Error(`You already sent a request (${existing.status})`);
+      }
+
+      /* =============================
+       * 3️⃣ Create request
+       * ============================= */
+      const [request] = await trx("bid_requests")
+        .insert({
+          product_id: productId,
+          bidder_id: bidderId,
+          seller_id: product.seller_id,
+          message: message ?? null,
+        })
+        .returning("*");
+      return request;
+    });
+  }
 }

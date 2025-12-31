@@ -3,6 +3,7 @@ import {
   AutoBidEventDTO,
   AUTO_BID_EVENT_DESCRIPTION,
   AutoBidEventRow,
+  ViewerDTO,
 } from "../dto/product.dto";
 export class ProductService {
   // ==================================================
@@ -269,6 +270,7 @@ export class ProductService {
         "c.name as categoryName",
         "p.bid_step as bidStep",
         "p.highest_bidder_id as highestBidderId",
+        "p.bid_requirement as bidRequirement",
         db.raw(`COALESCE(p.current_price, p.start_price)::int AS "currentBid"`)
       )
       .where("p.id", productId)
@@ -279,10 +281,7 @@ export class ProductService {
     // ----------------------------
     // Viewer (current logged-in user)
     // ----------------------------
-    let viewer: {
-      id: string;
-      role: "seller" | "bidder" | "admin";
-    } | null = null;
+    let viewer: ViewerDTO | null = null;
 
     if (viewerUserId) {
       const viewerRaw = await db("users")
@@ -293,8 +292,115 @@ export class ProductService {
       if (viewerRaw) {
         viewer = {
           id: viewerRaw.id,
-          role: viewerRaw.role,
+          role: viewerRaw.role as ViewerDTO["role"],
         };
+      }
+    }
+
+    // ----------------------------
+    // Viewer rating (ONLY bidder)
+    // ----------------------------
+    if (viewer && viewer.role === "bidder") {
+      const viewerRatingRaw = await db("ratings")
+        .select(
+          db.raw("COUNT(*) AS total"),
+          db.raw("SUM(CASE WHEN score > 0 THEN 1 ELSE 0 END) AS positive")
+        )
+        .where("to_user", viewer.id)
+        .first();
+
+      const totalVotes = Number(viewerRatingRaw?.total ?? 0);
+      const positiveVotes = Number(viewerRatingRaw?.positive ?? 0);
+
+      viewer.rating = {
+        totalVotes,
+        positiveVotes,
+        positiveRate:
+          totalVotes > 0
+            ? Number(((positiveVotes / totalVotes) * 100).toFixed(1))
+            : 0,
+      };
+    }
+
+    // ----------------------------
+    // Viewer bid eligibility
+    // ----------------------------
+    if (viewer && viewer.role === "bidder") {
+      /* =============================
+       * NORMAL AUCTION
+       * ============================= */
+      if (product.bidRequirement === "normal") {
+        viewer.bidEligibility = {
+          requirement: "normal",
+          status: "allowed",
+        };
+      }
+
+      /* =============================
+       * QUALIFIED AUCTION
+       * ============================= */
+      if (product.bidRequirement === "qualified") {
+        let eligibility: ViewerDTO["bidEligibility"] | null = null;
+        // 🔍 1️⃣ Check bid request trước
+        const bidRequest = await db("bid_requests")
+          .where({
+            product_id: product.id,
+            bidder_id: viewer.id,
+          })
+          .first();
+
+        if (bidRequest) {
+          if (bidRequest.status === "pending") {
+            eligibility = {
+              requirement: "qualified",
+              status: "pending",
+              reason: "Waiting for seller approval",
+            };
+          } else if (bidRequest.status === "approved") {
+            eligibility = {
+              requirement: "qualified",
+              status: "allowed",
+            };
+          } else if (bidRequest.status === "rejected") {
+            eligibility = {
+              requirement: "qualified",
+              status: "blocked",
+              reason: "Seller rejected your request",
+            };
+          }
+        }
+
+        if (!eligibility) {
+          const rating = viewer.rating;
+
+          // ❌ No rating yet
+          if (!rating || rating.totalVotes === 0) {
+            eligibility = {
+              requirement: "qualified",
+              status: "need_approval",
+              reason: "No rating yet. Seller approval required.",
+            };
+          }
+
+          // ❌ Rating below threshold
+          else if (rating.positiveRate < 80) {
+            eligibility = {
+              requirement: "qualified",
+              status: "blocked",
+              reason: "Rating below required 80%",
+            };
+          }
+
+          // ✅ Qualified
+          else {
+            eligibility = {
+              requirement: "qualified",
+              status: "allowed",
+            };
+          }
+        }
+
+        viewer.bidEligibility = eligibility;
       }
     }
 
@@ -350,18 +456,43 @@ export class ProductService {
     // ----------------------------
     // Seller rating
     // ----------------------------
-    const sellerRatingRaw = (await db
+    const sellerRatingRaw = await db("ratings")
       .select(
         db.raw("COALESCE(SUM(score), 0) AS score"),
         db.raw("COUNT(*) AS total")
       )
-      .from("ratings")
       .where("to_user", seller.id)
-      .first()) as { score: number; total: number } | undefined;
+      .first();
 
-    const sellerRating = {
-      score: Number(sellerRatingRaw?.score ?? 0),
-      total: Number(sellerRatingRaw?.total ?? 0),
+    const positiveVotesRaw = await db("ratings")
+      .where("to_user", seller.id)
+      .andWhere("score", ">", 0)
+      .count<{ count: string }>("id as count")
+      .first();
+
+    const totalSalesRaw = await db("products")
+      .where("seller_id", seller.id)
+      .count<{ count: string }>("id as count")
+      .first();
+
+    const totalVotes = Number(sellerRatingRaw?.total ?? 0);
+    const positiveVotes = Number(positiveVotesRaw?.count ?? 0);
+
+    const sellerDTO = {
+      id: seller.id,
+      name: seller.full_name,
+      rating: {
+        score: Number(sellerRatingRaw?.score ?? 0),
+        total: totalVotes,
+      },
+      totalSales: Number(totalSalesRaw?.count ?? 0),
+      positive: {
+        rate:
+          totalVotes > 0
+            ? Number(((positiveVotes / totalVotes) * 100).toFixed(1))
+            : 0,
+        votes: positiveVotes,
+      },
     };
 
     // ----------------------------
@@ -560,7 +691,8 @@ export class ProductService {
         "e.max_bid as maxBid",
         "e.created_at as createdAt",
         "u.id as bidderId",
-        "u.full_name as bidderName"
+        "u.full_name as bidderName",
+        "e.related_bidder_id as relatedBidderId"
       )) as AutoBidEventRow[];
 
     const autoBidEvents = autoBidEventsRaw.map((e) => ({
@@ -576,6 +708,7 @@ export class ProductService {
       createdAt: e.createdAt.toISOString(),
       isYou: viewerUserId === e.bidderId,
       description: AUTO_BID_EVENT_DESCRIPTION[e.type],
+      relatedBidderId: e.relatedBidderId,
     }));
 
     // ----------------------------
@@ -589,11 +722,7 @@ export class ProductService {
       isWinning,
 
       images,
-      seller: {
-        id: seller.id,
-        name: seller.full_name,
-        rating: sellerRating,
-      },
+      seller: sellerDTO,
 
       highestBidder: highestBidder
         ? {

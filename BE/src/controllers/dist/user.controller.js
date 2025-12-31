@@ -615,6 +615,50 @@ var UserController = /** @class */ (function () {
             });
         });
     };
+    UserController.sendBidRequest = function (req, res) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function () {
+            var bidderId, _b, productId, message, request, error_11;
+            return __generator(this, function (_c) {
+                switch (_c.label) {
+                    case 0:
+                        _c.trys.push([0, 2, , 3]);
+                        bidderId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+                        _b = req.body, productId = _b.productId, message = _b.message;
+                        if (!bidderId) {
+                            return [2 /*return*/, res.status(401).json({
+                                    success: false,
+                                    message: "Unauthorized"
+                                })];
+                        }
+                        if (!productId) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "productId is required"
+                                })];
+                        }
+                        return [4 /*yield*/, user_service_1.UserService.sendBidRequest({
+                                productId: productId,
+                                bidderId: bidderId,
+                                message: message
+                            })];
+                    case 1:
+                        request = _c.sent();
+                        return [2 /*return*/, res.json({
+                                success: true,
+                                data: request
+                            })];
+                    case 2:
+                        error_11 = _c.sent();
+                        return [2 /*return*/, res.status(400).json({
+                                success: false,
+                                message: error_11.message
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
     return UserController;
 }());
 exports.UserController = UserController;

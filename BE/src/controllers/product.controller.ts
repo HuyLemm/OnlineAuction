@@ -151,6 +151,7 @@ export class ProductController {
           currentBid: raw.product.currentBid,
           bidStep: raw.product.bidStep,
           highestBidderId: raw.product.highestBidderId,
+          bidRequirement: raw.product.bidRequirement,
         },
 
         viewer: raw.viewer ?? null,
@@ -175,6 +176,8 @@ export class ProductController {
           id: raw.seller.id,
           name: raw.seller.name,
           rating: raw.seller.rating,
+          totalSales: raw.seller.totalSales,
+          positive: raw.seller.positive,
         },
 
         ...(raw.highestBidder && {

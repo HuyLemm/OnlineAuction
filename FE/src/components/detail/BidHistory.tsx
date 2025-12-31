@@ -3,6 +3,11 @@ import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { formatCurrency } from "../../lib/utils";
 
+const getLastChar = (name: string) => {
+  if (!name) return "?";
+  return name.trim().slice(-1).toUpperCase();
+};
+
 interface BidHistoryItem {
   id?: string; // có thể null từ backend
   amount: number;
@@ -72,8 +77,8 @@ export function BidHistory({ bids }: BidHistoryProps) {
               {/* Bidder */}
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-gradient-to-br from-[#fbbf24]/20 to-[#f59e0b]/20 text-foreground">
-                    {bid.bidder.name.charAt(0)}
+                  <AvatarFallback className="bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] text-black">
+                    {getLastChar(bid.bidder.name)}
                   </AvatarFallback>
                 </Avatar>
 
