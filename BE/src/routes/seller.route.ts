@@ -53,11 +53,33 @@ router.post(
   SellerController.answerQuestion
 );
 
-router.post(
-  "/products/:id/block-bidder",
+router.get(
+  "/:productId/bid-requests",
   authenticate,
   authorize("seller"),
-  SellerController.blockBidder
+  SellerController.getBidRequests
 );
+
+router.post(
+  "/bid-requests/:requestId",
+  authenticate,
+  authorize("seller"),
+  SellerController.handleBidRequest
+);
+
+router.get(
+  "/products/:productId/active-bidders",
+  authenticate,
+  authorize("seller"),
+  SellerController.getActiveBidders
+);
+
+router.post(
+  "/products/:productId/kick-bidder/:bidderId",
+  authenticate,
+  authorize("seller"),
+  SellerController.kickBidder
+);
+
 
 export default router;

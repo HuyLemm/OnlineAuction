@@ -264,7 +264,7 @@ var ProductService = /** @class */ (function () {
     ProductService.getProductDetail = function (productId, viewerUserId) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
         return __awaiter(this, void 0, void 0, function () {
-            var product, viewer, viewerRaw, viewerRatingRaw, totalVotes_1, positiveVotes_1, eligibility, bidRequest, rating, myAutoBid, myBid, isWinning, images, seller, sellerRatingRaw, positiveVotesRaw, totalSalesRaw, totalVotes, positiveVotes, sellerDTO, highestBidder, highestBidderRating, bidderRatingRaw, autoBids, bidHistoryRaw, maskName, bidderRatingMap, _i, bidHistoryRaw_1, bid, ratingRaw, bidHistory, questionsRaw, answersRaw, _l, answersByQuestion, _m, answersRaw_1, ans, questions, relatedProducts, autoBidEventsRaw, autoBidEvents;
+            var product, viewer, viewerRaw, viewerRatingRaw, totalVotes_1, positiveVotes_1, eligibility, bidRequest, rating, myAutoBid, myBid, isWinning, images, seller, sellerRatingRaw, positiveVotesRaw, totalSalesRaw, totalVotes, positiveVotes, sellerDTO, highestBidder, highestBidderRating, bidderRatingRaw, autoBids, bidHistoryRaw, maskName, bidderRatingMap, _i, bidHistoryRaw_1, bid, ratingRaw, bidHistory, questionsRaw, answersRaw, _l, answersByQuestion, _m, answersRaw_1, ans, questions, relatedProducts, autoBidEventsRaw, autoBidEvents, blockedBidderIds;
             return __generator(this, function (_o) {
                 switch (_o.label) {
                     case 0: return [4 /*yield*/, db_1.db("products as p")
@@ -604,6 +604,11 @@ var ProductService = /** @class */ (function () {
                             e.maxBid != null && {
                             maxBid: Number(e.maxBid)
                         })), { createdAt: e.createdAt.toISOString(), isYou: viewerUserId === e.bidderId, description: product_dto_1.AUTO_BID_EVENT_DESCRIPTION[e.type], relatedBidderId: e.relatedBidderId })); });
+                        return [4 /*yield*/, db_1.db("blocked_bidders")
+                                .where({ product_id: productId })
+                                .select("bidder_id")];
+                    case 30:
+                        blockedBidderIds = (_o.sent()).map(function (b) { return b.bidder_id; });
                         // ----------------------------
                         // FINAL RESULT
                         // ----------------------------
@@ -625,7 +630,8 @@ var ProductService = /** @class */ (function () {
                                 autoBidEvents: autoBidEvents,
                                 bidHistory: bidHistory,
                                 questions: questions,
-                                relatedProducts: relatedProducts
+                                relatedProducts: relatedProducts,
+                                blockedBidderIds: blockedBidderIds
                             }];
                 }
             });

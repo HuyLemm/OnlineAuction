@@ -351,52 +351,212 @@ var SellerController = /** @class */ (function () {
             });
         });
     };
-    // ===============================
-    // POST /seller/products/:id/block-bidder
-    // ===============================
-    SellerController.blockBidder = function (req, res) {
+    SellerController.getBidRequests = function (req, res) {
         var _a;
         return __awaiter(this, void 0, void 0, function () {
-            var sellerId, productId, _b, bidderId, reason, err_8;
-            return __generator(this, function (_c) {
-                switch (_c.label) {
+            var sellerId, productId, data, error_1;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
                     case 0:
-                        _c.trys.push([0, 2, , 3]);
+                        _b.trys.push([0, 2, , 3]);
                         sellerId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
-                        productId = req.params.id;
-                        _b = req.body, bidderId = _b.bidderId, reason = _b.reason;
+                        productId = req.params.productId;
                         if (!sellerId) {
-                            return [2 /*return*/, res.status(401).json({ message: "Unauthorized" })];
-                        }
-                        if (!bidderId) {
-                            return [2 /*return*/, res.status(400).json({
-                                    message: "bidderId is required"
+                            return [2 /*return*/, res.status(401).json({
+                                    success: false,
+                                    message: "Unauthorized"
                                 })];
                         }
                         if (!productId) {
                             return [2 /*return*/, res.status(400).json({
+                                    success: false,
                                     message: "productId is required"
                                 })];
                         }
-                        return [4 /*yield*/, seller_service_1.SellerService.blockBidder({
+                        return [4 /*yield*/, seller_service_1.SellerService.getBidRequests({
+                                sellerId: sellerId,
+                                productId: productId
+                            })];
+                    case 1:
+                        data = _b.sent();
+                        return [2 /*return*/, res.json({
+                                success: true,
+                                data: data
+                            })];
+                    case 2:
+                        error_1 = _b.sent();
+                        console.error("❌ SellerController.getBidRequests:", error_1);
+                        return [2 /*return*/, res.status(500).json({
+                                success: false,
+                                message: error_1.message || "Failed to load bid requests"
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    /* ======================================
+     * 2️⃣ POST – Approve / Reject bid request
+     * ====================================== */
+    SellerController.handleBidRequest = function (req, res) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function () {
+            var sellerId, requestId, action, result, error_2;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        _b.trys.push([0, 2, , 3]);
+                        sellerId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+                        requestId = req.params.requestId;
+                        action = req.body.action;
+                        if (!sellerId) {
+                            return [2 /*return*/, res.status(401).json({
+                                    success: false,
+                                    message: "Unauthorized"
+                                })];
+                        }
+                        if (!requestId) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "requestId is required"
+                                })];
+                        }
+                        if (!action || !["approve", "reject"].includes(action)) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "Action must be 'approve' or 'reject'"
+                                })];
+                        }
+                        return [4 /*yield*/, seller_service_1.SellerService.handleBidRequest({
+                                sellerId: sellerId,
+                                requestId: requestId,
+                                action: action
+                            })];
+                    case 1:
+                        result = _b.sent();
+                        return [2 /*return*/, res.json({
+                                success: true,
+                                data: result
+                            })];
+                    case 2:
+                        error_2 = _b.sent();
+                        console.error("❌ SellerController.handleBidRequest:", error_2);
+                        return [2 /*return*/, res.status(400).json({
+                                success: false,
+                                message: error_2.message || "Failed to process bid request"
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    // =====================================
+    // GET /seller/products/:productId/bidders
+    // =====================================
+    SellerController.getActiveBidders = function (req, res) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function () {
+            var productId, sellerId, bidders, error_3;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        _b.trys.push([0, 2, , 3]);
+                        productId = req.params.productId;
+                        sellerId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+                        if (!sellerId) {
+                            return [2 /*return*/, res.status(401).json({
+                                    success: false,
+                                    message: "Unauthorized"
+                                })];
+                        }
+                        if (!productId) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "productId is required"
+                                })];
+                        }
+                        return [4 /*yield*/, seller_service_1.SellerService.getActiveBidders(productId, sellerId)];
+                    case 1:
+                        bidders = _b.sent();
+                        return [2 /*return*/, res.status(200).json({
+                                success: true,
+                                data: bidders
+                            })];
+                    case 2:
+                        error_3 = _b.sent();
+                        return [2 /*return*/, res.status(400).json({
+                                success: false,
+                                message: error_3.message || "Failed to load bidders"
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    // ==================================================
+    // POST /seller/products/:productId/kick-bidder/:bidderId
+    // ==================================================
+    SellerController.kickBidder = function (req, res) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function () {
+            var _b, productId, bidderId, sellerId, reason, result, error_4;
+            return __generator(this, function (_c) {
+                switch (_c.label) {
+                    case 0:
+                        _c.trys.push([0, 4, , 5]);
+                        _b = req.params, productId = _b.productId, bidderId = _b.bidderId;
+                        sellerId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+                        reason = req.body.reason;
+                        if (!sellerId) {
+                            return [2 /*return*/, res.status(401).json({
+                                    success: false,
+                                    message: "Unauthorized"
+                                })];
+                        }
+                        if (!productId) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "productId is required"
+                                })];
+                        }
+                        if (!bidderId) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "bidderId is required"
+                                })];
+                        }
+                        return [4 /*yield*/, seller_service_1.SellerService.kickBidderFromAuction({
                                 sellerId: sellerId,
                                 productId: productId,
                                 bidderId: bidderId,
                                 reason: reason
                             })];
                     case 1:
-                        _c.sent();
-                        return [2 /*return*/, res.json({
-                                success: true,
-                                message: "Bidder has been blocked from this product"
+                        result = _c.sent();
+                        if (!result.wasHighest) return [3 /*break*/, 3];
+                        return [4 /*yield*/, seller_service_1.SellerService.recalculateAfterKick({
+                                productId: productId,
+                                kickedBidderId: bidderId
                             })];
                     case 2:
-                        err_8 = _c.sent();
+                        _c.sent();
+                        _c.label = 3;
+                    case 3: return [2 /*return*/, res.status(200).json({
+                            success: true,
+                            message: "Bidder removed from auction",
+                            data: {
+                                productId: productId,
+                                bidderId: bidderId,
+                                wasHighest: result.wasHighest
+                            }
+                        })];
+                    case 4:
+                        error_4 = _c.sent();
                         return [2 /*return*/, res.status(400).json({
                                 success: false,
-                                message: err_8.message
+                                message: error_4.message || "Failed to remove bidder"
                             })];
-                    case 3: return [2 /*return*/];
+                    case 5: return [2 /*return*/];
                 }
             });
         });

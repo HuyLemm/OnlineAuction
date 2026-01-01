@@ -271,6 +271,7 @@ var SellerService = /** @class */ (function () {
                                                 buy_now_price: (_a = dto.buyNowPrice) !== null && _a !== void 0 ? _a : null,
                                                 current_price: dto.startPrice,
                                                 highest_bidder_id: null,
+                                                bid_requirement: dto.bidRequirement,
                                                 auction_type: dto.auctionType,
                                                 status: "active",
                                                 description: dto.description,
@@ -324,7 +325,6 @@ var SellerService = /** @class */ (function () {
                             .leftJoin("bids as b", "b.product_id", "p.id")
                             .where("p.seller_id", sellerId)
                             .andWhere("p.status", "active")
-                            .andWhere("p.end_time", ">", db_1.db.fn.now())
                             .groupBy("p.id", "c.name", "img.image_url")
                             .orderBy("p.end_time", "asc")
                             .select("p.id", "p.title", "p.description", "p.start_price", "p.current_price", "p.bid_step", "p.buy_now_price", "p.end_time", "c.name as category", "img.image_url as image")
@@ -611,10 +611,143 @@ var SellerService = /** @class */ (function () {
             });
         });
     };
-    // ===============================
-    // Seller - Block bidder from product
-    // ===============================
-    SellerService.blockBidder = function (params) {
+    /* ======================================
+     * 1️⃣ GET – List bid requests of a product
+     * ====================================== */
+    SellerService.getBidRequests = function (params) {
+        return __awaiter(this, void 0, void 0, function () {
+            var sellerId, productId, rows;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        sellerId = params.sellerId, productId = params.productId;
+                        return [4 /*yield*/, db_1.db("bid_requests as br")
+                                .join("users as u", "u.id", "br.bidder_id")
+                                .leftJoin("ratings as r", "r.to_user", "u.id")
+                                .where({
+                                "br.product_id": productId,
+                                "br.seller_id": sellerId
+                            })
+                                .groupBy("br.id", "u.id")
+                                .select("br.id", "br.status", "br.message", "br.created_at", "u.id as bidderId", "u.full_name as bidderName", db_1.db.raw("COUNT(r.id) AS totalVotes"), db_1.db.raw("SUM(CASE WHEN r.score > 0 THEN 1 ELSE 0 END) AS positiveVotes"))
+                                .orderBy("br.created_at", "desc")];
+                    case 1:
+                        rows = _a.sent();
+                        return [2 /*return*/, rows.map(function (r) {
+                                var _a, _b;
+                                var totalVotes = Number((_a = r.totalVotes) !== null && _a !== void 0 ? _a : 0);
+                                var positiveVotes = Number((_b = r.positiveVotes) !== null && _b !== void 0 ? _b : 0);
+                                return {
+                                    id: r.id,
+                                    status: r.status,
+                                    message: r.message,
+                                    createdAt: r.created_at,
+                                    bidder: {
+                                        id: r.bidderId,
+                                        name: r.bidderName,
+                                        rating: {
+                                            totalVotes: totalVotes,
+                                            positiveVotes: positiveVotes,
+                                            positiveRate: totalVotes > 0
+                                                ? Number(((positiveVotes / totalVotes) * 100).toFixed(1))
+                                                : 0
+                                        }
+                                    }
+                                };
+                            })];
+                }
+            });
+        });
+    };
+    /* ======================================
+     * 2️⃣ POST – Approve / Reject bid request
+     * ====================================== */
+    SellerService.handleBidRequest = function (params) {
+        return __awaiter(this, void 0, void 0, function () {
+            var sellerId, requestId, action, request, newStatus;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        sellerId = params.sellerId, requestId = params.requestId, action = params.action;
+                        return [4 /*yield*/, db_1.db("bid_requests")
+                                .where({
+                                id: requestId,
+                                seller_id: sellerId
+                            })
+                                .first()];
+                    case 1:
+                        request = _a.sent();
+                        if (!request) {
+                            throw new Error("Bid request not found or not authorized");
+                        }
+                        if (request.status !== "pending") {
+                            throw new Error("Request already processed");
+                        }
+                        newStatus = action === "approve" ? "approved" : "rejected";
+                        return [4 /*yield*/, db_1.db("bid_requests").where({ id: requestId }).update({
+                                status: newStatus,
+                                updated_at: new Date()
+                            })];
+                    case 2:
+                        _a.sent();
+                        return [2 /*return*/, {
+                                requestId: requestId,
+                                status: newStatus,
+                                productId: request.product_id,
+                                bidderId: request.bidder_id
+                            }];
+                }
+            });
+        });
+    };
+    SellerService.getActiveBidders = function (productId, sellerId) {
+        return __awaiter(this, void 0, void 0, function () {
+            var product, bidders;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, db_1.db("products")
+                            .select("id", "seller_id")
+                            .where({ id: productId })
+                            .first()];
+                    case 1:
+                        product = _a.sent();
+                        if (!product)
+                            throw new Error("Product not found");
+                        if (product.seller_id !== sellerId)
+                            throw new Error("You are not allowed to view bidders of this product");
+                        return [4 /*yield*/, db_1.db["with"]("active_bidders", function (qb) {
+                                qb.select("bidder_id")
+                                    .from("bids")
+                                    .where("product_id", productId)
+                                    .union(db_1.db("auto_bids").select("bidder_id").where("product_id", productId));
+                            })
+                                .select("u.id", "u.full_name", "u.email", db_1.db.raw("COUNT(DISTINCT b.id)::int AS bidsCount"), db_1.db.raw("MAX(b.bid_amount)::int AS highestBid"), db_1.db.raw("MAX(ab.max_price)::int AS maxAutoBid"))
+                                .from("active_bidders as abx")
+                                .join("users as u", "u.id", "abx.bidder_id")
+                                .leftJoin("bids as b", function () {
+                                this.on("b.bidder_id", "=", "u.id").andOn("b.product_id", "=", db_1.db.raw("?", [productId]));
+                            })
+                                .leftJoin("auto_bids as ab", function () {
+                                this.on("ab.bidder_id", "=", "u.id").andOn("ab.product_id", "=", db_1.db.raw("?", [productId]));
+                            })
+                                // ❌ loại bidder đã bị block
+                                .whereNotExists(function () {
+                                this.select(1)
+                                    .from("blocked_bidders")
+                                    .whereRaw("blocked_bidders.product_id = ?", [productId])
+                                    .andWhereRaw("blocked_bidders.bidder_id = u.id");
+                            })
+                                .groupBy("u.id", "u.full_name", "u.email")
+                                // ✅ ORDER BY ĐÚNG
+                                .orderByRaw("MAX(b.bid_amount) DESC NULLS LAST")];
+                    case 2:
+                        bidders = _a.sent();
+                        return [2 /*return*/, bidders];
+                }
+            });
+        });
+    };
+    SellerService.kickBidderFromAuction = function (params) {
         return __awaiter(this, void 0, void 0, function () {
             var sellerId, productId, bidderId, reason;
             var _this = this;
@@ -623,11 +756,11 @@ var SellerService = /** @class */ (function () {
                     case 0:
                         sellerId = params.sellerId, productId = params.productId, bidderId = params.bidderId, reason = params.reason;
                         return [4 /*yield*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
-                                var product, autoBids, newHighestBidderId, newCurrentPrice;
+                                var product;
                                 return __generator(this, function (_a) {
                                     switch (_a.label) {
                                         case 0: return [4 /*yield*/, trx("products")
-                                                .select("id", "seller_id", "start_price", "bid_step", "highest_bidder_id")
+                                                .select("id", "seller_id", "highest_bidder_id")
                                                 .where({ id: productId })
                                                 .first()];
                                         case 1:
@@ -635,27 +768,32 @@ var SellerService = /** @class */ (function () {
                                             if (!product)
                                                 throw new Error("Product not found");
                                             if (product.seller_id !== sellerId) {
-                                                throw new Error("You are not the seller of this product");
+                                                throw new Error("You are not allowed to block bidders for this product");
+                                            }
+                                            if (product.seller_id === bidderId) {
+                                                throw new Error("Seller cannot block himself");
                                             }
                                             /* =============================
-                                             * 2️⃣ Insert block
+                                             * 2️⃣ Insert blocked bidder
                                              * ============================= */
                                             return [4 /*yield*/, trx("blocked_bidders")
                                                     .insert({
                                                     product_id: productId,
                                                     bidder_id: bidderId,
-                                                    reason: (reason === null || reason === void 0 ? void 0 : reason.trim()) || null,
+                                                    seller_id: sellerId,
+                                                    reason: reason || "Blocked by seller",
                                                     created_at: new Date()
                                                 })
                                                     .onConflict(["product_id", "bidder_id"])
                                                     .ignore()];
                                         case 2:
                                             /* =============================
-                                             * 2️⃣ Insert block
+                                             * 2️⃣ Insert blocked bidder
                                              * ============================= */
                                             _a.sent();
-                                            if (!(product.highest_bidder_id === bidderId)) return [3 /*break*/, 7];
-                                            // Xóa auto_bid của bidder bị block
+                                            /* =============================
+                                             * 3️⃣ Remove auto-bid
+                                             * ============================= */
                                             return [4 /*yield*/, trx("auto_bids")
                                                     .where({
                                                     product_id: productId,
@@ -663,44 +801,149 @@ var SellerService = /** @class */ (function () {
                                                 })
                                                     .del()];
                                         case 3:
-                                            // Xóa auto_bid của bidder bị block
+                                            /* =============================
+                                             * 3️⃣ Remove auto-bid
+                                             * ============================= */
                                             _a.sent();
+                                            /* =============================
+                                             * 4️⃣ Log kick event (CHỈ 1 LẦN)
+                                             * ============================= */
+                                            return [4 /*yield*/, trx("auto_bid_events").insert({
+                                                    product_id: productId,
+                                                    bidder_id: bidderId,
+                                                    type: "kicked",
+                                                    description: "Bidder was removed by seller during auction"
+                                                })];
+                                        case 4:
+                                            /* =============================
+                                             * 4️⃣ Log kick event (CHỈ 1 LẦN)
+                                             * ============================= */
+                                            _a.sent();
+                                            return [2 /*return*/, {
+                                                    productId: productId,
+                                                    bidderId: bidderId,
+                                                    wasHighest: product.highest_bidder_id === bidderId
+                                                }];
+                                    }
+                                });
+                            }); })];
+                    case 1: return [2 /*return*/, _a.sent()];
+                }
+            });
+        });
+    };
+    SellerService.recalculateAfterKick = function (params) {
+        return __awaiter(this, void 0, void 0, function () {
+            var productId, kickedBidderId;
+            var _this = this;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        productId = params.productId, kickedBidderId = params.kickedBidderId;
+                        return [4 /*yield*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
+                                var product, startPrice, bidStep, autoBids, newHighestBidderId, newCurrentPrice, a, b, winner, loser, aMax, bMax;
+                                return __generator(this, function (_a) {
+                                    switch (_a.label) {
+                                        case 0: return [4 /*yield*/, trx("products")
+                                                .select("id", "status", "start_price", "bid_step", "current_price", "highest_bidder_id")
+                                                .where({ id: productId })
+                                                .first()];
+                                        case 1:
+                                            product = _a.sent();
+                                            if (!product)
+                                                throw new Error("Product not found");
+                                            if (product.status !== "active")
+                                                return [2 /*return*/, null];
+                                            // Nếu bidder bị kick KHÔNG phải highest → không cần recalc
+                                            if (product.highest_bidder_id !== kickedBidderId) {
+                                                return [2 /*return*/, {
+                                                        productId: productId,
+                                                        skipped: true,
+                                                        reason: "Kicked bidder was not highest bidder"
+                                                    }];
+                                            }
+                                            startPrice = Number(product.start_price);
+                                            bidStep = Number(product.bid_step);
                                             return [4 /*yield*/, trx("auto_bids")
                                                     .where({ product_id: productId })
+                                                    .select("bidder_id", "max_price", "created_at")
                                                     .orderBy([
                                                     { column: "max_price", order: "desc" },
                                                     { column: "created_at", order: "asc" },
                                                 ])
                                                     .limit(2)];
-                                        case 4:
+                                        case 2:
                                             autoBids = _a.sent();
                                             newHighestBidderId = null;
-                                            newCurrentPrice = null;
-                                            if (autoBids.length === 1) {
-                                                newHighestBidderId = autoBids[0].bidder_id;
-                                                newCurrentPrice = Number(product.start_price);
-                                            }
-                                            else if (autoBids.length >= 2) {
-                                                newHighestBidderId = autoBids[0].bidder_id;
-                                                newCurrentPrice = Math.min(Number(autoBids[0].max_price), Number(autoBids[1].max_price) + Number(product.bid_step));
-                                            }
-                                            return [4 /*yield*/, trx("products").where({ id: productId }).update({
-                                                    highest_bidder_id: newHighestBidderId,
-                                                    current_price: newCurrentPrice
-                                                })];
+                                            if (!(autoBids.length === 0)) return [3 /*break*/, 3];
+                                            newHighestBidderId = null;
+                                            newCurrentPrice = startPrice;
+                                            return [3 /*break*/, 8];
+                                        case 3:
+                                            if (!(autoBids.length === 1)) return [3 /*break*/, 4];
+                                            newHighestBidderId = autoBids[0].bidder_id;
+                                            newCurrentPrice = startPrice + bidStep;
+                                            return [3 /*break*/, 8];
+                                        case 4:
+                                            a = autoBids[0], b = autoBids[1];
+                                            winner = a;
+                                            loser = b;
+                                            aMax = Number(a.max_price);
+                                            bMax = Number(b.max_price);
+                                            if (!(bMax > aMax)) return [3 /*break*/, 5];
+                                            winner = b;
+                                            loser = a;
+                                            return [3 /*break*/, 7];
                                         case 5:
-                                            _a.sent();
-                                            if (!(newHighestBidderId && newCurrentPrice !== null)) return [3 /*break*/, 7];
-                                            return [4 /*yield*/, trx("bids").insert({
+                                            if (!(aMax === bMax)) return [3 /*break*/, 7];
+                                            if (new Date(b.created_at) < new Date(a.created_at)) {
+                                                winner = b;
+                                                loser = a;
+                                            }
+                                            return [4 /*yield*/, trx("auto_bid_events").insert({
                                                     product_id: productId,
-                                                    bidder_id: newHighestBidderId,
-                                                    bid_amount: newCurrentPrice,
-                                                    bid_time: new Date()
+                                                    bidder_id: winner.bidder_id,
+                                                    type: "tie_break_win",
+                                                    max_bid: aMax,
+                                                    description: "Won tie-break after bidder removal"
                                                 })];
                                         case 6:
                                             _a.sent();
                                             _a.label = 7;
-                                        case 7: return [2 /*return*/, { success: true }];
+                                        case 7:
+                                            newHighestBidderId = winner.bidder_id;
+                                            // ✅ GIÁ ĐÚNG SAU KICK
+                                            newCurrentPrice = Math.min(Number(winner.max_price), Number(loser.max_price) + bidStep);
+                                            _a.label = 8;
+                                        case 8: 
+                                        /* =============================
+                                         * 4️⃣ Update product state
+                                         * ============================= */
+                                        return [4 /*yield*/, trx("products").where({ id: productId }).update({
+                                                highest_bidder_id: newHighestBidderId,
+                                                current_price: newCurrentPrice
+                                            })];
+                                        case 9:
+                                            /* =============================
+                                             * 4️⃣ Update product state
+                                             * ============================= */
+                                            _a.sent();
+                                            if (!newHighestBidderId) return [3 /*break*/, 11];
+                                            return [4 /*yield*/, trx("auto_bid_events").insert({
+                                                    product_id: productId,
+                                                    bidder_id: newHighestBidderId,
+                                                    type: "auto_bid",
+                                                    amount: newCurrentPrice,
+                                                    description: "Auction recalculated after bidder removal"
+                                                })];
+                                        case 10:
+                                            _a.sent();
+                                            _a.label = 11;
+                                        case 11: return [2 /*return*/, {
+                                                productId: productId,
+                                                newCurrentPrice: newCurrentPrice,
+                                                newHighestBidderId: newHighestBidderId
+                                            }];
                                     }
                                 });
                             }); })];

@@ -74,6 +74,8 @@ export interface ProductDetailDTO {
     };
   } | null;
 
+  blockedBidderIds: string[];
+
   /* ================= My Auto Bid ================= */
   myAutoBid: {
     maxPrice: number;
@@ -134,7 +136,8 @@ export interface ProductDetailDTO {
       | "max_bid_updated"
       | "outbid_instantly"
       | "tie_break_win"
-      | "winning";
+      | "winning"
+      | "kicked";
     bidderId: string;
     bidderName: string;
     amount?: number; // current_price at that moment

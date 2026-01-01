@@ -52,7 +52,6 @@ export const BIDDER_REPLY_QUESTION_API = (questionId: string) =>
 export const PLACE_AUTOBID_API = `${API_BASE_URL}/users/place-autobid`;
 export const REQUEST_BIDS_API = `${API_BASE_URL}/users/request-bids`;
 
-
 //Seller
 export const CREATE_AUCTION_API = `${API_BASE_URL}/seller/create-auction`;
 export const GET_AUTO_EXTEND_CONFIG_API = `${API_BASE_URL}/seller/auto-extend-config`;
@@ -68,8 +67,16 @@ export const RATE_WINNER_API = (productId: string) =>
 export const SELLER_REPLY_QUESTION_API = (questionId: string) =>
   `${API_BASE_URL}/seller/questions/${questionId}/answer`;
 
-export const BLOCK_BIDDER_AUTOBID_API = (productId: string) =>
-  `${API_BASE_URL}/seller/${productId}/block-bidder`;
+export const GET_BIDDER_REQUESTS_API = (productId: string) =>
+  `${API_BASE_URL}/seller/${productId}/bid-requests`;
+export const HANDLE_BIDDER_REQUEST_API = (requestId: string) =>
+  `${API_BASE_URL}/seller/bid-requests/${requestId}`;
+
+export const GET_ACTIVE_BIDDERS_API = (productId: string) =>
+  `${API_BASE_URL}/seller/products/${productId}/active-bidders`;
+
+export const KICK_BIDDER_API = (productId: string, bidderId: string) =>
+  `${API_BASE_URL}/seller/products/${productId}/kick-bidder/${bidderId}`;
 
 //Admin
 export const CREATE_PARENT_CATEGORY_API = `${API_BASE_URL}/admin/categories/parent`;

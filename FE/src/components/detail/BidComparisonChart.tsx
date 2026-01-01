@@ -21,6 +21,7 @@ interface Bidder {
 
   isYou?: boolean;
   isWinning?: boolean;
+  isBlocked?: boolean;
 }
 
 interface BidComparisonChartProps {
@@ -31,15 +32,22 @@ export function BidComparisonChart({ bidders }: BidComparisonChartProps) {
   /* ===============================
    * Sort: WINNER FIRST
    * =============================== */
-  const sortedBidders = [...bidders].sort((a, b) => {
-    if (a.isWinning && !b.isWinning) return -1;
-    if (!a.isWinning && b.isWinning) return 1;
-    return b.maxBid - a.maxBid;
-  });
+  const activeBidders = bidders.filter((b) => !b.isBlocked);
 
-  const maxBidValue = Math.max(...bidders.map((b) => b.maxBid), 1);
+  const blockedBidders = bidders.filter((b) => b.isBlocked);
 
-  const winningBidder = sortedBidders.find((b) => b.isWinning);
+  const sortedBidders = [
+    ...activeBidders.sort((a, b) => {
+      if (a.isWinning && !b.isWinning) return -1;
+      if (!a.isWinning && b.isWinning) return 1;
+      return b.maxBid - a.maxBid;
+    }),
+    ...blockedBidders, // 👈 đưa xuống cuối
+  ];
+
+  const maxBidValue = Math.max(...activeBidders.map((b) => b.maxBid), 1);
+
+  const winningBidder = sortedBidders.find((b) => b.isWinning && !b.isBlocked);
 
   return (
     <div className="bg-card border border-border/50 rounded-xl p-6 space-y-6">
@@ -52,6 +60,11 @@ export function BidComparisonChart({ bidders }: BidComparisonChartProps) {
         <Badge variant="outline" className="border-border/50">
           {bidders.length} Bidders
         </Badge>
+        {blockedBidders.length > 0 && (
+          <Badge className="bg-red-500/10 text-red-500 border border-red-500/30 h-5">
+            {blockedBidders.length} Blocked
+          </Badge>
+        )}
       </div>
 
       {/* ================= Winner Banner ================= */}
@@ -80,12 +93,17 @@ export function BidComparisonChart({ bidders }: BidComparisonChartProps) {
           const buffer = bidder.isWinning
             ? bidder.maxBid - bidder.currentBid
             : null;
+          const activeIndex = activeBidders.findIndex(
+            (b) => b.id === bidder.id
+          );
 
           return (
             <div
               key={bidder.id}
               className={`relative rounded-lg border p-4 transition-all ${
-                bidder.isYou
+                bidder.isBlocked
+                  ? "bg-red-500/5 border-red-500/30 opacity-60"
+                  : bidder.isYou
                   ? "bg-[#fbbf24]/5 border-[#fbbf24]/30"
                   : "bg-secondary/30 border-border/50"
               }`}
@@ -120,16 +138,28 @@ export function BidComparisonChart({ bidders }: BidComparisonChartProps) {
                       )}
                     </div>
 
-                    {bidder.rating && bidder.rating.total > 0 ? (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Star className="h-3 w-3 text-yellow-500 fill-current" />
-                        Score: {bidder.rating.score} ({bidder.rating.total}{" "}
-                        {bidder.rating.total <= 1 ? "vote" : "votes"})
+                    {!bidder.isBlocked ? (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {/* 🔢 Rank – LUÔN HIỆN */}
+                        <span>Rank #{activeIndex + 1}</span>
+
+                        <span className="opacity-50">•</span>
+
+                        {/* ⭐ Rating – LUÔN HIỆN */}
+                        <div className="flex items-center gap-1">
+                          <Star className="h-3 w-3 text-yellow-500 fill-current" />
+                          <span>
+                            {bidder.rating?.score ?? 0} (
+                            {bidder.rating?.total ?? 0}{" "}
+                            {(bidder.rating?.total ?? 0) <= 1
+                              ? "vote"
+                              : "votes"}
+                            )
+                          </span>
+                        </div>
                       </div>
                     ) : (
-                      <p className="text-muted-foreground text-xs">
-                        Rank #{index + 1}
-                      </p>
+                      <p className="text-red-500 text-xs">🚫 Blocked</p>
                     )}
                   </div>
                 </div>
@@ -147,43 +177,49 @@ export function BidComparisonChart({ bidders }: BidComparisonChartProps) {
               </div>
 
               {/* Progress */}
-              <div className="space-y-2">
-                <div className="h-2 bg-secondary/50 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      bidder.isYou
-                        ? "bg-gradient-to-r from-[#fbbf24] to-[#f59e0b]"
-                        : bidder.isWinning
-                        ? "bg-[#10b981]"
-                        : "bg-muted-foreground"
-                    }`}
-                    style={{ width: `${percentage}%` }}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    Current: {formatCurrency(bidder.currentBid)}
-                  </span>
-
-                  {buffer !== null ? (
-                    <span
-                      className={
+              {bidder.isBlocked ? (
+                <p className="text-red-500 text-sm mt-2">
+                  🚫 This bidder has been removed from the auction
+                </p>
+              ) : (
+                <>
+                  <div className="h-2 bg-secondary/50 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
                         bidder.isYou
-                          ? "text-[#fbbf24]"
-                          : "text-muted-foreground"
-                      }
-                    >
-                      Buffer: +{formatCurrency(buffer)}
+                          ? "bg-gradient-to-r from-[#fbbf24] to-[#f59e0b]"
+                          : bidder.isWinning
+                          ? "bg-[#10b981]"
+                          : "bg-muted-foreground"
+                      }`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Current: {formatCurrency(bidder.currentBid)}
                     </span>
-                  ) : (
-                    <span className="text-red-500">Outbid</span>
-                  )}
-                </div>
-              </div>
+
+                    {buffer !== null ? (
+                      <span
+                        className={
+                          bidder.isYou
+                            ? "text-[#fbbf24]"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        Buffer: +{formatCurrency(buffer)}
+                      </span>
+                    ) : (
+                      <span className="text-red-500">Outbid</span>
+                    )}
+                  </div>
+                </>
+              )}
 
               {/* Leading badge */}
-              {bidder.isWinning && (
+              {bidder.isWinning && !bidder.isBlocked && (
                 <div className="absolute -top-2 -right-2">
                   <div className="bg-[#10b981] text-white px-2 py-1 rounded-full text-xs flex items-center gap-1">
                     <TrendingUp className="h-3 w-3" />

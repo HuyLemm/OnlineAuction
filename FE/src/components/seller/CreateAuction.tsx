@@ -43,11 +43,15 @@ type ImageInput = {
   previewUrl: string;
 };
 
+type BidRequirement = "normal" | "qualified";
+
 export function CreateAuction() {
   /* ====== STATES ====== */
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [categories, setCategories] = useState<SubCategory[]>([]);
+  const [bidRequirement, setBidRequirement] =
+    useState<BidRequirement>("normal");
 
   const [uploadSessionId, setUploadSessionId] = useState(crypto.randomUUID());
 
@@ -114,6 +118,7 @@ export function CreateAuction() {
     setCustomMinutes("");
     setShowConfirm(false);
     setUploadSessionId(crypto.randomUUID());
+    setBidRequirement("normal");
   };
 
   /* ====== AUTO EXTEND ====== */
@@ -215,20 +220,24 @@ export function CreateAuction() {
     try {
       await uploadImages();
 
+      /* ===== DEBUG PAYLOAD ===== */
+      const payload = {
+        title,
+        categoryId: Number(categoryId),
+        startPrice: startingBid,
+        bidStep,
+        buyNowPrice: enableBuyNow ? buyNow : null,
+        auctionType: enableBuyNow ? "buy_now" : "traditional",
+        bidRequirement,
+        description,
+        autoExtend: enableAutoExtend,
+        durationMinutes: computeDurationMinutes(),
+        uploadSessionId,
+      };
+
       const res = await fetchWithAuth(CREATE_AUCTION_API, {
         method: "POST",
-        body: JSON.stringify({
-          title,
-          categoryId: Number(categoryId),
-          startPrice: startingBid,
-          bidStep,
-          buyNowPrice: enableBuyNow ? buyNow : null,
-          auctionType: enableBuyNow ? "buy_now" : "traditional",
-          description,
-          autoExtend: enableAutoExtend,
-          durationMinutes: computeDurationMinutes(),
-          uploadSessionId, // 🔥 QUAN TRỌNG
-        }),
+        body: JSON.stringify(payload),
       });
 
       const json = await res.json();
@@ -415,6 +424,51 @@ export function CreateAuction() {
           {/* ===== AUCTION SETTINGS ===== */}
           <div className="bg-card border border-border/50 rounded-xl p-6 space-y-6">
             <h2 className="text-foreground">Auction Settings</h2>
+            <Separator className="bg-border/50" />
+
+            {/* ===== BID REQUIREMENT ===== */}
+            <div className="space-y-2">
+              <Label className="text-yellow-500 mb-2">Bid Requirement *</Label>
+
+              <div className="flex gap-3">
+                {/* NORMAL */}
+                <button
+                  type="button"
+                  onClick={() => setBidRequirement("normal")}
+                  className={`flex-1 rounded-lg border px-4 py-3 text-sm transition
+        ${
+          bidRequirement === "normal"
+            ? "border-[#fbbf24] bg-[#fbbf24]/20 text-[#fbbf24]"
+            : "border-border/50 bg-black/40 text-muted-foreground hover:bg-black/60"
+        }
+      `}
+                >
+                  <p className="font-medium">Normal</p>
+                  <p className="text-xs opacity-80 mt-1">
+                    Anyone can place a bid
+                  </p>
+                </button>
+
+                {/* QUALIFIED */}
+                <button
+                  type="button"
+                  onClick={() => setBidRequirement("qualified")}
+                  className={`flex-1 rounded-lg border px-4 py-3 text-sm transition
+        ${
+          bidRequirement === "qualified"
+            ? "border-[#fbbf24] bg-[#fbbf24]/20 text-[#fbbf24]"
+            : "border-border/50 bg-black/40 text-muted-foreground hover:bg-black/60"
+        }
+      `}
+                >
+                  <p className="font-medium">Qualified</p>
+                  <p className="text-xs opacity-80 mt-1">
+                    Only qualified bidders can bid
+                  </p>
+                </button>
+              </div>
+            </div>
+
             <Separator className="bg-border/50" />
 
             <div className="space-y-4">

@@ -1,4 +1,11 @@
-import { Zap, TrendingUp, TrendingDown, Activity, Crown } from "lucide-react";
+import {
+  Zap,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  Crown,
+  Ban,
+} from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { useMemo } from "react";
@@ -16,7 +23,8 @@ interface AutoBidEvent {
     | "max_bid_updated"
     | "outbid_instantly"
     | "tie_break_win"
-    | "winning";
+    | "winning"
+    | "kicked";
   bidderId: string;
   bidderName: string;
   amount?: number;
@@ -33,7 +41,11 @@ interface AutoBidHistoryProps {
   currentUserRole?: "bidder" | "seller" | "admin";
 }
 
-export function AutoBidHistory({ events, currentUserId, currentUserRole }: AutoBidHistoryProps) {
+export function AutoBidHistory({
+  events,
+  currentUserId,
+  currentUserRole,
+}: AutoBidHistoryProps) {
   const filteredEvents = useMemo(() => {
     // ✅ Seller / Admin thấy tất cả
     if (currentUserRole === "seller" || currentUserRole === "admin") {
@@ -65,6 +77,8 @@ export function AutoBidHistory({ events, currentUserId, currentUserRole }: AutoB
         return <Crown className="h-4 w-4 text-[#10b981]" />;
       case "winning":
         return <TrendingUp className="h-4 w-4 text-[#10b981]" />;
+      case "kicked":
+        return <Ban className="h-4 w-4 text-red-500" />;
       default:
         return <Activity className="h-4 w-4 text-muted-foreground" />;
     }
@@ -81,6 +95,15 @@ export function AutoBidHistory({ events, currentUserId, currentUserRole }: AutoB
         return "border-[#10b981]/20 bg-[#10b981]/5";
       case "outbid_instantly":
         return "border-[#ef4444]/20 bg-[#ef4444]/5";
+      case "kicked":
+        return `
+    border-red-500/20
+    bg-red-500/10
+    ring-2
+    ring-red-500/40
+    shadow-[0_0_20px_rgba(239,68,68,0.35)]
+  `;
+
       default:
         return "border-border/50 bg-secondary/30";
     }
@@ -118,7 +141,9 @@ export function AutoBidHistory({ events, currentUserId, currentUserRole }: AutoB
               <Avatar className="h-10 w-10">
                 <AvatarFallback
                   className={
-                    event.isYou
+                    event.type === "kicked"
+                      ? "bg-red-500/10 text-white font-bold"
+                      : event.isYou
                       ? "bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] text-black"
                       : "bg-gradient-to-br from-secondary to-secondary/50 text-foreground"
                   }

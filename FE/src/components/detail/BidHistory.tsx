@@ -9,7 +9,7 @@ const getLastChar = (name: string) => {
 };
 
 interface BidHistoryItem {
-  id?: string; // có thể null từ backend
+  id?: string;
   amount: number;
   createdAt: string;
   bidder: {
@@ -24,14 +24,14 @@ interface BidHistoryItem {
 
 interface BidHistoryProps {
   bids: BidHistoryItem[];
+  blockedBidderIds?: string[]; // 👈 QUAN TRỌNG
 }
 
 function formatTime(date: string) {
-  const d = new Date(date);
-  return d.toLocaleString();
+  return new Date(date).toLocaleString();
 }
 
-export function BidHistory({ bids }: BidHistoryProps) {
+export function BidHistory({ bids, blockedBidderIds = [] }: BidHistoryProps) {
   if (!bids || bids.length === 0) {
     return (
       <div className="bg-card border border-border/50 rounded-xl p-6">
@@ -43,7 +43,22 @@ export function BidHistory({ bids }: BidHistoryProps) {
     );
   }
 
-  const highestAmount = Math.max(...bids.map((b) => b.amount));
+  /* ===============================
+   * ACTIVE bids (không bị block)
+   * =============================== */
+  const activeBids = bids.filter(
+    (b) => !blockedBidderIds.includes(b.bidder.id)
+  );
+
+  const blockedBids = bids.filter((b) =>
+    blockedBidderIds.includes(b.bidder.id)
+  );
+
+  // 👉 ACTIVE trước, BLOCKED sau
+  const sortedBids = [...activeBids, ...blockedBids];
+
+  const highestActiveAmount =
+    activeBids.length > 0 ? Math.max(...activeBids.map((b) => b.amount)) : null;
 
   return (
     <div className="bg-card border border-border/50 rounded-xl p-6 space-y-4">
@@ -57,10 +72,14 @@ export function BidHistory({ bids }: BidHistoryProps) {
 
       {/* Bid list */}
       <div className="space-y-3 max-h-96 overflow-y-auto">
-        {bids.map((bid, index) => {
-          const isLeading = bid.amount === highestAmount;
+        {sortedBids.map((bid, index) => {
+          const isBlocked = blockedBidderIds.includes(bid.bidder.id);
 
-          // ⚠️ key LUÔN unique cho MỖI BID
+          const isLeading =
+            highestActiveAmount !== null &&
+            bid.amount === highestActiveAmount &&
+            !isBlocked;
+
           const key =
             bid.id ??
             `${bid.bidder.id}-${bid.createdAt}-${bid.amount}-${index}`;
@@ -69,7 +88,9 @@ export function BidHistory({ bids }: BidHistoryProps) {
             <div
               key={key}
               className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
-                isLeading
+                isBlocked
+                  ? "bg-red-500/5 border-red-500/30 opacity-70"
+                  : isLeading
                   ? "bg-[#fbbf24]/5 border-[#fbbf24]/30"
                   : "bg-secondary/30 border-border/50"
               }`}
@@ -77,7 +98,13 @@ export function BidHistory({ bids }: BidHistoryProps) {
               {/* Bidder */}
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] text-black">
+                  <AvatarFallback
+                    className={
+                      isBlocked
+                        ? "bg-red-500/20 text-red-500"
+                        : "bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] text-black"
+                    }
+                  >
                     {getLastChar(bid.bidder.name)}
                   </AvatarFallback>
                 </Avatar>
@@ -87,22 +114,45 @@ export function BidHistory({ bids }: BidHistoryProps) {
                     <p className="text-foreground font-medium">
                       {bid.bidder.name}
                     </p>
+
                     {isLeading && (
                       <TrendingUp className="h-4 w-4 text-[#fbbf24]" />
                     )}
+
+                    {isBlocked && (
+                      <Badge className="bg-red-500/10 text-red-500 border border-red-500/30 h-4">
+                        Blocked
+                      </Badge>
+                    )}
                   </div>
 
-                  {/* Rating + time */}
+                  {/* Rank + Rating + Time */}
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <span className="text-yellow-400">
-                        <Star className="h-3 w-3 text-yellow-500 fill-current" />
+                    {/* Rank (chỉ active mới có rank) */}
+                    {!isBlocked && highestActiveAmount !== null && (
+                      <span>
+                        Rank #
+                        {Array.from(
+                          new Set(
+                            activeBids
+                              .map((b) => b.amount)
+                              .sort((a, b) => b - a)
+                          )
+                        ).indexOf(bid.amount) + 1}
                       </span>
-                      Score: {bid.bidder.rating?.score ?? 0} (
+                    )}
+
+                    {!isBlocked && <span className="opacity-50">•</span>}
+
+                    {/* Rating – LUÔN HIỆN */}
+                    <span className="flex items-center gap-1">
+                      <Star className="h-3 w-3 text-yellow-500 fill-current" />
+                      {bid.bidder.rating?.score ?? 0} (
                       {bid.bidder.rating?.total ?? 0}{" "}
                       {(bid.bidder.rating?.total ?? 0) <= 1 ? "vote" : "votes"})
                     </span>
-                    <span>•</span>
+
+                    <span className="opacity-50">•</span>
                     <span>{formatTime(bid.createdAt)}</span>
                   </div>
                 </div>
@@ -112,11 +162,16 @@ export function BidHistory({ bids }: BidHistoryProps) {
               <div className="text-right">
                 <p
                   className={`font-semibold ${
-                    isLeading ? "text-[#fbbf24]" : "text-foreground"
+                    isLeading
+                      ? "text-[#fbbf24]"
+                      : isBlocked
+                      ? "text-red-500"
+                      : "text-foreground"
                   }`}
                 >
                   {formatCurrency(bid.amount)}
                 </p>
+
                 {isLeading && <p className="text-[#10b981] text-xs">Leading</p>}
               </div>
             </div>

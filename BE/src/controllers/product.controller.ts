@@ -193,6 +193,7 @@ export class ProductController {
 
         bidHistory: raw.bidHistory,
         questions: raw.questions,
+        blockedBidderIds: raw.blockedBidderIds,
 
         relatedProducts: raw.relatedProducts.map((p: any) => ({
           id: p.id,

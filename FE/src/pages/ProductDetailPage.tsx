@@ -17,6 +17,7 @@ import { PriceDisplay } from "../components/detail/PriceDisplay";
 import { QualifiedNotice } from "../components/detail/QualifiedNotice";
 import { PendingApprovalNotice } from "../components/detail/PendingApprovalNotice";
 import { SellerBidRequestPanel } from "../components/detail/SellerBidRequestPanel";
+import { SellerBidderPanel } from "../components/detail/SellerBidderPanel";
 
 import {
   getRelativeEndTime,
@@ -169,11 +170,13 @@ export function ProductDetailPage() {
   const currentUserId = data.viewer?.id;
   const currentUserRole = data.viewer?.role;
 
+  const blockedSet = new Set(data.blockedBidderIds ?? []);
   const bidders = Array.from(bidderMap.values()).map((b) => ({
     ...b,
     currentBid,
     isWinning: b.id === data.product.highestBidderId,
     isYou: !!currentUserId && b.id === currentUserId,
+    isBlocked: blockedSet.has(b.id),
   }));
 
   const bidStatus: BidStatusDTO = (() => {
@@ -266,6 +269,14 @@ export function ProductDetailPage() {
   const handleBack = () => {
     if (window.history.length > 1) navigate(-1);
     else navigate("/browse");
+  };
+
+  const refetchProductDetail = async () => {
+    if (!productId) return;
+
+    const res = await fetchWithAuth(GET_PRODUCT_DETAIL_API(productId));
+    const json = await res.json();
+    setData(json.data);
   };
 
   return (
@@ -396,11 +407,21 @@ export function ProductDetailPage() {
             </>
           )}
 
-          <PriceDisplay
-            currentPrice={currentBid}
-            buyNowPrice={buyNowPrice}
-            onBuyNow={canBid ? handleBuyNow : undefined}
-          />
+          {/* ================= PRICE / SELLER PANEL ================= */}
+          {isSeller ? (
+            <SellerBidderPanel
+              productId={data.product.id}
+              currentPrice={currentBid}
+              highestBidderId={data.product.highestBidderId}
+              onKickSuccess={refetchProductDetail}
+            />
+          ) : (
+            <PriceDisplay
+              currentPrice={currentBid}
+              buyNowPrice={buyNowPrice}
+              onBuyNow={canBid ? handleBuyNow : undefined}
+            />
+          )}
         </div>
       </div>
 
@@ -429,18 +450,17 @@ export function ProductDetailPage() {
           />
 
           {/* 🔥 Bid history real data */}
-          <BidHistory bids={data.bidHistory} />
+          <BidHistory
+            bids={data.bidHistory}
+            blockedBidderIds={data.blockedBidderIds}
+          />
 
           <QASection
             questions={data.questions}
             productId={data.product.id}
             currentUserRole={data.viewer?.role ?? null}
             onQuestionSubmitted={async () => {
-              const res = await fetchWithAuth(
-                GET_PRODUCT_DETAIL_API(data.product.id)
-              );
-              const json = await res.json();
-              setData(json.data);
+              refetchProductDetail();
             }}
           />
         </div>

@@ -711,6 +711,12 @@ export class ProductService {
       relatedBidderId: e.relatedBidderId,
     }));
 
+    const blockedBidderIds = (
+      await db("blocked_bidders")
+        .where({ product_id: productId })
+        .select("bidder_id")
+    ).map((b) => b.bidder_id);
+
     // ----------------------------
     // FINAL RESULT
     // ----------------------------
@@ -737,6 +743,7 @@ export class ProductService {
       bidHistory,
       questions,
       relatedProducts,
+      blockedBidderIds,
     };
   }
 }

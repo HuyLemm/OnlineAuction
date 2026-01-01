@@ -248,6 +248,7 @@ export class SellerService {
 
           current_price: dto.startPrice,
           highest_bidder_id: null,
+          bid_requirement: dto.bidRequirement,
 
           auction_type: dto.auctionType,
           status: "active",
@@ -300,7 +301,6 @@ export class SellerService {
       .leftJoin("bids as b", "b.product_id", "p.id")
       .where("p.seller_id", sellerId)
       .andWhere("p.status", "active")
-      .andWhere("p.end_time", ">", db.fn.now())
       .groupBy("p.id", "c.name", "img.image_url")
       .orderBy("p.end_time", "asc")
       .select(
@@ -626,10 +626,161 @@ export class SellerService {
     });
   }
 
-  // ===============================
-  // Seller - Block bidder from product
-  // ===============================
-  static async blockBidder(params: {
+  /* ======================================
+   * 1️⃣ GET – List bid requests of a product
+   * ====================================== */
+  static async getBidRequests(params: { sellerId: string; productId: string }) {
+    const { sellerId, productId } = params;
+
+    const rows = await db("bid_requests as br")
+      .join("users as u", "u.id", "br.bidder_id")
+      .leftJoin("ratings as r", "r.to_user", "u.id")
+      .where({
+        "br.product_id": productId,
+        "br.seller_id": sellerId,
+      })
+      .groupBy("br.id", "u.id")
+      .select(
+        "br.id",
+        "br.status",
+        "br.message",
+        "br.created_at",
+        "u.id as bidderId",
+        "u.full_name as bidderName",
+        db.raw("COUNT(r.id) AS totalVotes"),
+        db.raw("SUM(CASE WHEN r.score > 0 THEN 1 ELSE 0 END) AS positiveVotes")
+      )
+      .orderBy("br.created_at", "desc");
+
+    return rows.map((r) => {
+      const totalVotes = Number(r.totalVotes ?? 0);
+      const positiveVotes = Number(r.positiveVotes ?? 0);
+
+      return {
+        id: r.id,
+        status: r.status,
+        message: r.message,
+        createdAt: r.created_at,
+        bidder: {
+          id: r.bidderId,
+          name: r.bidderName,
+          rating: {
+            totalVotes,
+            positiveVotes,
+            positiveRate:
+              totalVotes > 0
+                ? Number(((positiveVotes / totalVotes) * 100).toFixed(1))
+                : 0,
+          },
+        },
+      };
+    });
+  }
+
+  /* ======================================
+   * 2️⃣ POST – Approve / Reject bid request
+   * ====================================== */
+  static async handleBidRequest(params: {
+    sellerId: string;
+    requestId: string;
+    action: "approve" | "reject";
+  }) {
+    const { sellerId, requestId, action } = params;
+
+    const request = await db("bid_requests")
+      .where({
+        id: requestId,
+        seller_id: sellerId,
+      })
+      .first();
+
+    if (!request) {
+      throw new Error("Bid request not found or not authorized");
+    }
+
+    if (request.status !== "pending") {
+      throw new Error("Request already processed");
+    }
+
+    const newStatus = action === "approve" ? "approved" : "rejected";
+
+    await db("bid_requests").where({ id: requestId }).update({
+      status: newStatus,
+      updated_at: new Date(),
+    });
+
+    return {
+      requestId,
+      status: newStatus,
+      productId: request.product_id,
+      bidderId: request.bidder_id,
+    };
+  }
+
+  static async getActiveBidders(productId: string, sellerId: string) {
+    // =============================
+    // 1️⃣ Check product ownership
+    // =============================
+    const product = await db("products")
+      .select("id", "seller_id")
+      .where({ id: productId })
+      .first();
+
+    if (!product) throw new Error("Product not found");
+    if (product.seller_id !== sellerId)
+      throw new Error("You are not allowed to view bidders of this product");
+
+    // =============================
+    // 2️⃣ Active bidders = bids ∪ auto_bids
+    // =============================
+    const bidders = await db
+      .with("active_bidders", (qb) => {
+        qb.select("bidder_id")
+          .from("bids")
+          .where("product_id", productId)
+          .union(
+            db("auto_bids").select("bidder_id").where("product_id", productId)
+          );
+      })
+      .select(
+        "u.id",
+        "u.full_name",
+        "u.email",
+        db.raw("COUNT(DISTINCT b.id)::int AS bidsCount"),
+        db.raw("MAX(b.bid_amount)::int AS highestBid"),
+        db.raw("MAX(ab.max_price)::int AS maxAutoBid")
+      )
+      .from("active_bidders as abx")
+      .join("users as u", "u.id", "abx.bidder_id")
+      .leftJoin("bids as b", function () {
+        this.on("b.bidder_id", "=", "u.id").andOn(
+          "b.product_id",
+          "=",
+          db.raw("?", [productId])
+        );
+      })
+      .leftJoin("auto_bids as ab", function () {
+        this.on("ab.bidder_id", "=", "u.id").andOn(
+          "ab.product_id",
+          "=",
+          db.raw("?", [productId])
+        );
+      })
+      // ❌ loại bidder đã bị block
+      .whereNotExists(function () {
+        this.select(1)
+          .from("blocked_bidders")
+          .whereRaw("blocked_bidders.product_id = ?", [productId])
+          .andWhereRaw("blocked_bidders.bidder_id = u.id");
+      })
+      .groupBy("u.id", "u.full_name", "u.email")
+      // ✅ ORDER BY ĐÚNG
+      .orderByRaw("MAX(b.bid_amount) DESC NULLS LAST");
+
+    return bidders;
+  }
+
+  static async kickBidderFromAuction(params: {
     sellerId: string;
     productId: string;
     bidderId: string;
@@ -642,87 +793,199 @@ export class SellerService {
        * 1️⃣ Check product ownership
        * ============================= */
       const product = await trx("products")
-        .select(
-          "id",
-          "seller_id",
-          "start_price",
-          "bid_step",
-          "highest_bidder_id"
-        )
+        .select("id", "seller_id", "highest_bidder_id")
         .where({ id: productId })
         .first();
 
       if (!product) throw new Error("Product not found");
-
       if (product.seller_id !== sellerId) {
-        throw new Error("You are not the seller of this product");
+        throw new Error(
+          "You are not allowed to block bidders for this product"
+        );
+      }
+
+      if (product.seller_id === bidderId) {
+        throw new Error("Seller cannot block himself");
       }
 
       /* =============================
-       * 2️⃣ Insert block
+       * 2️⃣ Insert blocked bidder
        * ============================= */
       await trx("blocked_bidders")
         .insert({
           product_id: productId,
           bidder_id: bidderId,
-          reason: reason?.trim() || null,
+          seller_id: sellerId,
+          reason: reason || "Blocked by seller",
           created_at: new Date(),
         })
         .onConflict(["product_id", "bidder_id"])
         .ignore();
 
       /* =============================
-       * 3️⃣ Nếu bidder đang dẫn đầu → loại bỏ
+       * 3️⃣ Remove auto-bid
        * ============================= */
-      if (product.highest_bidder_id === bidderId) {
-        // Xóa auto_bid của bidder bị block
-        await trx("auto_bids")
-          .where({
-            product_id: productId,
-            bidder_id: bidderId,
-          })
-          .del();
+      await trx("auto_bids")
+        .where({
+          product_id: productId,
+          bidder_id: bidderId,
+        })
+        .del();
 
-        // Lấy top 2 auto_bids còn lại
-        const autoBids = await trx("auto_bids")
-          .where({ product_id: productId })
-          .orderBy([
-            { column: "max_price", order: "desc" },
-            { column: "created_at", order: "asc" },
-          ])
-          .limit(2);
+      /* =============================
+       * 4️⃣ Log kick event (CHỈ 1 LẦN)
+       * ============================= */
+      await trx("auto_bid_events").insert({
+        product_id: productId,
+        bidder_id: bidderId,
+        type: "kicked",
+        description: "Bidder was removed by seller during auction",
+      });
 
-        let newHighestBidderId: string | null = null;
-        let newCurrentPrice: number | null = null;
+      return {
+        productId,
+        bidderId,
+        wasHighest: product.highest_bidder_id === bidderId,
+      };
+    });
+  }
 
-        if (autoBids.length === 1) {
-          newHighestBidderId = autoBids[0].bidder_id;
-          newCurrentPrice = Number(product.start_price);
-        } else if (autoBids.length >= 2) {
-          newHighestBidderId = autoBids[0].bidder_id;
-          newCurrentPrice = Math.min(
-            Number(autoBids[0].max_price),
-            Number(autoBids[1].max_price) + Number(product.bid_step)
-          );
-        }
+  static async recalculateAfterKick(params: {
+    productId: string;
+    kickedBidderId: string;
+  }) {
+    const { productId, kickedBidderId } = params;
 
-        await trx("products").where({ id: productId }).update({
-          highest_bidder_id: newHighestBidderId,
-          current_price: newCurrentPrice,
-        });
+    return await db.transaction(async (trx) => {
+      /* =============================
+       * 1️⃣ Load product
+       * ============================= */
+      const product = await trx("products")
+        .select(
+          "id",
+          "status",
+          "start_price",
+          "bid_step",
+          "current_price",
+          "highest_bidder_id"
+        )
+        .where({ id: productId })
+        .first();
 
-        // Log lại bid mới (nếu còn bidder)
-        if (newHighestBidderId && newCurrentPrice !== null) {
-          await trx("bids").insert({
-            product_id: productId,
-            bidder_id: newHighestBidderId,
-            bid_amount: newCurrentPrice,
-            bid_time: new Date(),
-          });
-        }
+      if (!product) throw new Error("Product not found");
+      if (product.status !== "active") return null;
+
+      // Nếu bidder bị kick KHÔNG phải highest → không cần recalc
+      if (product.highest_bidder_id !== kickedBidderId) {
+        return {
+          productId,
+          skipped: true,
+          reason: "Kicked bidder was not highest bidder",
+        };
       }
 
-      return { success: true };
+      const startPrice = Number(product.start_price);
+      const bidStep = Number(product.bid_step);
+
+      /* =============================
+       * 2️⃣ Load auto-bids còn lại
+       * ============================= */
+      const autoBids = await trx("auto_bids")
+        .where({ product_id: productId })
+        .select("bidder_id", "max_price", "created_at")
+        .orderBy([
+          { column: "max_price", order: "desc" },
+          { column: "created_at", order: "asc" },
+        ])
+        .limit(2);
+
+      let newHighestBidderId: string | null = null;
+      let newCurrentPrice: number;
+
+      /* =============================
+       * 3️⃣ Compute winner & price
+       * (CHO PHÉP GIẢM GIÁ KHI KICK)
+       * ============================= */
+
+      // CASE A: không còn auto-bid nào
+      if (autoBids.length === 0) {
+        newHighestBidderId = null;
+        newCurrentPrice = startPrice;
+      }
+
+      // CASE B: chỉ còn 1 auto-bid
+      else if (autoBids.length === 1) {
+        newHighestBidderId = autoBids[0].bidder_id;
+        newCurrentPrice = startPrice + bidStep;
+      }
+
+      // CASE C: còn ≥ 2 auto-bids
+      else {
+        let [a, b] = autoBids;
+
+        let winner = a;
+        let loser = b;
+
+        const aMax = Number(a.max_price);
+        const bMax = Number(b.max_price);
+
+        // 1️⃣ Max lớn hơn thắng
+        if (bMax > aMax) {
+          winner = b;
+          loser = a;
+        }
+
+        // 2️⃣ Max bằng nhau → tie-break theo created_at
+        else if (aMax === bMax) {
+          if (new Date(b.created_at) < new Date(a.created_at)) {
+            winner = b;
+            loser = a;
+          }
+
+          await trx("auto_bid_events").insert({
+            product_id: productId,
+            bidder_id: winner.bidder_id,
+            type: "tie_break_win",
+            max_bid: aMax,
+            description: "Won tie-break after bidder removal",
+          });
+        }
+
+        newHighestBidderId = winner.bidder_id;
+
+        // ✅ GIÁ ĐÚNG SAU KICK
+        newCurrentPrice = Math.min(
+          Number(winner.max_price),
+          Number(loser.max_price) + bidStep
+        );
+      }
+
+      /* =============================
+       * 4️⃣ Update product state
+       * ============================= */
+      await trx("products").where({ id: productId }).update({
+        highest_bidder_id: newHighestBidderId,
+        current_price: newCurrentPrice,
+      });
+
+      /* =============================
+       * 5️⃣ Log system event ONLY
+       * ============================= */
+      if (newHighestBidderId) {
+        await trx("auto_bid_events").insert({
+          product_id: productId,
+          bidder_id: newHighestBidderId,
+          type: "auto_bid",
+          amount: newCurrentPrice,
+          description: "Auction recalculated after bidder removal",
+        });
+      }
+
+      return {
+        productId,
+        newCurrentPrice,
+        newHighestBidderId,
+      };
     });
   }
 }

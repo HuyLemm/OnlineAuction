@@ -229,7 +229,7 @@ var ProductController = /** @class */ (function () {
                                 name: raw.highestBidder.name,
                                 rating: raw.highestBidder.rating
                             }
-                        })), { autoBids: raw.autoBids, autoBidEvents: raw.autoBidEvents, bidHistory: raw.bidHistory, questions: raw.questions, relatedProducts: raw.relatedProducts.map(function (p) {
+                        })), { autoBids: raw.autoBids, autoBidEvents: raw.autoBidEvents, bidHistory: raw.bidHistory, questions: raw.questions, blockedBidderIds: raw.blockedBidderIds, relatedProducts: raw.relatedProducts.map(function (p) {
                                 var _a, _b;
                                 return ({
                                     id: p.id,

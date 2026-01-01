@@ -62,6 +62,8 @@ export interface ProductDetailDTO {
     };
   } | null;
 
+  blockedBidderIds: string[];
+
   myAutoBid: {
     maxPrice: number;
     createdAt: string;
@@ -193,6 +195,8 @@ export interface CreateAuctionDTO {
   description: string;
   auctionType: "traditional" | "buy_now";
 
+  bidRequirement: "normal" | "qualified";
+
   durationMinutes: number;
 
   autoExtend: boolean;
@@ -246,7 +250,8 @@ export type AutoBidEventType =
   | "auto_bid"
   | "outbid_instantly"
   | "tie_break_win"
-  | "winning";
+  | "winning"
+  | "kicked";
 
 export interface AutoBidEventDTO {
   id: string;
@@ -268,6 +273,7 @@ export const AUTO_BID_EVENT_DESCRIPTION: Record<AutoBidEventType, string> = {
   outbid_instantly: "Your bid was instantly surpassed",
   tie_break_win: "You are leading due to earlier max bid",
   winning: "Currently leading the auction",
+  kicked: "Bidder was removed by seller during auction",
 };
 
 export type AutoBidEventRow = {
