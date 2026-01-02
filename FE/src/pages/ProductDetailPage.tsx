@@ -18,6 +18,7 @@ import { QualifiedNotice } from "../components/detail/QualifiedNotice";
 import { PendingApprovalNotice } from "../components/detail/PendingApprovalNotice";
 import { SellerBidRequestPanel } from "../components/detail/SellerBidRequestPanel";
 import { SellerBidderPanel } from "../components/detail/SellerBidderPanel";
+import { AuctionEndedPanel } from "../components/detail/AuctionEndedPanel";
 
 import {
   getRelativeEndTime,
@@ -36,6 +37,7 @@ import {
   GET_PRODUCT_DETAIL_API,
   PLACE_AUTOBID_API,
   REQUEST_BIDS_API,
+  BUY_NOW_API,
 } from "../components/utils/api";
 
 import { formatCurrency } from "../lib/utils";
@@ -104,6 +106,30 @@ export function ProductDetailPage() {
     }
   }, [data?.myAutoBid]);
 
+  const handleBuyNow = async () => {
+    try {
+      const res = await fetchWithAuth(BUY_NOW_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message);
+
+      toast.success("🎉 Purchase successful!", {
+        description: "Redirecting to checkout...",
+      });
+
+      // refresh product
+      const refreshed = await fetchWithAuth(GET_PRODUCT_DETAIL_API(productId!));
+      const refreshedJson = await refreshed.json();
+      setData(refreshedJson.data);
+    } catch (err: any) {
+      toast.error(err.message || "Buy now failed");
+    }
+  };
+
   const handleToggleFavorite = async () => {
     try {
       if (isFavorite) {
@@ -139,6 +165,12 @@ export function ProductDetailPage() {
   const currentBid = data.product.currentBid;
   const bidStep = data.product.bidStep;
   const buyNowPrice = data.product.buyNowPrice;
+
+  const isExpired = data.product.status === "expired";
+  const isClosed = data.product.status === "closed";
+
+  const highestBidder = data.highestBidder;
+  const highestBidderName = highestBidder?.name;
 
   /**
    * 🔥 Build bidders list from bidHistory
@@ -203,17 +235,6 @@ export function ProductDetailPage() {
   const isBlocked = bidEligibility?.status === "blocked";
 
   /* ---------------- Actions ---------------- */
-  const handleBuyNow = () => {
-    toast.success("🎉 Purchase successful!", {
-      description: "Redirecting to checkout...",
-      duration: 3000,
-    });
-
-    setTimeout(() => {
-      console.log("Redirecting to checkout...");
-    }, 2000);
-  };
-
   const handlePlaceAutoBid = async (maxBid: number) => {
     try {
       setAutoBidLoading(true);
@@ -370,11 +391,24 @@ export function ProductDetailPage() {
         </div>
 
         <div className="space-y-6">
+          {/* ================= AUCTION ENDED ================= */}
+          {(isClosed || isExpired) && (
+            <AuctionEndedPanel
+              status={isExpired ? "expired" : "closed"}
+              finalPrice={currentBid}
+              highestBidderId={data.product.highestBidderId}
+              highestBidderName={highestBidderName}
+              isWinner={data.product.highestBidderId === currentUserId}
+            />
+          )}
+
           {/* ================= SELLER VIEW ================= */}
-          {isSeller && <SellerBidRequestPanel productId={data.product.id} />}
+          {!isClosed && !isExpired && isSeller && (
+            <SellerBidRequestPanel productId={data.product.id} />
+          )}
 
           {/* ================= BIDDER VIEW ================= */}
-          {isBidder && (
+          {!isClosed && !isExpired && isBidder && (
             <>
               {canBid && (
                 <AutoBidPanel
@@ -408,20 +442,22 @@ export function ProductDetailPage() {
           )}
 
           {/* ================= PRICE / SELLER PANEL ================= */}
-          {isSeller ? (
-            <SellerBidderPanel
-              productId={data.product.id}
-              currentPrice={currentBid}
-              highestBidderId={data.product.highestBidderId}
-              onKickSuccess={refetchProductDetail}
-            />
-          ) : (
-            <PriceDisplay
-              currentPrice={currentBid}
-              buyNowPrice={buyNowPrice}
-              onBuyNow={canBid ? handleBuyNow : undefined}
-            />
-          )}
+          {!isClosed &&
+            !isExpired &&
+            (isSeller ? (
+              <SellerBidderPanel
+                productId={data.product.id}
+                currentPrice={currentBid}
+                highestBidderId={data.product.highestBidderId}
+                onKickSuccess={refetchProductDetail}
+              />
+            ) : (
+              <PriceDisplay
+                currentPrice={currentBid}
+                buyNowPrice={buyNowPrice}
+                onBuyNow={canBid ? handleBuyNow : undefined}
+              />
+            ))}
         </div>
       </div>
 

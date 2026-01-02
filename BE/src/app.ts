@@ -4,7 +4,7 @@ import router from "./routes/index";
 import errorMiddleware from "./middlewares/error.middleware";
 
 import sellerUploadRoutes from "./routes/seller.upload.route";
-import "./cron/seller-expiry.cron";
+import "./cron/cron";
 
 const app = express();
 

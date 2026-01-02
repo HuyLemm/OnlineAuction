@@ -420,8 +420,7 @@ export class SellerService {
 
       // 🔒 quyền + trạng thái
       .where("p.seller_id", sellerId)
-      .andWhere("p.status", "ended")
-      .whereNotNull("p.highest_bidder_id")
+      .whereIn("p.status", ["closed", "expired"])
 
       .orderBy("p.end_time", "desc")
 
@@ -477,7 +476,7 @@ export class SellerService {
         throw new Error("You are not the seller of this product");
       }
 
-      if (product.status !== "ended") {
+      if (product.status !== "closed") {
         throw new Error("Auction is not ended");
       }
 

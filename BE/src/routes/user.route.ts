@@ -114,4 +114,11 @@ router.post(
   UserController.sendBidRequest
 );
 
+router.post(
+  "/buy-now",
+  authenticate,
+  authorize("bidder"),
+  UserController.buyNow
+);
+
 export default router;

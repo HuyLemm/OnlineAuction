@@ -442,6 +442,7 @@ export class UserService {
       })
       .leftJoin("users as hb", "hb.id", "p.highest_bidder_id")
       .whereIn("p.id", productIds)
+      .andWhere("p.status", "active")
       .select(
         "p.id",
         "p.title",
@@ -998,10 +999,8 @@ export class UserService {
         }
       }
 
-      /* =============================
-       * 🔁 AUTO EXTEND (giữ nguyên)
-       * ============================= */
-      if (product.auto_extend) {
+      if (product.auto_extend && priceChanged) {
+        // 1️⃣ Load config
         const settings = await trx("system_settings")
           .whereIn("key", [
             "auto_extend_threshold_minutes",
@@ -1010,21 +1009,50 @@ export class UserService {
           .select("key", "value");
 
         const cfg = Object.fromEntries(
-          settings.map((s) => [s.key, Number(s.value)])
+          settings.map((s) => [s.key, Number(String(s.value).trim())])
         );
 
-        const thresholdMs = (cfg.auto_extend_threshold_minutes ?? 5) * 60_000;
-        const durationMs = (cfg.auto_extend_duration_minutes ?? 10) * 60_000;
+        const thresholdMin = cfg.auto_extend_threshold_minutes;
+        const durationMin = cfg.auto_extend_duration_minutes;
 
-        const now = Date.now();
-        const endTime = new Date(product.end_time).getTime();
+        if (!Number.isFinite(thresholdMin) || !Number.isFinite(durationMin)) {
+          throw new Error("Invalid auto extend config");
+        }
 
-        if (endTime - now <= thresholdMs) {
-          await trx("products")
-            .where({ id: productId })
-            .update({
-              end_time: new Date(endTime + durationMs),
-            });
+        // 2️⃣ Convert minutes → milliseconds
+        const thresholdMs = thresholdMin * 60_000;
+        const durationMs = durationMin * 60_000;
+
+        // 3️⃣ Reload fresh end_time
+        const freshProduct = await trx("products")
+          .select("end_time")
+          .where({ id: productId })
+          .first();
+
+        // 4️⃣ Lấy thời gian từ DB (KHÔNG dùng Date.now)
+        const [{ now }] = (await trx.raw("SELECT NOW()")).rows;
+        const dbNow = new Date(now).getTime();
+
+        const endTime = new Date(freshProduct.end_time).getTime();
+        const remainingMs = endTime - dbNow;
+
+        console.log("[AUTO EXTEND CHECK]", {
+          remainingMinutes: Math.round(remainingMs / 60000),
+          thresholdMinutes: thresholdMin,
+        });
+
+        // 5️⃣ Chỉ extend khi auction CHƯA HẾT & trong threshold
+        if (remainingMs > 0 && remainingMs <= thresholdMs) {
+          const newEndTime = new Date(endTime + durationMs);
+
+          await trx("products").where({ id: productId }).update({
+            end_time: newEndTime,
+          });
+
+          console.log("[AUTO EXTENDED]", {
+            oldEndTime: new Date(endTime),
+            newEndTime,
+          });
         }
       }
 
@@ -1091,6 +1119,107 @@ export class UserService {
         })
         .returning("*");
       return request;
+    });
+  }
+
+  // ===============================
+  // Buy Now - Instant purchase
+  // ===============================
+  static async buyNow(params: { userId: string; productId: string }) {
+    const { userId, productId } = params;
+
+    return await db.transaction(async (trx) => {
+      /* =============================
+       * 1️⃣ Lock product (chống race)
+       * ============================= */
+      const product = await trx("products")
+        .where({ id: productId })
+        .forUpdate()
+        .first();
+
+      if (!product) throw new Error("Product not found");
+      if (product.status !== "active") throw new Error("Auction is not active");
+      if (!product.buy_now_price) throw new Error("Buy Now is not available");
+      if (product.seller_id === userId)
+        throw new Error("You cannot buy your own product");
+
+      /* =============================
+       * 2️⃣ Check auction time (DB clock)
+       * ============================= */
+      const [{ now }] = (await trx.raw("SELECT NOW()")).rows;
+      const dbNow = new Date(now).getTime();
+      const endTime = new Date(product.end_time).getTime();
+
+      if (endTime <= dbNow) {
+        throw new Error("Auction has already ended");
+      }
+
+      /* =============================
+       * 3️⃣ Check buyer eligibility
+       * ============================= */
+      const bidder = await trx("users")
+        .select("id", "role", "allow_bid", "is_blocked")
+        .where({ id: userId })
+        .first();
+
+      if (!bidder) throw new Error("User not found");
+      if (bidder.role !== "bidder") throw new Error("Only bidders can buy now");
+      if (!bidder.allow_bid) throw new Error("You are not allowed to bid");
+      if (bidder.is_blocked) throw new Error("Your account is blocked");
+
+      /* =============================
+       * 5️⃣ Close auction immediately
+       * ============================= */
+      await trx("products").where({ id: productId }).update({
+        status: "closed",
+        current_price: product.buy_now_price,
+        highest_bidder_id: userId,
+        end_time: now,
+      });
+
+      /* =============================
+       * 6️⃣ Insert bid record (type = buy_now)
+       * ============================= */
+      await trx("bids").insert({
+        product_id: productId,
+        bidder_id: userId,
+        bid_amount: product.buy_now_price,
+        bid_time: now,
+      });
+
+      /* =============================
+       * 7️⃣ Create order (idempotent)
+       * ============================= */
+      await trx("orders")
+        .insert({
+          product_id: productId,
+          buyer_id: userId,
+          seller_id: product.seller_id,
+          final_price: product.buy_now_price,
+          status: "pending_payment",
+          payment_deadline: trx.raw("NOW() + INTERVAL '24 HOURS'"),
+        })
+        .onConflict("product_id")
+        .ignore();
+
+      /* =============================
+       * 8️⃣ Event log
+       * ============================= */
+      await trx("auto_bid_events").insert({
+        product_id: productId,
+        bidder_id: userId,
+        type: "winning",
+        amount: product.buy_now_price,
+        description: "Auction won via Buy Now",
+      });
+
+      return {
+        productId,
+        finalPrice: product.buy_now_price,
+        buyerId: userId,
+        status: "closed",
+        isBuyNow: true,
+      };
     });
   }
 }

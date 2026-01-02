@@ -423,8 +423,7 @@ var SellerService = /** @class */ (function () {
                         })
                             // 🔒 quyền + trạng thái
                             .where("p.seller_id", sellerId)
-                            .andWhere("p.status", "ended")
-                            .whereNotNull("p.highest_bidder_id")
+                            .whereIn("p.status", ["closed", "expired"])
                             .orderBy("p.end_time", "desc")
                             .select("p.id", "p.title", "p.current_price", "p.end_time", "u.id as buyer_id", "u.full_name as buyer_name", "img.image_url as image", 
                         // aggregate buyer rating
@@ -471,7 +470,7 @@ var SellerService = /** @class */ (function () {
                                             if (product.seller_id !== sellerId) {
                                                 throw new Error("You are not the seller of this product");
                                             }
-                                            if (product.status !== "ended") {
+                                            if (product.status !== "closed") {
                                                 throw new Error("Auction is not ended");
                                             }
                                             if (!product.highest_bidder_id) {

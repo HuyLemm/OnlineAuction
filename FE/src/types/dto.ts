@@ -42,6 +42,7 @@ export interface ProductDetailDTO {
 
     postedDate: string;
     endTime: string;
+    status: "active" | "closed" | "expired";
 
     auctionType: "traditional" | "buy_now";
     buyNowPrice?: number | null;

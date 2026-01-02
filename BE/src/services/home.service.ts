@@ -44,7 +44,7 @@ export class HomeService {
   private static mapToHomeDTO(item: any): HomeProductDTO {
     const end = dayjs(item.end_time);
     const now = dayjs();
-    const diffYears = end.diff(now, "year");
+    const hoursLeft = end.diff(now, "hour");
 
     return {
       id: item.id,
@@ -68,7 +68,7 @@ export class HomeService {
       highestBidderName: item.highestBidderName ?? null,
 
       isHot: Number(item.bids) > 7,
-      endingSoon: diffYears < 10,
+      endingSoon: hoursLeft > 0 && hoursLeft < 72,
     };
   }
 

@@ -52,6 +52,8 @@ export const BIDDER_REPLY_QUESTION_API = (questionId: string) =>
 export const PLACE_AUTOBID_API = `${API_BASE_URL}/users/place-autobid`;
 export const REQUEST_BIDS_API = `${API_BASE_URL}/users/request-bids`;
 
+export const BUY_NOW_API = `${API_BASE_URL}/users/buy-now`;
+
 //Seller
 export const CREATE_AUCTION_API = `${API_BASE_URL}/seller/create-auction`;
 export const GET_AUTO_EXTEND_CONFIG_API = `${API_BASE_URL}/seller/auto-extend-config`;

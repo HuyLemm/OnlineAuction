@@ -659,6 +659,33 @@ var UserController = /** @class */ (function () {
             });
         });
     };
+    UserController.buyNow = function (req, res) {
+        return __awaiter(this, void 0, void 0, function () {
+            var userId, productId, result, err_7;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 2, , 3]);
+                        userId = req.user.userId;
+                        productId = req.body.productId;
+                        return [4 /*yield*/, user_service_1.UserService.buyNow({ userId: userId, productId: productId })];
+                    case 1:
+                        result = _a.sent();
+                        return [2 /*return*/, res.status(200).json({
+                                success: true,
+                                data: result
+                            })];
+                    case 2:
+                        err_7 = _a.sent();
+                        return [2 /*return*/, res.status(400).json({
+                                success: false,
+                                message: err_7.message
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
     return UserController;
 }());
 exports.UserController = UserController;

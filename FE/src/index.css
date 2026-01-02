@@ -1995,6 +1995,7 @@
     border-color: var(--color-red-500);
   }
 
+
   .border-red-500\/20 {
     border-color: color-mix(
       in srgb,

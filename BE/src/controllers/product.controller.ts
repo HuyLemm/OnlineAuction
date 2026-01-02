@@ -11,6 +11,7 @@ import { BrowseProductDTO, ProductDetailDTO } from "../dto/product.dto";
 function mapBrowseProduct(item: any): BrowseProductDTO {
   const end = dayjs(item.end_time);
   const now = dayjs();
+  const hoursLeft = end.diff(now, "hour");
 
   return {
     id: item.id,
@@ -33,7 +34,7 @@ function mapBrowseProduct(item: any): BrowseProductDTO {
     highestBidderName: item.highestBidderName ?? null,
 
     isHot: Number(item.bids) > 7,
-    endingSoon: end.diff(now, "day") < 3,
+    endingSoon: hoursLeft > 0 && hoursLeft < 72,
   };
 }
 
@@ -152,6 +153,7 @@ export class ProductController {
           bidStep: raw.product.bidStep,
           highestBidderId: raw.product.highestBidderId,
           bidRequirement: raw.product.bidRequirement,
+          status: raw.product.status,
         },
 
         viewer: raw.viewer ?? null,

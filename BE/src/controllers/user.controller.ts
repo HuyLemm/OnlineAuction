@@ -492,4 +492,23 @@ export class UserController {
       });
     }
   }
+
+  static async buyNow(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user!.userId;
+      const { productId } = req.body;
+
+      const result = await UserService.buyNow({ userId, productId });
+
+      return res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (err: any) {
+      return res.status(400).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
 }

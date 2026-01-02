@@ -271,6 +271,7 @@ export class ProductService {
         "p.bid_step as bidStep",
         "p.highest_bidder_id as highestBidderId",
         "p.bid_requirement as bidRequirement",
+        "p.status as status",
         db.raw(`COALESCE(p.current_price, p.start_price)::int AS "currentBid"`)
       )
       .where("p.id", productId)

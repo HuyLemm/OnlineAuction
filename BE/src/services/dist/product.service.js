@@ -269,7 +269,7 @@ var ProductService = /** @class */ (function () {
                 switch (_o.label) {
                     case 0: return [4 /*yield*/, db_1.db("products as p")
                             .leftJoin("categories as c", "c.id", "p.category_id")
-                            .select("p.id", "p.title", "p.description", "p.created_at as postedDate", "p.end_time as endTime", "p.auction_type as auctionType", "p.buy_now_price as buyNowPrice", "p.category_id as categoryId", "c.name as categoryName", "p.bid_step as bidStep", "p.highest_bidder_id as highestBidderId", "p.bid_requirement as bidRequirement", db_1.db.raw("COALESCE(p.current_price, p.start_price)::int AS \"currentBid\""))
+                            .select("p.id", "p.title", "p.description", "p.created_at as postedDate", "p.end_time as endTime", "p.auction_type as auctionType", "p.buy_now_price as buyNowPrice", "p.category_id as categoryId", "c.name as categoryName", "p.bid_step as bidStep", "p.highest_bidder_id as highestBidderId", "p.bid_requirement as bidRequirement", "p.status as status", db_1.db.raw("COALESCE(p.current_price, p.start_price)::int AS \"currentBid\""))
                             .where("p.id", productId)
                             .first()];
                     case 1:

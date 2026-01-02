@@ -57,6 +57,7 @@ function mapBrowseProduct(item) {
     var _a, _b, _c, _d;
     var end = dayjs_1["default"](item.end_time);
     var now = dayjs_1["default"]();
+    var hoursLeft = end.diff(now, "hour");
     return {
         id: item.id,
         title: item.title,
@@ -73,7 +74,7 @@ function mapBrowseProduct(item) {
         highestBidderId: (_c = item.highestBidderId) !== null && _c !== void 0 ? _c : null,
         highestBidderName: (_d = item.highestBidderName) !== null && _d !== void 0 ? _d : null,
         isHot: Number(item.bids) > 7,
-        endingSoon: end.diff(now, "day") < 3
+        endingSoon: hoursLeft > 0 && hoursLeft < 72
     };
 }
 var ProductController = /** @class */ (function () {
@@ -206,7 +207,8 @@ var ProductController = /** @class */ (function () {
                                 currentBid: raw.product.currentBid,
                                 bidStep: raw.product.bidStep,
                                 highestBidderId: raw.product.highestBidderId,
-                                bidRequirement: raw.product.bidRequirement
+                                bidRequirement: raw.product.bidRequirement,
+                                status: raw.product.status
                             }, viewer: (_b = raw.viewer) !== null && _b !== void 0 ? _b : null, myAutoBid: raw.myAutoBid
                                 ? {
                                     maxPrice: raw.myAutoBid.maxPrice,
