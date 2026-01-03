@@ -42,6 +42,7 @@ var supabase_1 = require("../config/supabase");
 var crypto_1 = require("crypto");
 var path_1 = require("path");
 var sendOtpMail_1 = require("../utils/sendOtpMail");
+var time_1 = require("../utils/time");
 var SellerService = /** @class */ (function () {
     function SellerService() {
     }
@@ -227,7 +228,7 @@ var SellerService = /** @class */ (function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
-                            var seller, autoExtendConfig, now, endTime, product, images;
+                            var seller, autoExtendConfig, dbNowMs, endTime, product, images;
                             var _a;
                             return __generator(this, function (_b) {
                                 switch (_b.label) {
@@ -259,8 +260,10 @@ var SellerService = /** @class */ (function () {
                                         if (!dto.uploadSessionId) {
                                             throw new Error("uploadSessionId is required");
                                         }
-                                        now = new Date();
-                                        endTime = new Date(now.getTime() + dto.durationMinutes * 60 * 1000);
+                                        return [4 /*yield*/, time_1.getDbNowMs(trx)];
+                                    case 4:
+                                        dbNowMs = _b.sent();
+                                        endTime = new Date(dbNowMs + dto.durationMinutes * 60 * 1000);
                                         return [4 /*yield*/, trx("products")
                                                 .insert({
                                                 title: dto.title,
@@ -277,13 +280,13 @@ var SellerService = /** @class */ (function () {
                                                 description: dto.description,
                                                 auto_extend: dto.autoExtend,
                                                 end_time: endTime,
-                                                created_at: now
+                                                created_at: trx.raw("NOW()")
                                             })
                                                 .returning(["id"])];
-                                    case 4:
+                                    case 5:
                                         product = (_b.sent())[0];
                                         return [4 /*yield*/, SellerService.moveImagesFromTmpToProduct(dto.uploadSessionId, product.id)];
-                                    case 5:
+                                    case 6:
                                         images = _b.sent();
                                         if (images.length < 3) {
                                             throw new Error("At least 3 images are required");
@@ -293,7 +296,7 @@ var SellerService = /** @class */ (function () {
                                                 image_url: img.url,
                                                 is_main: img.isMain
                                             }); }))];
-                                    case 6:
+                                    case 7:
                                         _b.sent();
                                         return [2 /*return*/, {
                                                 message: "Auction created successfully",
@@ -314,7 +317,7 @@ var SellerService = /** @class */ (function () {
      * =============================== */
     SellerService.getMyActiveListings = function (sellerId) {
         return __awaiter(this, void 0, Promise, function () {
-            var rows, now;
+            var rows, dbNowMs;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, db_1.db("products as p")
@@ -331,7 +334,9 @@ var SellerService = /** @class */ (function () {
                             .count("b.id as bid_count")];
                     case 1:
                         rows = (_a.sent());
-                        now = Date.now();
+                        return [4 /*yield*/, time_1.getDbNowMs()];
+                    case 2:
+                        dbNowMs = _a.sent();
                         return [2 /*return*/, rows.map(function (row) {
                                 var _a;
                                 return ({
@@ -348,7 +353,7 @@ var SellerService = /** @class */ (function () {
                                     buyNowPrice: row.buy_now_price !== null ? Number(row.buy_now_price) : null,
                                     image: (_a = row.image) !== null && _a !== void 0 ? _a : null,
                                     endDate: new Date(row.end_time).toISOString(),
-                                    timeLeft: Math.max(0, Math.floor((new Date(row.end_time).getTime() - Date.now()) / 1000))
+                                    timeLeft: Math.max(0, Math.floor((new Date(row.end_time).getTime() - dbNowMs) / 1000))
                                 });
                             })];
                 }
@@ -364,7 +369,7 @@ var SellerService = /** @class */ (function () {
                     case 0:
                         sellerId = params.sellerId, productId = params.productId, content = params.content;
                         return [4 /*yield*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
-                                var product, today, appendedBlock, newDescription;
+                                var product, now, today, appendedBlock, newDescription;
                                 var _a;
                                 return __generator(this, function (_b) {
                                     switch (_b.label) {
@@ -380,13 +385,16 @@ var SellerService = /** @class */ (function () {
                                                 throw new Error("Not allowed");
                                             if (product.status !== "active")
                                                 throw new Error("Cannot edit inactive auction");
-                                            today = new Date().toLocaleDateString("vi-VN");
+                                            return [4 /*yield*/, trx.raw("SELECT NOW()")];
+                                        case 2:
+                                            now = (_b.sent()).rows[0].now;
+                                            today = new Date(now).toLocaleDateString("vi-VN");
                                             appendedBlock = "\n      <hr />\n      <p><strong>" + today + "</strong> - " + content + "</p>\n    ";
                                             newDescription = ((_a = product.description) !== null && _a !== void 0 ? _a : "") + appendedBlock;
                                             return [4 /*yield*/, trx("products").where({ id: productId }).update({
                                                     description: newDescription
                                                 })];
-                                        case 2:
+                                        case 3:
                                             _b.sent();
                                             return [2 /*return*/, { success: true }];
                                     }
@@ -489,7 +497,7 @@ var SellerService = /** @class */ (function () {
                                             return [4 /*yield*/, trx("ratings").where({ id: existing.id }).update({
                                                     score: score,
                                                     comment: comment.trim(),
-                                                    created_at: new Date()
+                                                    created_at: trx.raw("NOW()")
                                                 })];
                                         case 3:
                                             // 👉 UPDATE (EDIT rating)
@@ -507,7 +515,7 @@ var SellerService = /** @class */ (function () {
                                                 product_id: productId,
                                                 score: score,
                                                 comment: comment.trim(),
-                                                created_at: new Date()
+                                                created_at: trx.raw("NOW()")
                                             })];
                                         case 5:
                                             // 👉 INSERT (rate lần đầu)
@@ -580,7 +588,7 @@ var SellerService = /** @class */ (function () {
                                                     user_id: sellerId,
                                                     role: "seller",
                                                     content: content.trim(),
-                                                    created_at: new Date()
+                                                    created_at: trx.raw("NOW()")
                                                 })
                                                     .returning(["id", "content", "created_at"])];
                                         case 3:
@@ -685,7 +693,7 @@ var SellerService = /** @class */ (function () {
                         newStatus = action === "approve" ? "approved" : "rejected";
                         return [4 /*yield*/, db_1.db("bid_requests").where({ id: requestId }).update({
                                 status: newStatus,
-                                updated_at: new Date()
+                                updated_at: db_1.db.raw("NOW()")
                             })];
                     case 2:
                         _a.sent();
@@ -781,7 +789,7 @@ var SellerService = /** @class */ (function () {
                                                     bidder_id: bidderId,
                                                     seller_id: sellerId,
                                                     reason: reason || "Blocked by seller",
-                                                    created_at: new Date()
+                                                    created_at: trx.raw("NOW()")
                                                 })
                                                     .onConflict(["product_id", "bidder_id"])
                                                     .ignore()];

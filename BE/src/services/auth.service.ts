@@ -9,6 +9,8 @@ import {
   verifyRefreshToken,
 } from "../utils/jwt";
 
+import { getDbNowMs, getDbNow } from "../utils/time";
+
 const SALT_ROUNDS = 10;
 
 const OTP_EXPIRE_MINUTES = 2; // OTP sống 2 phút
@@ -53,10 +55,8 @@ export class AuthService {
     await db("user_sessions").insert({
       user_id: user.id,
       refresh_token: refreshToken, // ✅ ĐÚNG
-      created_at: new Date(),
-      expired_at: new Date(
-        Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 ngày
-      ),
+      created_at: db.raw("NOW()"),
+      expired_at: db.raw("NOW() + INTERVAL '7 DAYS'"),
     });
 
     // 6️⃣ Trả kết quả
@@ -73,9 +73,8 @@ export class AuthService {
   // Register
   // ===============================
   static async register(dto: RegisterDTO) {
-    const now = new Date();
-
     return await db.transaction(async (trx) => {
+      const dbNow = await getDbNow(trx);
       // 1. Check user theo email
       const existingUser = await trx("users")
         .select("id", "is_verified")
@@ -104,23 +103,20 @@ export class AuthService {
           address: dto.address,
           role: "bidder",
           is_verified: false,
-          last_otp_sent_at: now, // ⏱ mốc xoá account
-          created_at: now,
+          last_otp_sent_at: dbNow, // ⏱ mốc xoá account
+          created_at: dbNow,
         })
         .returning(["id", "email"]);
 
       // 4. Generate OTP
       const otp = AuthService.generateOTP();
-      const expiredAt = new Date(
-        now.getTime() + OTP_EXPIRE_MINUTES * 60 * 1000
-      );
 
       // 5. Insert OTP
       await trx("user_otps").insert({
         user_id: user.id,
         otp_code: otp,
         purpose: "verify_email",
-        expired_at: expiredAt,
+        expired_at: db.raw(`NOW() + INTERVAL '${OTP_EXPIRE_MINUTES} MINUTES'`),
       });
 
       // 6. Gửi mail (thay console.log sau)
@@ -155,9 +151,12 @@ export class AuthService {
       .first();
 
     if (!otpRow) throw new Error("Invalid OTP");
-    if (new Date(otpRow.expired_at) < new Date()) {
-      throw new Error("OTP expired");
-    }
+    const expired = await db("user_otps")
+      .where({ id: otpRow.id })
+      .andWhere("expired_at", "<", db.raw("NOW()"))
+      .first();
+
+    if (expired) throw new Error("OTP expired");
 
     // Verify user
     await db("users").where({ id: user.id }).update({
@@ -185,7 +184,7 @@ export class AuthService {
       user_id: user.id,
       refresh_token: refreshToken,
       created_at: new Date(),
-      expired_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      expired_at: db.raw("NOW() + INTERVAL '7 DAYS'"),
     });
 
     return {
@@ -220,13 +219,12 @@ export class AuthService {
 
     // Tạo OTP mới
     const otp = AuthService.generateOTP();
-    const expiredAt = new Date(now.getTime() + OTP_EXPIRE_MINUTES * 60 * 1000);
 
     await db("user_otps").insert({
       user_id: user.id,
       otp_code: otp,
       purpose: "verify_email",
-      expired_at: expiredAt,
+      expired_at: db.raw(`NOW() + INTERVAL '${OTP_EXPIRE_MINUTES} MINUTES'`),
     });
 
     // Gia hạn account
@@ -267,13 +265,13 @@ export class AuthService {
 
     // ✅ tạo OTP mới
     const otp = AuthService.generateOTP();
-    const expiredAt = new Date(now.getTime() + OTP_EXPIRE_MINUTES * 60 * 1000);
 
     await db("user_otps").insert({
       user_id: user.id,
       otp_code: otp,
       purpose: "reset_password",
-      expired_at: expiredAt,
+      expired_at: db.raw(`NOW() + INTERVAL '${OTP_EXPIRE_MINUTES} MINUTES'`)
+,
     });
 
     // gửi mail
@@ -307,9 +305,12 @@ export class AuthService {
       throw new Error("Invalid OTP");
     }
 
-    if (new Date(otpRow.expired_at) < new Date()) {
-      throw new Error("OTP expired");
-    }
+    const expired = await db("user_otps")
+      .where({ id: otpRow.id })
+      .andWhere("expired_at", "<", db.raw("NOW()"))
+      .first();
+
+    if (expired) throw new Error("OTP expired");
 
     return {
       message: "OTP verified",
@@ -355,7 +356,7 @@ export class AuthService {
     // 2️⃣ Check session trong DB
     const session = await db("user_sessions")
       .where({ refresh_token: refreshToken })
-      .andWhere("expired_at", ">", new Date())
+      .andWhere("expired_at", ">", db.raw("NOW()"))
       .first();
 
     if (!session) {

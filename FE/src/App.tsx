@@ -47,7 +47,6 @@ export default function App() {
                MAIN LAYOUT
             ===================== */}
             <Route element={<Layout />}>
-
               {/* ---------- Public routes ---------- */}
               <Route index element={<HomePage />} />
               <Route path="browse" element={<BrowseItemsPage />} />
@@ -63,7 +62,7 @@ export default function App() {
               {/* =====================
                  AUTHENTICATED USERS
               ===================== */}
-              <Route element={<ProtectedRoute />}>
+              <Route element={<ProtectedRoute allowedRoles={["bidder", "seller"]} />}>
                 {/* Logged-in users (any role) */}
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="order/:orderId" element={<OrderPage />} />

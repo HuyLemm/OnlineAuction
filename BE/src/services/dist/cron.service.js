@@ -41,20 +41,22 @@ var db_1 = require("../config/db");
 var CronService = /** @class */ (function () {
     function CronService() {
     }
+    /**
+     * Downgrade expired sellers
+     * 👉 dùng DB time (NOW) thay vì epoch ms
+     */
     CronService.downgradeExpiredSellers = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var now, affectedRows;
+            var affectedRows;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0:
-                        now = new Date();
-                        return [4 /*yield*/, db_1.db("users")
-                                .where("role", "seller")
-                                .andWhere("seller_expires_at", "<", now)
-                                .update({
-                                role: "bidder",
-                                seller_expires_at: null
-                            })];
+                    case 0: return [4 /*yield*/, db_1.db("users")
+                            .where("role", "seller")
+                            .andWhere("seller_expires_at", "<", db_1.db.raw("NOW()"))
+                            .update({
+                            role: "bidder",
+                            seller_expires_at: null
+                        })];
                     case 1:
                         affectedRows = _a.sent();
                         console.log("Downgraded " + affectedRows + " expired sellers");
@@ -65,6 +67,7 @@ var CronService = /** @class */ (function () {
     };
     /**
      * Close expired auctions and create orders if needed
+     * (PHẦN NÀY ĐÃ ĐÚNG – GIỮ NGUYÊN)
      */
     CronService.closeExpiredAuctions = function () {
         return __awaiter(this, void 0, void 0, function () {
@@ -105,7 +108,7 @@ var CronService = /** @class */ (function () {
                                         // CASE 2: Có người thắng
                                         // =============================
                                         _a.sent();
-                                        // Tạo order (mỗi product chỉ 1 order)
+                                        // Tạo order (idempotent)
                                         return [4 /*yield*/, trx("orders")
                                                 .insert({
                                                 product_id: product.id,
@@ -118,8 +121,8 @@ var CronService = /** @class */ (function () {
                                                 .onConflict("product_id")
                                                 .ignore()];
                                     case 6:
-                                        // Tạo order (mỗi product chỉ 1 order)
-                                        _a.sent(); // an toàn nếu cron chạy trùng
+                                        // Tạo order (idempotent)
+                                        _a.sent();
                                         _a.label = 7;
                                     case 7:
                                         _i++;

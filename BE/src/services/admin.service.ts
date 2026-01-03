@@ -516,26 +516,23 @@ export class AdminService {
         throw new Error("Request not found or already processed");
       }
 
-      const now = new Date();
-      const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
       // 2️⃣ Update request
       await trx("seller_upgrade_requests").where({ id: requestId }).update({
         status: "approved",
-        reviewed_at: now,
+        reviewed_at: trx.raw("NOW()"),
         reviewed_by: adminId,
       });
 
       // 3️⃣ Update user → seller có hạn 7 ngày
       await trx("users").where({ id: req.user_id }).update({
         role: "seller",
-        seller_approved_at: now,
-        seller_expires_at: expiresAt,
+        seller_approved_at: trx.raw("NOW()"),
+        seller_expires_at: trx.raw("NOW() + INTERVAL '7 DAYS'"),
       });
 
       return {
-        message: "Seller upgrade approved",
-        seller_expires_at: expiresAt,
+        message: "Seller upgrade approved"
       };
     });
   }
@@ -548,7 +545,7 @@ export class AdminService {
       .where({ id: requestId, status: "pending" })
       .update({
         status: "rejected",
-        reviewed_at: new Date(),
+        reviewed_at: db.raw("NOW()"),
         reviewed_by: adminId,
       });
 

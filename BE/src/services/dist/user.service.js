@@ -40,6 +40,7 @@ exports.UserService = void 0;
 var bcrypt_1 = require("bcrypt");
 var db_1 = require("../config/db");
 var sendOtpMail_1 = require("../utils/sendOtpMail");
+var time_1 = require("../utils/time");
 var SALT_ROUNDS = 10;
 var UserService = /** @class */ (function () {
     function UserService() {
@@ -61,7 +62,7 @@ var UserService = /** @class */ (function () {
     // ===============================
     UserService.getWatchlist = function (userId) {
         return __awaiter(this, void 0, void 0, function () {
-            var rows, TEN_YEARS_MS, now;
+            var rows, THREE_DAYS_MS, now;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, this.baseQuery()
@@ -72,8 +73,10 @@ var UserService = /** @class */ (function () {
                             .orderBy("watchlisted_at", "desc")];
                     case 1:
                         rows = _a.sent();
-                        TEN_YEARS_MS = 10 * 365 * 24 * 60 * 60 * 1000;
-                        now = Date.now();
+                        THREE_DAYS_MS = 60 * 60 * 24 * 3 * 1000;
+                        return [4 /*yield*/, time_1.getDbNowMs()];
+                    case 2:
+                        now = _a.sent();
                         return [2 /*return*/, rows.map(function (p) {
                                 var endTime = new Date(p.end_time).getTime();
                                 var timeLeft = endTime - now;
@@ -94,7 +97,7 @@ var UserService = /** @class */ (function () {
                                     highestBidderName: p.highestBidderName,
                                     // ✅ LOGIC MỚI
                                     isHot: Number(p.currentBid) > 4000,
-                                    endingSoon: timeLeft > 0 && timeLeft < TEN_YEARS_MS
+                                    endingSoon: timeLeft > 0 && timeLeft < THREE_DAYS_MS
                                 };
                             })];
                 }
@@ -120,7 +123,7 @@ var UserService = /** @class */ (function () {
                         return [4 /*yield*/, db_1.db("watchlists").insert({
                                 user_id: userId,
                                 product_id: productId,
-                                created_at: new Date()
+                                created_at: db_1.db.raw("NOW()")
                             })];
                     case 3:
                         _a.sent();
@@ -402,7 +405,7 @@ var UserService = /** @class */ (function () {
                         return [4 /*yield*/, db_1.db("seller_upgrade_requests").insert({
                                 user_id: userId,
                                 status: "pending",
-                                requested_at: new Date()
+                                requested_at: db_1.db.raw("NOW()")
                             })];
                     case 3:
                         // ✅ Chỉ cho request nếu:
@@ -573,7 +576,7 @@ var UserService = /** @class */ (function () {
                                 product_id: productId,
                                 user_id: userId,
                                 content: content.trim(),
-                                created_at: new Date()
+                                created_at: db_1.db.raw("NOW()")
                             })
                                 .returning(["id", "content", "created_at"])];
                     case 3:
@@ -656,7 +659,7 @@ var UserService = /** @class */ (function () {
                                                     user_id: bidderId,
                                                     role: "bidder",
                                                     content: content.trim(),
-                                                    created_at: new Date()
+                                                    created_at: trx.raw("NOW()")
                                                 })
                                                     .returning(["id", "content", "created_at"])];
                                         case 3:
@@ -750,7 +753,7 @@ var UserService = /** @class */ (function () {
                             throw new Error("Invalid max price");
                         }
                         return [4 /*yield*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
-                                var bidder, product, blocked, existingAutoBid, autoBids, bidStep, startPrice, previousPrice, newCurrentPrice, highestBidderId, a, b, winner, loser, aMax, bMax, winnerMax, loserMax, priceChanged, winnerChanged, loser, settings, cfg, thresholdMin, durationMin, thresholdMs, durationMs, freshProduct, now, dbNow, endTime, remainingMs, newEndTime;
+                                var bidder, product, blocked, existingAutoBid, autoBids, bidStep, startPrice, previousPrice, newCurrentPrice, highestBidderId, a, b, winner, loser, aMax, bMax, winnerMax, loserMax, priceChanged, winnerChanged, loser, settings, cfg, thresholdMin, durationMin, thresholdMs, durationMs, freshProduct, dbNow, endTime, remainingMs;
                                 return __generator(this, function (_a) {
                                     switch (_a.label) {
                                         case 0: return [4 /*yield*/, trx("users")
@@ -803,12 +806,12 @@ var UserService = /** @class */ (function () {
                                                     product_id: productId,
                                                     bidder_id: userId,
                                                     max_price: maxPrice,
-                                                    created_at: new Date()
+                                                    created_at: trx.raw("NOW()")
                                                 })
                                                     .onConflict(["product_id", "bidder_id"])
                                                     .merge({
                                                     max_price: maxPrice,
-                                                    created_at: new Date()
+                                                    created_at: trx.raw("NOW()")
                                                 })];
                                         case 5:
                                             /* =============================
@@ -911,7 +914,7 @@ var UserService = /** @class */ (function () {
                                                     product_id: productId,
                                                     bidder_id: userId,
                                                     bid_amount: product.buy_now_price,
-                                                    bid_time: new Date()
+                                                    bid_time: trx.raw("NOW()")
                                                 })];
                                         case 14:
                                             _a.sent();
@@ -997,27 +1000,19 @@ var UserService = /** @class */ (function () {
                                                     .first()];
                                         case 24:
                                             freshProduct = _a.sent();
-                                            return [4 /*yield*/, trx.raw("SELECT NOW()")];
+                                            return [4 /*yield*/, time_1.getDbNowMs(trx)];
                                         case 25:
-                                            now = (_a.sent()).rows[0].now;
-                                            dbNow = new Date(now).getTime();
+                                            dbNow = _a.sent();
                                             endTime = new Date(freshProduct.end_time).getTime();
                                             remainingMs = endTime - dbNow;
-                                            console.log("[AUTO EXTEND CHECK]", {
-                                                remainingMinutes: Math.round(remainingMs / 60000),
-                                                thresholdMinutes: thresholdMin
-                                            });
                                             if (!(remainingMs > 0 && remainingMs <= thresholdMs)) return [3 /*break*/, 27];
-                                            newEndTime = new Date(endTime + durationMs);
-                                            return [4 /*yield*/, trx("products").where({ id: productId }).update({
-                                                    end_time: newEndTime
+                                            return [4 /*yield*/, trx("products")
+                                                    .where({ id: productId })
+                                                    .update({
+                                                    end_time: trx.raw("end_time + INTERVAL '" + durationMin + " MINUTES'")
                                                 })];
                                         case 26:
                                             _a.sent();
-                                            console.log("[AUTO EXTENDED]", {
-                                                oldEndTime: new Date(endTime),
-                                                newEndTime: newEndTime
-                                            });
                                             _a.label = 27;
                                         case 27: return [2 /*return*/, {
                                                 productId: productId,
@@ -1216,6 +1211,48 @@ var UserService = /** @class */ (function () {
                                 });
                             }); })];
                     case 1: return [2 /*return*/, _a.sent()];
+                }
+            });
+        });
+    };
+    UserService.getWonAuctions = function (userId) {
+        return __awaiter(this, void 0, void 0, function () {
+            var rows;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, db_1.db("products as p")
+                            .join("orders as o", "o.product_id", "p.id")
+                            .join("users as s", "s.id", "p.seller_id")
+                            .leftJoin("categories as c", "c.id", "p.category_id")
+                            .leftJoin("product_images as img", function () {
+                            this.on("img.product_id", "=", "p.id").andOn("img.is_main", "=", db_1.db.raw("true"));
+                        })
+                            // ✅ CORE RULE: thắng auction
+                            .where("p.status", "closed")
+                            .andWhere("p.highest_bidder_id", userId)
+                            .select("o.id as orderId", "p.id as itemId", "p.title", "img.image_url as image", "o.final_price", "p.end_time", "c.name as category", 
+                        // ✅ order info
+                        "o.status as order_status", "o.payment_deadline", "s.full_name as seller_name")
+                            .orderBy("p.end_time", "desc")];
+                    case 1:
+                        rows = _a.sent();
+                        return [2 /*return*/, rows.map(function (r) {
+                                var _a;
+                                return ({
+                                    id: r.orderId,
+                                    itemId: r.itemId,
+                                    title: r.title,
+                                    image: (_a = r.image) !== null && _a !== void 0 ? _a : "",
+                                    winningBid: Number(r.final_price),
+                                    // ⏱️ auction end time = won date
+                                    wonDate: r.end_time,
+                                    category: r.category,
+                                    orderStatus: r.order_status,
+                                    sellerName: r.seller_name,
+                                    // ⬅️ QUAN TRỌNG
+                                    paymentDeadline: r.payment_deadline
+                                });
+                            })];
                 }
             });
         });

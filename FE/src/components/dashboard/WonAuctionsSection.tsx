@@ -1,7 +1,43 @@
+import { useEffect, useState } from "react";
 import { Trophy, Package, Star } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { ImageWithFallback } from "../check/ImageWithFallback";
+import { fetchWithAuth } from "../utils/fetchWithAuth";
+import { LoadingSpinner } from "../state";
+import { GET_WON_AUCTIONS_API } from "../utils/api";
+import { useNavigate } from "react-router-dom";
+
+function getPaymentTimeLeft(deadline?: string | null) {
+  if (!deadline) return null;
+
+  const diff = new Date(deadline).getTime() - Date.now();
+  if (diff <= 0) return "Expired";
+
+  const hours = Math.floor(diff / 36e5);
+  const minutes = Math.floor((diff % 36e5) / 6e4);
+
+  return `${hours}h ${minutes}m`;
+}
+
+interface ApiWonAuction {
+  id: string;
+  itemId: string;
+  title: string;
+  image: string;
+  winningBid: number;
+  wonDate: string;
+  category: string;
+  orderStatus: "pending_payment" | "paid" | "cancelled" | "expired";
+  sellerName: string;
+  paymentDeadline: string | null;
+}
+
+type OrderStatusUI =
+  | "pending_payment"
+  | "paid completed"
+  | "cancelled"
+  | "expired";
 
 interface WonAuction {
   id: string;
@@ -11,121 +47,112 @@ interface WonAuction {
   winningBid: number;
   wonDate: Date;
   category: string;
-  orderStatus: "payment-pending" | "shipping-pending" | "delivery-pending" | "completed";
+  orderStatus: OrderStatusUI;
   sellerName: string;
+  paymentDeadline: string | null;
 }
 
-interface WonAuctionsSectionProps {
-  onNavigateToOrder?: (orderId: string) => void;
+function mapOrderStatus(status: ApiWonAuction["orderStatus"]): OrderStatusUI {
+  switch (status) {
+    case "pending_payment":
+      return "pending_payment";
+    case "paid":
+      return "paid completed";
+    case "cancelled":
+      return "cancelled";
+    case "expired":
+      return "expired";
+  }
 }
 
-export function WonAuctionsSection({ onNavigateToOrder }: WonAuctionsSectionProps) {
-  const wonAuctions: WonAuction[] = [
-    {
-      id: "order-1",
-      itemId: "item1",
-      title: "Patek Philippe Nautilus 5711/1A Steel Blue Dial",
-      image: "https://images.unsplash.com/photo-1670177257750-9b47927f68eb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjB3YXRjaHxlbnwxfHx8fDE3NjMzOTExMzB8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      winningBid: 156000,
-      wonDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
-      category: "Watches",
-      orderStatus: "payment-pending",
-      sellerName: "LuxuryTimepieces"
-    },
-    {
-      id: "order-2",
-      itemId: "item2",
-      title: "Hermès Birkin 35 Crocodile Limited Edition",
-      image: "https://images.unsplash.com/photo-1591348278863-a8fb3887e2aa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBoYW5kYmFnfGVufDF8fHx8MTc2MzMwNTk3N3ww&ixlib=rb-4.1.0&q=80&w=1080",
-      winningBid: 52000,
-      wonDate: new Date(Date.now() - 1000 * 60 * 60 * 48),
-      category: "Fashion",
-      orderStatus: "shipping-pending",
-      sellerName: "PremiumFashion"
-    },
-    {
-      id: "order-3",
-      itemId: "item3",
-      title: "Rolex Daytona 116500LN White Dial - 2023",
-      image: "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwyfHxsdXh1cnklMjB3YXRjaHxlbnwxfHx8fDE3NjMzOTExMzB8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      winningBid: 42000,
-      wonDate: new Date(Date.now() - 1000 * 60 * 60 * 120),
-      category: "Watches",
-      orderStatus: "completed",
-      sellerName: "WatchMaster"
-    }
-  ];
+export function WonAuctionsSection() {
+  const [wonAuctions, setWonAuctions] = useState<WonAuction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
-  const getStatusBadge = (status: WonAuction["orderStatus"]) => {
-    switch (status) {
-      case "payment-pending":
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetchWithAuth(GET_WON_AUCTIONS_API);
+        const { data } = await res.json();
+
+        setWonAuctions(
+          data.map((a: ApiWonAuction) => ({
+            ...a,
+            wonDate: new Date(a.wonDate),
+            orderStatus: mapOrderStatus(a.orderStatus),
+          }))
+        );
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center">
+        {" "}
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  const getStatusBadge = (auction: WonAuction) => {
+    switch (auction.orderStatus) {
+      case "pending_payment":
         return (
-          <Badge className="bg-[#f59e0b]/20 text-[#f59e0b] border-[#f59e0b]/30">
+          <Badge className="bg-[#d4a446]/20 text-yellow-500">
             Payment Required
           </Badge>
         );
-      case "shipping-pending":
+
+      case "paid completed":
         return (
-          <Badge className="bg-[#3b82f6]/20 text-[#3b82f6] border-[#3b82f6]/30">
-            Awaiting Shipment
-          </Badge>
+          <Badge className="bg-blue-500/20 text-blue-500">Paid Completed</Badge>
         );
-      case "delivery-pending":
+
+      case "expired":
         return (
-          <Badge className="bg-[#8b5cf6]/20 text-[#8b5cf6] border-[#8b5cf6]/30">
-            In Transit
-          </Badge>
+          <Badge className="bg-red-500/20 text-red-500">Payment Expired</Badge>
         );
-      case "completed":
+
+      case "cancelled":
         return (
-          <Badge className="bg-[#10b981]/20 text-[#10b981] border-[#10b981]/30">
-            Completed
-          </Badge>
+          <Badge className="bg-gray-500/20 text-gray-500">Cancelled</Badge>
         );
     }
   };
 
   const getActionButton = (auction: WonAuction) => {
     const handleClick = () => {
-      if (onNavigateToOrder) {
-        onNavigateToOrder(auction.id);
-      }
+      navigate(`/order/${auction.id}`);
     };
-
-    switch (auction.orderStatus) {
-      case "payment-pending":
-        return (
-          <Button 
-            size="sm" 
-            className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90"
-            onClick={handleClick}
-          >
-            Submit Payment
-          </Button>
-        );
-      case "shipping-pending":
-      case "delivery-pending":
-        return (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="border-border/50"
-            onClick={handleClick}
-          >
-            View Order
-          </Button>
-        );
-      case "completed":
-        return (
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={handleClick}
-          >
-            View Details
-          </Button>
-        );
+    if (auction.orderStatus === "pending_payment") {
+      return (
+        <Button
+          size="sm"
+          className="bg-[#d4a446] text-black text-sm"
+          onClick={handleClick}
+        >
+          Pay Now
+        </Button>
+      );
     }
+
+    if (auction.orderStatus === "paid completed") {
+      return (
+        <Button variant="outline" size="sm" onClick={handleClick}>
+          View Order
+        </Button>
+      );
+    }
+
+    return (
+      <Button variant="ghost" size="sm" onClick={handleClick}>
+        View Details
+      </Button>
+    );
   };
 
   return (
@@ -133,7 +160,9 @@ export function WonAuctionsSection({ onNavigateToOrder }: WonAuctionsSectionProp
       {/* Header */}
       <div>
         <h1 className="text-foreground mb-2">Won Auctions</h1>
-        <p className="text-muted-foreground">Manage your winning bids and complete orders</p>
+        <p className="text-muted-foreground">
+          Manage your winning bids and complete orders
+        </p>
       </div>
 
       {/* Stats Cards */}
@@ -158,7 +187,11 @@ export function WonAuctionsSection({ onNavigateToOrder }: WonAuctionsSectionProp
             <div>
               <p className="text-muted-foreground">In Progress</p>
               <p className="text-foreground">
-                {wonAuctions.filter(a => a.orderStatus !== "completed").length} Orders
+                {
+                  wonAuctions.filter((a) => a.orderStatus !== "paid completed")
+                    .length
+                }{" "}
+                Orders
               </p>
             </div>
           </div>
@@ -172,7 +205,11 @@ export function WonAuctionsSection({ onNavigateToOrder }: WonAuctionsSectionProp
             <div>
               <p className="text-muted-foreground">Completed</p>
               <p className="text-foreground">
-                {wonAuctions.filter(a => a.orderStatus === "completed").length} Orders
+                {
+                  wonAuctions.filter((a) => a.orderStatus === "paid completed")
+                    .length
+                }{" "}
+                Orders
               </p>
             </div>
           </div>
@@ -182,7 +219,7 @@ export function WonAuctionsSection({ onNavigateToOrder }: WonAuctionsSectionProp
       {/* Won Auctions List */}
       <div className="space-y-4">
         {wonAuctions.map((auction) => (
-          <div 
+          <div
             key={auction.id}
             className="bg-card border border-border/50 rounded-xl overflow-hidden hover:border-border transition-all"
           >
@@ -200,17 +237,24 @@ export function WonAuctionsSection({ onNavigateToOrder }: WonAuctionsSectionProp
               <div className="flex-1 flex flex-col justify-between min-w-0">
                 <div className="space-y-2">
                   <div className="flex items-start justify-between gap-2">
-                    <Badge variant="outline" className="border-border/50 text-muted-foreground">
+                    <Badge
+                      variant="outline"
+                      className="border-border/50 text-muted-foreground"
+                    >
                       {auction.category}
                     </Badge>
-                    {getStatusBadge(auction.orderStatus)}
+                    {getStatusBadge(auction)}
                   </div>
-                  <h3 className="text-foreground line-clamp-1">{auction.title}</h3>
-                  
+                  <h3 className="text-foreground line-clamp-1">
+                    {auction.title}
+                  </h3>
+
                   <div className="grid grid-cols-2 gap-4 pt-2">
                     <div>
                       <p className="text-muted-foreground">Winning Bid</p>
-                      <p className="text-[#fbbf24]">${auction.winningBid.toLocaleString()}</p>
+                      <p className="text-[#fbbf24]">
+                        ${auction.winningBid.toLocaleString()}
+                      </p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Seller</p>
@@ -222,8 +266,17 @@ export function WonAuctionsSection({ onNavigateToOrder }: WonAuctionsSectionProp
                 {/* Actions */}
                 <div className="flex flex-wrap items-center justify-between gap-2 mt-4 pt-4 border-t border-border/50">
                   <p className="text-muted-foreground">
-                    Won {auction.wonDate.toLocaleDateString()}
+                    Won {new Date(auction.wonDate).toLocaleDateString()}
                   </p>
+                  {auction.orderStatus === "pending_payment" && (
+                    <p className="text-sm text-muted-foreground ml-42">
+                      Time for payment:{" "}
+                      <span className="text-yellow-500">
+                        {getPaymentTimeLeft(auction.paymentDeadline)}
+                      </span>
+                    </p>
+                  )}
+
                   {getActionButton(auction)}
                 </div>
               </div>

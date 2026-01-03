@@ -511,4 +511,15 @@ export class UserController {
       });
     }
   }
+
+  static async getWonAuctions(req: AuthRequest, res: Response) {
+    const userId = req.user!.userId;
+
+    const data = await UserService.getWonAuctions(userId);
+
+    res.json({
+      success: true,
+      data,
+    });
+  }
 }

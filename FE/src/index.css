@@ -878,6 +878,10 @@
     margin-left: calc(var(--spacing) * 8);
   }
 
+  .ml-42 {
+    margin-left: calc(var(--spacing) * 42);
+  }
+
   .ml-auto {
     margin-left: auto;
   }

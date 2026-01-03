@@ -121,4 +121,11 @@ router.post(
   UserController.buyNow
 );
 
+router.get(
+  "/won-auctions",
+  authenticate,
+  authorize("bidder"),
+  UserController.getWonAuctions
+);
+
 export default router;

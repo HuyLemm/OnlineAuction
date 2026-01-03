@@ -12,6 +12,7 @@ import crypto from "crypto";
 import path from "path";
 
 import { sendQuestionNotificationMail } from "../utils/sendOtpMail";
+import { getDbNowMs } from "../utils/time";
 
 /* ===============================
  * Types
@@ -232,8 +233,8 @@ export class SellerService {
         throw new Error("uploadSessionId is required");
       }
 
-      const now = new Date();
-      const endTime = new Date(now.getTime() + dto.durationMinutes * 60 * 1000);
+      const dbNowMs = await getDbNowMs(trx);
+      const endTime = new Date(dbNowMs + dto.durationMinutes * 60 * 1000);
 
       /* 4️⃣ Insert product */
       const [product] = await trx("products")
@@ -258,7 +259,7 @@ export class SellerService {
           auto_extend: dto.autoExtend,
           end_time: endTime,
 
-          created_at: now,
+          created_at: trx.raw("NOW()"),
         })
         .returning(["id"]);
 
@@ -317,7 +318,7 @@ export class SellerService {
       )
       .count("b.id as bid_count")) as ActiveListingRow[];
 
-    const now = Date.now();
+    const dbNowMs = await getDbNowMs();
 
     return rows.map((row) => ({
       id: String(row.id),
@@ -343,7 +344,7 @@ export class SellerService {
       endDate: new Date(row.end_time).toISOString(),
       timeLeft: Math.max(
         0,
-        Math.floor((new Date(row.end_time).getTime() - Date.now()) / 1000)
+        Math.floor((new Date(row.end_time).getTime() - dbNowMs) / 1000)
       ),
     }));
   }
@@ -366,7 +367,8 @@ export class SellerService {
       if (product.status !== "active")
         throw new Error("Cannot edit inactive auction");
 
-      const today = new Date().toLocaleDateString("vi-VN");
+      const [{ now }] = (await trx.raw("SELECT NOW()")).rows;
+      const today = new Date(now).toLocaleDateString("vi-VN");
 
       const appendedBlock = `
       <hr />
@@ -498,7 +500,7 @@ export class SellerService {
         await trx("ratings").where({ id: existing.id }).update({
           score,
           comment: comment.trim(),
-          created_at: new Date(), // hoặc updated_at nếu bạn có
+          created_at: trx.raw("NOW()"), // hoặc updated_at nếu bạn có
         });
 
         return {
@@ -515,7 +517,7 @@ export class SellerService {
         product_id: productId,
         score,
         comment: comment.trim(),
-        created_at: new Date(),
+        created_at: trx.raw("NOW()"),
       });
 
       return {
@@ -599,7 +601,7 @@ export class SellerService {
           user_id: sellerId,
           role: "seller",
           content: content.trim(),
-          created_at: new Date(),
+          created_at: trx.raw("NOW()"),
         })
         .returning(["id", "content", "created_at"]);
 
@@ -705,7 +707,7 @@ export class SellerService {
 
     await db("bid_requests").where({ id: requestId }).update({
       status: newStatus,
-      updated_at: new Date(),
+      updated_at: db.raw("NOW()"),
     });
 
     return {
@@ -816,7 +818,7 @@ export class SellerService {
           bidder_id: bidderId,
           seller_id: sellerId,
           reason: reason || "Blocked by seller",
-          created_at: new Date(),
+          created_at: trx.raw("NOW()"),
         })
         .onConflict(["product_id", "bidder_id"])
         .ignore();

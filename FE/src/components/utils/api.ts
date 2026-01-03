@@ -54,6 +54,8 @@ export const REQUEST_BIDS_API = `${API_BASE_URL}/users/request-bids`;
 
 export const BUY_NOW_API = `${API_BASE_URL}/users/buy-now`;
 
+export const GET_WON_AUCTIONS_API = `${API_BASE_URL}/users/won-auctions`;
+
 //Seller
 export const CREATE_AUCTION_API = `${API_BASE_URL}/seller/create-auction`;
 export const GET_AUTO_EXTEND_CONFIG_API = `${API_BASE_URL}/seller/auto-extend-config`;

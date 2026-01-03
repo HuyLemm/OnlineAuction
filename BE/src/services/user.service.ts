@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import { db } from "../config/db";
 import { sendQuestionNotificationMail } from "../utils/sendOtpMail";
+import { getDbNowMs } from "../utils/time";
 
 const SALT_ROUNDS = 10;
 
@@ -49,8 +50,8 @@ export class UserService {
       .groupBy("p.id", "pi.image_url", "c.name", "u.full_name")
       .orderBy("watchlisted_at", "desc");
 
-    const TEN_YEARS_MS = 10 * 365 * 24 * 60 * 60 * 1000;
-    const now = Date.now();
+    const THREE_DAYS_MS = 60 * 60 * 24 * 3 * 1000;
+    const now = await getDbNowMs();
 
     return rows.map((p) => {
       const endTime = new Date(p.end_time).getTime();
@@ -77,7 +78,7 @@ export class UserService {
 
         // ✅ LOGIC MỚI
         isHot: Number(p.currentBid) > 4000,
-        endingSoon: timeLeft > 0 && timeLeft < TEN_YEARS_MS,
+        endingSoon: timeLeft > 0 && timeLeft < THREE_DAYS_MS,
       };
     });
   }
@@ -94,7 +95,7 @@ export class UserService {
       await db("watchlists").insert({
         user_id: userId,
         product_id: productId,
-        created_at: new Date(),
+        created_at: db.raw("NOW()"),
       });
     } catch (err: any) {
       // PostgreSQL unique_violation
@@ -349,7 +350,7 @@ export class UserService {
     await db("seller_upgrade_requests").insert({
       user_id: userId,
       status: "pending",
-      requested_at: new Date(),
+      requested_at: db.raw("NOW()"),
     });
 
     return {
@@ -551,7 +552,7 @@ export class UserService {
         product_id: productId,
         user_id: userId,
         content: content.trim(),
-        created_at: new Date(),
+        created_at: db.raw("NOW()"),
       })
       .returning(["id", "content", "created_at"]);
 
@@ -647,7 +648,7 @@ export class UserService {
           user_id: bidderId,
           role: "bidder",
           content: content.trim(),
-          created_at: new Date(),
+          created_at: trx.raw("NOW()"),
         })
         .returning(["id", "content", "created_at"]);
 
@@ -810,12 +811,12 @@ export class UserService {
           product_id: productId,
           bidder_id: userId,
           max_price: maxPrice,
-          created_at: new Date(),
+          created_at: trx.raw("NOW()"),
         })
         .onConflict(["product_id", "bidder_id"])
         .merge({
           max_price: maxPrice,
-          created_at: new Date(), // chỉ dùng cho tie-break
+          created_at: trx.raw("NOW()"), // chỉ dùng cho tie-break
         });
 
       await trx("auto_bid_events").insert({
@@ -934,7 +935,7 @@ export class UserService {
           product_id: productId,
           bidder_id: userId,
           bid_amount: product.buy_now_price,
-          bid_time: new Date(),
+          bid_time: trx.raw("NOW()"),
         });
 
         await trx("auto_bid_events").insert({
@@ -1030,29 +1031,17 @@ export class UserService {
           .first();
 
         // 4️⃣ Lấy thời gian từ DB (KHÔNG dùng Date.now)
-        const [{ now }] = (await trx.raw("SELECT NOW()")).rows;
-        const dbNow = new Date(now).getTime();
-
+        const dbNow = await getDbNowMs(trx);
         const endTime = new Date(freshProduct.end_time).getTime();
         const remainingMs = endTime - dbNow;
 
-        console.log("[AUTO EXTEND CHECK]", {
-          remainingMinutes: Math.round(remainingMs / 60000),
-          thresholdMinutes: thresholdMin,
-        });
-
         // 5️⃣ Chỉ extend khi auction CHƯA HẾT & trong threshold
         if (remainingMs > 0 && remainingMs <= thresholdMs) {
-          const newEndTime = new Date(endTime + durationMs);
-
-          await trx("products").where({ id: productId }).update({
-            end_time: newEndTime,
-          });
-
-          console.log("[AUTO EXTENDED]", {
-            oldEndTime: new Date(endTime),
-            newEndTime,
-          });
+          await trx("products")
+            .where({ id: productId })
+            .update({
+              end_time: trx.raw(`end_time + INTERVAL '${durationMin} MINUTES'`),
+            });
         }
       }
 
@@ -1221,5 +1210,60 @@ export class UserService {
         isBuyNow: true,
       };
     });
+  }
+
+  static async getWonAuctions(userId: string) {
+    const rows = await db("products as p")
+      .join("orders as o", "o.product_id", "p.id")
+      .join("users as s", "s.id", "p.seller_id")
+      .leftJoin("categories as c", "c.id", "p.category_id")
+      .leftJoin("product_images as img", function () {
+        this.on("img.product_id", "=", "p.id").andOn(
+          "img.is_main",
+          "=",
+          db.raw("true")
+        );
+      })
+
+      // ✅ CORE RULE: thắng auction
+      .where("p.status", "closed")
+      .andWhere("p.highest_bidder_id", userId)
+
+      .select(
+        "o.id as orderId",
+        "p.id as itemId",
+        "p.title",
+        "img.image_url as image",
+
+        "o.final_price",
+        "p.end_time",
+
+        "c.name as category",
+
+        // ✅ order info
+        "o.status as order_status",
+        "o.payment_deadline",
+
+        "s.full_name as seller_name"
+      )
+      .orderBy("p.end_time", "desc");
+
+    return rows.map((r) => ({
+      id: r.orderId,
+      itemId: r.itemId,
+      title: r.title,
+      image: r.image ?? "",
+      winningBid: Number(r.final_price),
+
+      // ⏱️ auction end time = won date
+      wonDate: r.end_time,
+
+      category: r.category,
+      orderStatus: r.order_status, // pending_payment | paid | cancelled | expired
+      sellerName: r.seller_name,
+
+      // ⬅️ QUAN TRỌNG
+      paymentDeadline: r.payment_deadline,
+    }));
   }
 }

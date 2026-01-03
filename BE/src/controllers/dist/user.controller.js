@@ -686,6 +686,25 @@ var UserController = /** @class */ (function () {
             });
         });
     };
+    UserController.getWonAuctions = function (req, res) {
+        return __awaiter(this, void 0, void 0, function () {
+            var userId, data;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        userId = req.user.userId;
+                        return [4 /*yield*/, user_service_1.UserService.getWonAuctions(userId)];
+                    case 1:
+                        data = _a.sent();
+                        res.json({
+                            success: true,
+                            data: data
+                        });
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
     return UserController;
 }());
 exports.UserController = UserController;
