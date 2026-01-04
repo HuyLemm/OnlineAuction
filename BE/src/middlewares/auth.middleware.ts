@@ -1,14 +1,15 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyAccessToken } from "../utils/jwt";
+import { db } from "../config/db";
 
 export interface AuthRequest extends Request {
   user?: {
-    userId: string; // UUID → string
+    userId: string;
     role: string;
   };
 }
 
-export function authenticate(
+export async function authenticate(
   req: AuthRequest,
   res: Response,
   next: NextFunction
@@ -33,9 +34,29 @@ export function authenticate(
   try {
     const payload = verifyAccessToken(token);
 
+    // 🔐 NEW: check user status in DB
+    const user = await db("users")
+      .select("id", "role", "is_deleted")
+      .where({ id: payload.userId })
+      .first();
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (user.is_deleted) {
+      return res.status(403).json({
+        success: false,
+        message: "Account has been disabled",
+      });
+    }
+
     req.user = {
-      userId: payload.userId,
-      role: payload.role,
+      userId: user.id,
+      role: user.role,
     };
 
     next();
@@ -47,9 +68,7 @@ export function authenticate(
   }
 }
 
-// authenticateOptional.ts (hoặc cùng file)
-
-export function authenticateOptional(
+export async function authenticateOptional(
   req: AuthRequest,
   _res: Response,
   next: NextFunction
@@ -69,9 +88,20 @@ export function authenticateOptional(
 
   try {
     const payload = verifyAccessToken(token);
+
+    const user = await db("users")
+      .select("id", "role", "is_deleted")
+      .where({ id: payload.userId })
+      .first();
+
+    if (!user || user.is_deleted) {
+      delete req.user;
+      return next();
+    }
+
     req.user = {
-      userId: payload.userId,
-      role: payload.role,
+      userId: user.id,
+      role: user.role,
     };
   } catch {
     delete req.user;

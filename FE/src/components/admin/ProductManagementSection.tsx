@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  CheckCircle,
 } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
@@ -28,7 +29,7 @@ import {
   GET_PRODUCTS_FOR_ADMIN_API,
   GET_MAIN_CATEGORIES_API,
   UPDATE_PRODUCTS_FOR_ADMIN_API,
-  DELETE_PRODUCTS_FOR_ADMIN_API,
+  TOGGLE_DELETE_PRODUCTS_FOR_ADMIN_API,
 } from "../utils/api";
 import { fetchWithAuth } from "../utils/fetchWithAuth";
 import { LoadingSpinner } from "../state";
@@ -57,7 +58,7 @@ interface Product {
 
   totalBids: number;
 
-  status: "active" | "inactive" | "ended";
+  status: "active" | "expired";
 
   description: string;
 
@@ -90,11 +91,13 @@ export function ProductManagementSection() {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [deleteMode, setDeleteMode] = useState<"delete" | "restore">("delete");
+
   const [editForm, setEditForm] = useState({
     title: "",
     description: "",
     buyNowPrice: "",
-    status: "active" as "active" | "inactive" | "ended",
+    status: "active" as "active" | "expired",
   });
 
   const descriptionRef = useRef<HTMLDivElement>(null);
@@ -310,35 +313,61 @@ export function ProductManagementSection() {
 
   /* ================= DELETE ================= */
 
-  const openDeleteConfirm = (p: Product) => {
-    setSelectedProduct(p);
-    setIsDeleteConfirmOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
+  const handleConfirmDeleteToggle = async () => {
     if (!selectedProduct) return;
+
+    const expired = deleteMode === "delete";
 
     try {
       setIsSubmitting(true);
 
       const res = await fetchWithAuth(
-        DELETE_PRODUCTS_FOR_ADMIN_API(selectedProduct.id),
-        { method: "DELETE" }
+        TOGGLE_DELETE_PRODUCTS_FOR_ADMIN_API(selectedProduct.id),
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expired }),
+        }
       );
 
       const json = await res.json();
       if (!json.success) throw new Error(json.message);
 
-      setProducts((prev) => prev.filter((p) => p.id !== selectedProduct.id));
+      toast.success(
+        expired
+          ? "Product expired successfully"
+          : "Product restored successfully"
+      );
 
-      toast.success("Product deleted");
       setIsDeleteConfirmOpen(false);
+      fetchProducts(); // reload
     } catch (err: any) {
-      toast.error(err.message || "Delete failed");
+      toast.error(err.message || "Action failed");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const openDeleteConfirm = (p: Product) => {
+    setDeleteMode("delete");
+    setSelectedProduct(p);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const openRestoreConfirm = (p: Product) => {
+    setDeleteMode("restore");
+    setSelectedProduct(p);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const statusBadge = (status: "active" | "expired") =>
+    status === "active" ? (
+      <Badge className="bg-green-500/10 text-green-400">Active</Badge>
+    ) : (
+      <Badge className="bg-red-500/10 text-red-400">Expired</Badge>
+    );
+
+  if (loading) return <LoadingSpinner />;
 
   // ================= RENDER =================
   return (
@@ -533,14 +562,31 @@ export function ProductManagementSection() {
                           <Edit2 className="h-4 w-4" />
                         </Button>
 
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-red-500"
-                          onClick={() => openDeleteConfirm(p)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {/* DELETE */}
+                        {p.status !== "expired" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-500"
+                            onClick={() => openDeleteConfirm(p)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span>Delete Product</span>
+                          </Button>
+                        )}
+
+                        {/* RESTORE */}
+                        {p.status === "expired" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-green-500"
+                            onClick={() => openRestoreConfirm(p)}
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                            <span>Restore Product</span>
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -913,11 +959,18 @@ export function ProductManagementSection() {
               </div>
             )}
 
-            <h3 className="text-lg text-yellow-500 text-semibold">
-              Confirm Delete
+            <h3
+              className={`text-lg font-semibold ${
+                deleteMode === "delete" ? "text-red-500" : "text-green-500"
+              }`}
+            >
+              {deleteMode === "delete" ? "Expire Product" : "Restore Product"}
             </h3>
+
             <p className="text-muted-foreground">
-              This action cannot be undone.
+              {deleteMode === "delete"
+                ? "Product will be hidden from users but data is preserved."
+                : "This product will become active and visible again."}
             </p>
 
             <div className="flex justify-end gap-3">
@@ -928,10 +981,14 @@ export function ProductManagementSection() {
                 Cancel
               </Button>
               <Button
-                className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90"
-                onClick={handleConfirmDelete}
+                className={`${
+                  deleteMode === "delete"
+                    ? "bg-red-500 hover:bg-red-600"
+                    : "bg-green-500 hover:bg-green-600"
+                } text-black`}
+                onClick={handleConfirmDeleteToggle}
               >
-                Delete
+                {deleteMode === "delete" ? "Expire" : "Restore"}
               </Button>
             </div>
           </div>

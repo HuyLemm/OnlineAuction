@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.sendQuestionNotificationMail = exports.sendOtpMail = void 0;
+exports.sendBidRejectedMail = exports.sendOutbidMail = exports.sendWinningBidMail = exports.sendSellerBidUpdateMail = exports.sendQuestionNotificationMail = exports.sendOtpMail = void 0;
 var mailer_1 = require("../config/mailer");
 var env_1 = require("../config/env");
 function sendOtpMail(email, otp) {
@@ -79,3 +79,93 @@ function sendQuestionNotificationMail(_a) {
     });
 }
 exports.sendQuestionNotificationMail = sendQuestionNotificationMail;
+function sendSellerBidUpdateMail(_a) {
+    var to = _a.to, sellerName = _a.sellerName, productTitle = _a.productTitle, currentPrice = _a.currentPrice, productId = _a.productId;
+    return __awaiter(this, void 0, void 0, function () {
+        var link;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    link = env_1.env.FRONTEND_URL + "/product/" + productId;
+                    return [4 /*yield*/, mailer_1.mailer.sendMail({
+                            from: env_1.env.MAIL_FROM,
+                            to: to,
+                            subject: "Your product \"" + productTitle + "\" received a new bid",
+                            html: "\n      <div style=\"font-family: Arial; line-height:1.6\">\n        <h2>Hello " + sellerName + ",</h2>\n\n        <p>Your auction item <b>" + productTitle + "</b> has received a new bid.</p>\n\n        <p>\n          <b>Current price:</b>\n          <span style=\"color:#d4a446; font-size:18px\">\n            " + currentPrice.toLocaleString() + "$\n          </span>\n        </p>\n\n        <a href=\"" + link + "\" style=\"display:inline-block;margin-top:16px;\n          padding:10px 16px;background:#d4a446;color:black;\n          text-decoration:none;font-weight:bold;border-radius:6px;\">\n          View auction\n        </a>\n\n        <p style=\"margin-top:24px\">\u2014 LuxeAuction Team</p>\n      </div>\n    "
+                        })];
+                case 1:
+                    _b.sent();
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+exports.sendSellerBidUpdateMail = sendSellerBidUpdateMail;
+function sendWinningBidMail(_a) {
+    var to = _a.to, bidderName = _a.bidderName, productTitle = _a.productTitle, currentPrice = _a.currentPrice, productId = _a.productId;
+    return __awaiter(this, void 0, void 0, function () {
+        var link;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    link = env_1.env.FRONTEND_URL + "/product/" + productId;
+                    return [4 /*yield*/, mailer_1.mailer.sendMail({
+                            from: env_1.env.MAIL_FROM,
+                            to: to,
+                            subject: "You're currently winning \"" + productTitle + "\"",
+                            html: "\n      <div style=\"font-family: Arial; line-height:1.6\">\n        <h2>Congratulations " + bidderName + " \uD83C\uDF89</h2>\n\n        <p>You are currently the <b>highest bidder</b> for:</p>\n\n        <p><b>" + productTitle + "</b></p>\n\n        <p>\n          Current price:\n          <b style=\"color:#d4a446\">\n            " + currentPrice.toLocaleString() + "$\n          </b>\n        </p>\n\n        <p>Keep an eye on the auction in case someone bids higher.</p>\n\n        <a href=\"" + link + "\" style=\"display:inline-block;margin-top:16px;\n          padding:10px 16px;background:#d4a446;color:black;\n          text-decoration:none;font-weight:bold;border-radius:6px;\">\n          View auction\n        </a>\n\n        <p style=\"margin-top:24px\">\u2014 LuxeAuction Team</p>\n      </div>\n    "
+                        })];
+                case 1:
+                    _b.sent();
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+exports.sendWinningBidMail = sendWinningBidMail;
+function sendOutbidMail(_a) {
+    var to = _a.to, bidderName = _a.bidderName, productTitle = _a.productTitle, currentPrice = _a.currentPrice, productId = _a.productId;
+    return __awaiter(this, void 0, void 0, function () {
+        var link;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    link = env_1.env.FRONTEND_URL + "/product/" + productId;
+                    return [4 /*yield*/, mailer_1.mailer.sendMail({
+                            from: env_1.env.MAIL_FROM,
+                            to: to,
+                            subject: "You've been outbid on \"" + productTitle + "\"",
+                            html: "\n      <div style=\"font-family: Arial; line-height:1.6\">\n        <h2>Hello " + bidderName + ",</h2>\n\n        <p>You have been <b>outbid</b> on:</p>\n\n        <p><b>" + productTitle + "</b></p>\n\n        <p>\n          New current price:\n          <b style=\"color:#d4a446\">\n            " + currentPrice.toLocaleString() + "$\n          </b>\n        </p>\n\n        <p>You can place a higher bid if you're still interested.</p>\n\n        <a href=\"" + link + "\" style=\"display:inline-block;margin-top:16px;\n          padding:10px 16px;background:#d4a446;color:black;\n          text-decoration:none;font-weight:bold;border-radius:6px;\">\n          Bid again\n        </a>\n\n        <p style=\"margin-top:24px\">\u2014 LuxeAuction Team</p>\n      </div>\n    "
+                        })];
+                case 1:
+                    _b.sent();
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+exports.sendOutbidMail = sendOutbidMail;
+function sendBidRejectedMail(_a) {
+    var to = _a.to, bidderName = _a.bidderName, productTitle = _a.productTitle, productId = _a.productId, reason = _a.reason;
+    return __awaiter(this, void 0, void 0, function () {
+        var link;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    link = env_1.env.FRONTEND_URL + "/product/" + productId;
+                    return [4 /*yield*/, mailer_1.mailer.sendMail({
+                            from: env_1.env.MAIL_FROM,
+                            to: to,
+                            subject: "You can no longer bid on \"" + productTitle + "\"",
+                            html: "\n      <div style=\"font-family: Arial; line-height:1.6\">\n        <h2>Hello " + bidderName + ",</h2>\n\n        <p>\n          You are no longer allowed to place bids on the following auction:\n        </p>\n\n        <p><b>" + productTitle + "</b></p>\n\n        " + (reason
+                                ? "<p><b>Reason:</b> " + reason + "</p>"
+                                : "<p>The seller has restricted your bidding access.</p>") + "\n\n        <p>\n          You can still view the product, but bidding is disabled for you.\n        </p>\n\n        <a href=\"" + link + "\" style=\"\n          display:inline-block;\n          margin-top:16px;\n          padding:10px 16px;\n          background:#d4a446;\n          color:black;\n          text-decoration:none;\n          font-weight:bold;\n          border-radius:6px;\">\n          View product\n        </a>\n\n        <p style=\"margin-top:24px\">\n          \u2014 LuxeAuction Team\n        </p>\n      </div>\n    "
+                        })];
+                case 1:
+                    _b.sent();
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+exports.sendBidRejectedMail = sendBidRejectedMail;

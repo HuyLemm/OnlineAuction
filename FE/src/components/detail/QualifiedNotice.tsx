@@ -10,7 +10,7 @@ import { Button } from "../ui/button";
 import { cn } from "../ui/utils";
 
 interface Props {
-  type: "need_approval" | "blocked";
+  type: "need_approval" | "blocked" | "blocked_by_seller";
   reason?: string;
   rating?: {
     positiveRate: number;
@@ -27,6 +27,8 @@ export function QualifiedNotice({
   onSendRequest,
 }: Props) {
   const isApproval = type === "need_approval" && onSendRequest;
+  const isBlockedBySeller = type === "blocked_by_seller";
+  const isRatingBlocked = type === "blocked";
   const requiredRate = 80;
 
   return (
@@ -55,24 +57,47 @@ export function QualifiedNotice({
             isApproval ? "bg-[#fbbf24]/15" : "bg-red-500/15"
           )}
         >
-          <ShieldCheck
+          <div
             className={cn(
-              "h-6 w-6",
-              isApproval ? "text-[#fbbf24]" : "text-red-500"
+              "p-3 rounded-xl",
+              isApproval
+                ? "bg-[#fbbf24]/15"
+                : isBlockedBySeller
+                ? "bg-red-600/15"
+                : "bg-red-500/15"
             )}
-          />
+          >
+            {isApproval ? (
+              <MailWarning className="h-6 w-6 text-[#fbbf24]" />
+            ) : isBlockedBySeller ? (
+              <Ban className="h-6 w-6 text-red-500" />
+            ) : (
+              <ShieldCheck className="h-6 w-6 text-red-500" />
+            )}
+          </div>
         </div>
 
         <div>
-          <h3 className="text-foreground text-lg">Qualified Auction</h3>
+          <h3 className="text-foreground text-lg">
+            {isApproval
+              ? "Qualified Auction"
+              : isBlockedBySeller
+              ? "Blocked by Seller"
+              : "Bidder Not Qualified"}
+          </h3>
+
           <p className="text-muted-foreground text-sm">
-            This auction requires bidder qualification
+            {isApproval
+              ? "This auction requires seller approval"
+              : isBlockedBySeller
+              ? "The seller has blocked you from bidding on this auction"
+              : "Your account does not meet the bidding requirements"}
           </p>
         </div>
       </div>
 
       {/* Rating stats */}
-      {rating && (
+      {rating && isRatingBlocked && (
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
             <p className="text-foreground text-lg">{rating.totalVotes}</p>
@@ -117,15 +142,19 @@ export function QualifiedNotice({
 
           {isApproval
             ? "Seller approval required"
-            : "You are not eligible to bid"}
+            : isBlockedBySeller
+            ? "You have been blocked by the seller"
+            : "You do not meet the rating requirements"}
         </p>
 
-        <p className="text-sm text-muted-foreground">
-          Requirement: at least{" "}
-          <span className="text-foreground font-medium">
-            {requiredRate}% positive rating
-          </span>
-        </p>
+        {isRatingBlocked && (
+          <p className="text-sm text-muted-foreground">
+            Requirement: at least{" "}
+            <span className="text-foreground font-medium">
+              {requiredRate}% positive rating
+            </span>
+          </p>
+        )}
 
         {reason && <p className="text-sm text-muted-foreground">{reason}</p>}
       </div>

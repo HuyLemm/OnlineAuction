@@ -348,7 +348,7 @@ export class AdminService {
       title: string;
       description?: string;
       buyNowPrice?: number | null;
-      status: "active" | "inactive" | "ended";
+      status: "active" | "closed" | "expired";
     }
   ) {
     const { title, description, buyNowPrice, status } = data;
@@ -361,11 +361,6 @@ export class AdminService {
 
     if (!product) {
       throw new Error("Product not found");
-    }
-
-    // ❗ Nếu auction đã ended thì không cho sửa status nữa (optional nhưng rất nên)
-    if (product.status === "ended" && status !== "ended") {
-      throw new Error("Cannot change status of an ended product");
     }
 
     await db("products")
@@ -381,32 +376,40 @@ export class AdminService {
   }
 
   // ===============================
-  // Delete product (admin)
+  // Toggle delete product (admin)
   // ===============================
-  static async deleteProduct(productId: string) {
+  static async toggleDeleteProduct(productId: string, expired: boolean) {
     return await db.transaction(async (trx) => {
-      const product = await trx("products").where({ id: productId }).first();
+      const product = await trx("products")
+        .select("id", "status")
+        .where({ id: productId })
+        .first();
 
       if (!product) {
         throw new Error("Product not found");
       }
 
-      // ❗ Không cho delete nếu có bids
-      const hasBids = await trx("bids")
-        .where({ product_id: productId })
-        .first();
-
-      if (hasBids) {
-        throw new Error("Cannot delete product with existing bids");
+      // ❌ Không làm gì nếu trạng thái không đổi
+      if (expired && product.status === "expired") {
+        return { message: "Product already expired" };
       }
 
-      // 1️⃣ Delete images
-      await trx("product_images").where({ product_id: productId }).del();
+      if (!expired && product.status !== "expired") {
+        return { message: "Product is already active" };
+      }
 
-      // 2️⃣ Delete product
-      await trx("products").where({ id: productId }).del();
+      // ✅ Soft delete / restore bằng status
+      await trx("products")
+        .where({ id: productId })
+        .update({
+          status: expired ? "expired" : "active",
+        });
 
-      return { message: "Product deleted successfully" };
+      return {
+        message: expired
+          ? "Product expired successfully"
+          : "Product restored successfully",
+      };
     });
   }
 
@@ -484,6 +487,7 @@ export class AdminService {
         "u.email",
         "u.role",
         "u.is_blocked",
+        "u.is_deleted",
         "u.created_at",
 
         db.raw("COALESCE(bid_stats.products_joined, 0) as products_joined"),
@@ -516,23 +520,26 @@ export class AdminService {
         throw new Error("Request not found or already processed");
       }
 
-
       // 2️⃣ Update request
-      await trx("seller_upgrade_requests").where({ id: requestId }).update({
-        status: "approved",
-        reviewed_at: trx.raw("NOW()"),
-        reviewed_by: adminId,
-      });
+      await trx("seller_upgrade_requests")
+        .where({ id: requestId })
+        .update({
+          status: "approved",
+          reviewed_at: trx.raw("NOW()"),
+          reviewed_by: adminId,
+        });
 
       // 3️⃣ Update user → seller có hạn 7 ngày
-      await trx("users").where({ id: req.user_id }).update({
-        role: "seller",
-        seller_approved_at: trx.raw("NOW()"),
-        seller_expires_at: trx.raw("NOW() + INTERVAL '7 DAYS'"),
-      });
+      await trx("users")
+        .where({ id: req.user_id })
+        .update({
+          role: "seller",
+          seller_approved_at: trx.raw("NOW()"),
+          seller_expires_at: trx.raw("NOW() + INTERVAL '7 DAYS'"),
+        });
 
       return {
-        message: "Seller upgrade approved"
+        message: "Seller upgrade approved",
       };
     });
   }
@@ -691,11 +698,14 @@ export class AdminService {
   }
 
   // ===============================
-  // Delete user account (admin)
+  // Delete/ Restore user account (admin)
   // ===============================
-  static async deleteUser(userId: string) {
+  static async toggleDeleteUser(userId: string, deleted: boolean) {
     return await db.transaction(async (trx) => {
-      const user = await trx("users").where({ id: userId }).first();
+      const user = await trx("users")
+        .select("id", "role", "is_deleted")
+        .where({ id: userId })
+        .first();
 
       if (!user) {
         throw new Error("User not found");
@@ -705,29 +715,31 @@ export class AdminService {
         throw new Error("Cannot delete admin account");
       }
 
-      // ❗ Check bids
-      const hasBids = await trx("bids").where({ bidder_id: userId }).first();
-
-      if (hasBids) {
-        throw new Error("Cannot delete user with bid history");
+      // ❌ Không làm gì nếu trạng thái không đổi
+      if (user.is_deleted === deleted) {
+        return {
+          message: deleted ? "User already deleted" : "User already active",
+        };
       }
 
-      // ❗ Check products (seller)
-      const hasProducts = await trx("products")
-        .where({ seller_id: userId })
-        .first();
+      // ✅ Nếu delete → xóa seller requests
+      if (deleted) {
+        await trx("seller_upgrade_requests").where({ user_id: userId }).del();
 
-      if (hasProducts) {
-        throw new Error("Cannot delete seller with products");
+        // revoke session
+        await trx("user_sessions").where({ user_id: userId }).del();
       }
 
-      // ❗ Delete seller requests
-      await trx("seller_upgrade_requests").where({ user_id: userId }).del();
+      // ✅ Toggle is_deleted
+      await trx("users").where({ id: userId }).update({
+        is_deleted: deleted,
+      });
 
-      // ❗ Delete user
-      await trx("users").where({ id: userId }).del();
-
-      return { message: "User deleted permanently" };
+      return {
+        message: deleted
+          ? "User soft-deleted successfully"
+          : "User restored successfully",
+      };
     });
   }
 }

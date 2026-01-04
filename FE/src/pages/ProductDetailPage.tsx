@@ -228,11 +228,16 @@ export function ProductDetailPage() {
   const isSeller = viewer?.role === "seller";
   const isBidder = viewer?.role === "bidder";
 
+  const isBlockedBySeller = !!currentUserId && blockedSet.has(currentUserId);
+
   // bidder
-  const canBid = bidEligibility?.status === "allowed";
-  const needApproval = bidEligibility?.status === "need_approval";
-  const isPending = bidEligibility?.status === "pending";
-  const isBlocked = bidEligibility?.status === "blocked";
+  const isBlocked = isBlockedBySeller || bidEligibility?.status === "blocked";
+
+  const canBid = !isBlocked && bidEligibility?.status === "allowed";
+
+  const needApproval = !isBlocked && bidEligibility?.status === "need_approval";
+
+  const isPending = !isBlocked && bidEligibility?.status === "pending";
 
   /* ---------------- Actions ---------------- */
   const handlePlaceAutoBid = async (maxBid: number) => {
@@ -431,7 +436,14 @@ export function ProductDetailPage() {
 
               {isPending && <PendingApprovalNotice />}
 
-              {isBlocked && (
+              {isBlockedBySeller && (
+                <QualifiedNotice
+                  type="blocked_by_seller"
+                  reason="You have been blocked by the seller for this auction."
+                />
+              )}
+
+              {!isBlockedBySeller && isBlocked && (
                 <QualifiedNotice
                   type="blocked"
                   reason={bidEligibility?.reason}

@@ -405,12 +405,10 @@ export class SellerController {
       });
 
       // 2️⃣ Nếu bidder bị kick đang là highest → recalc auction
-      if (result.wasHighest) {
-        await SellerService.recalculateAfterKick({
-          productId,
-          kickedBidderId: bidderId,
-        });
-      }
+      await SellerService.recalculateAfterKick({
+        productId,
+        kickedBidderId: bidderId,
+      });
 
       return res.status(200).json({
         success: true,

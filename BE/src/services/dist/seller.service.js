@@ -494,7 +494,9 @@ var SellerService = /** @class */ (function () {
                                             existing = _a.sent();
                                             if (!existing) return [3 /*break*/, 4];
                                             // 👉 UPDATE (EDIT rating)
-                                            return [4 /*yield*/, trx("ratings").where({ id: existing.id }).update({
+                                            return [4 /*yield*/, trx("ratings")
+                                                    .where({ id: existing.id })
+                                                    .update({
                                                     score: score,
                                                     comment: comment.trim(),
                                                     created_at: trx.raw("NOW()")
@@ -691,7 +693,9 @@ var SellerService = /** @class */ (function () {
                             throw new Error("Request already processed");
                         }
                         newStatus = action === "approve" ? "approved" : "rejected";
-                        return [4 /*yield*/, db_1.db("bid_requests").where({ id: requestId }).update({
+                        return [4 /*yield*/, db_1.db("bid_requests")
+                                .where({ id: requestId })
+                                .update({
                                 status: newStatus,
                                 updated_at: db_1.db.raw("NOW()")
                             })];
@@ -763,15 +767,15 @@ var SellerService = /** @class */ (function () {
                     case 0:
                         sellerId = params.sellerId, productId = params.productId, bidderId = params.bidderId, reason = params.reason;
                         return [4 /*yield*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
-                                var product;
-                                return __generator(this, function (_a) {
-                                    switch (_a.label) {
+                                var product, _a, bidder, productNew, mailData;
+                                return __generator(this, function (_b) {
+                                    switch (_b.label) {
                                         case 0: return [4 /*yield*/, trx("products")
                                                 .select("id", "seller_id", "highest_bidder_id")
                                                 .where({ id: productId })
                                                 .first()];
                                         case 1:
-                                            product = _a.sent();
+                                            product = _b.sent();
                                             if (!product)
                                                 throw new Error("Product not found");
                                             if (product.seller_id !== sellerId) {
@@ -797,7 +801,7 @@ var SellerService = /** @class */ (function () {
                                             /* =============================
                                              * 2️⃣ Insert blocked bidder
                                              * ============================= */
-                                            _a.sent();
+                                            _b.sent();
                                             /* =============================
                                              * 3️⃣ Remove auto-bid
                                              * ============================= */
@@ -811,7 +815,7 @@ var SellerService = /** @class */ (function () {
                                             /* =============================
                                              * 3️⃣ Remove auto-bid
                                              * ============================= */
-                                            _a.sent();
+                                            _b.sent();
                                             /* =============================
                                              * 4️⃣ Log kick event (CHỈ 1 LẦN)
                                              * ============================= */
@@ -825,12 +829,39 @@ var SellerService = /** @class */ (function () {
                                             /* =============================
                                              * 4️⃣ Log kick event (CHỈ 1 LẦN)
                                              * ============================= */
-                                            _a.sent();
-                                            return [2 /*return*/, {
+                                            _b.sent();
+                                            return [4 /*yield*/, Promise.all([
+                                                    trx("users")
+                                                        .select("email", "full_name")
+                                                        .where({ id: bidderId })
+                                                        .first(),
+                                                    trx("products").select("title").where({ id: productId }).first(),
+                                                ])];
+                                        case 5:
+                                            _a = _b.sent(), bidder = _a[0], productNew = _a[1];
+                                            mailData = bidder && productNew
+                                                ? {
+                                                    bidder_email: bidder.email,
+                                                    bidder_name: bidder.full_name,
+                                                    product_title: productNew.title
+                                                }
+                                                : null;
+                                            if (!mailData) return [3 /*break*/, 7];
+                                            return [4 /*yield*/, sendOtpMail_1.sendBidRejectedMail({
+                                                    to: mailData.bidder_email,
+                                                    bidderName: mailData.bidder_name,
+                                                    productTitle: mailData.product_title,
                                                     productId: productId,
-                                                    bidderId: bidderId,
-                                                    wasHighest: product.highest_bidder_id === bidderId
-                                                }];
+                                                    reason: "The seller has restricted your bidding access for this auction."
+                                                })];
+                                        case 6:
+                                            _b.sent();
+                                            _b.label = 7;
+                                        case 7: return [2 /*return*/, {
+                                                productId: productId,
+                                                bidderId: bidderId,
+                                                wasHighest: product.highest_bidder_id === bidderId
+                                            }];
                                     }
                                 });
                             }); })];
@@ -861,14 +892,6 @@ var SellerService = /** @class */ (function () {
                                                 throw new Error("Product not found");
                                             if (product.status !== "active")
                                                 return [2 /*return*/, null];
-                                            // Nếu bidder bị kick KHÔNG phải highest → không cần recalc
-                                            if (product.highest_bidder_id !== kickedBidderId) {
-                                                return [2 /*return*/, {
-                                                        productId: productId,
-                                                        skipped: true,
-                                                        reason: "Kicked bidder was not highest bidder"
-                                                    }];
-                                            }
                                             startPrice = Number(product.start_price);
                                             bidStep = Number(product.bid_step);
                                             return [4 /*yield*/, trx("auto_bids")

@@ -405,10 +405,6 @@ var AdminService = /** @class */ (function () {
                         if (!product) {
                             throw new Error("Product not found");
                         }
-                        // ❗ Nếu auction đã ended thì không cho sửa status nữa (optional nhưng rất nên)
-                        if (product.status === "ended" && status !== "ended") {
-                            throw new Error("Cannot change status of an ended product");
-                        }
                         return [4 /*yield*/, db_1.db("products")
                                 .where({ id: productId })
                                 .update({
@@ -425,42 +421,47 @@ var AdminService = /** @class */ (function () {
         });
     };
     // ===============================
-    // Delete product (admin)
+    // Toggle delete product (admin)
     // ===============================
-    AdminService.deleteProduct = function (productId) {
+    AdminService.toggleDeleteProduct = function (productId, expired) {
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
-                            var product, hasBids;
+                            var product;
                             return __generator(this, function (_a) {
                                 switch (_a.label) {
-                                    case 0: return [4 /*yield*/, trx("products").where({ id: productId }).first()];
+                                    case 0: return [4 /*yield*/, trx("products")
+                                            .select("id", "status")
+                                            .where({ id: productId })
+                                            .first()];
                                     case 1:
                                         product = _a.sent();
                                         if (!product) {
                                             throw new Error("Product not found");
                                         }
-                                        return [4 /*yield*/, trx("bids")
-                                                .where({ product_id: productId })
-                                                .first()];
-                                    case 2:
-                                        hasBids = _a.sent();
-                                        if (hasBids) {
-                                            throw new Error("Cannot delete product with existing bids");
+                                        // ❌ Không làm gì nếu trạng thái không đổi
+                                        if (expired && product.status === "expired") {
+                                            return [2 /*return*/, { message: "Product already expired" }];
                                         }
-                                        // 1️⃣ Delete images
-                                        return [4 /*yield*/, trx("product_images").where({ product_id: productId }).del()];
-                                    case 3:
-                                        // 1️⃣ Delete images
+                                        if (!expired && product.status !== "expired") {
+                                            return [2 /*return*/, { message: "Product is already active" }];
+                                        }
+                                        // ✅ Soft delete / restore bằng status
+                                        return [4 /*yield*/, trx("products")
+                                                .where({ id: productId })
+                                                .update({
+                                                status: expired ? "expired" : "active"
+                                            })];
+                                    case 2:
+                                        // ✅ Soft delete / restore bằng status
                                         _a.sent();
-                                        // 2️⃣ Delete product
-                                        return [4 /*yield*/, trx("products").where({ id: productId }).del()];
-                                    case 4:
-                                        // 2️⃣ Delete product
-                                        _a.sent();
-                                        return [2 /*return*/, { message: "Product deleted successfully" }];
+                                        return [2 /*return*/, {
+                                                message: expired
+                                                    ? "Product expired successfully"
+                                                    : "Product restored successfully"
+                                            }];
                                 }
                             });
                         }); })];
@@ -508,7 +509,7 @@ var AdminService = /** @class */ (function () {
                             .select("r2.id", "r2.user_id", "r2.status")
                             .whereRaw("\n            r2.requested_at = (\n              SELECT MAX(r3.requested_at)\n              FROM seller_upgrade_requests r3\n              WHERE r3.user_id = r2.user_id\n            )\n          ")
                             .as("latest_req"), "latest_req.user_id", "u.id")
-                            .select("u.id", "u.full_name", "u.email", "u.role", "u.is_blocked", "u.created_at", db_1.db.raw("COALESCE(bid_stats.products_joined, 0) as products_joined"), db_1.db.raw("COALESCE(win_stats.products_won, 0) as products_won"), db_1.db.raw("COALESCE(seller_stats.products_sold, 0) as products_sold"), db_1.db.raw("COALESCE(req_stats.seller_request_count, 0) as seller_request_count"), "latest_req.id as latest_seller_request_id", "latest_req.status as latest_seller_request_status")
+                            .select("u.id", "u.full_name", "u.email", "u.role", "u.is_blocked", "u.is_deleted", "u.created_at", db_1.db.raw("COALESCE(bid_stats.products_joined, 0) as products_joined"), db_1.db.raw("COALESCE(win_stats.products_won, 0) as products_won"), db_1.db.raw("COALESCE(seller_stats.products_sold, 0) as products_sold"), db_1.db.raw("COALESCE(req_stats.seller_request_count, 0) as seller_request_count"), "latest_req.id as latest_seller_request_id", "latest_req.status as latest_seller_request_status")
                             .orderBy("u.created_at", "desc")];
                     case 1:
                         rows = _a.sent();
@@ -538,7 +539,9 @@ var AdminService = /** @class */ (function () {
                                             throw new Error("Request not found or already processed");
                                         }
                                         // 2️⃣ Update request
-                                        return [4 /*yield*/, trx("seller_upgrade_requests").where({ id: requestId }).update({
+                                        return [4 /*yield*/, trx("seller_upgrade_requests")
+                                                .where({ id: requestId })
+                                                .update({
                                                 status: "approved",
                                                 reviewed_at: trx.raw("NOW()"),
                                                 reviewed_by: adminId
@@ -547,7 +550,9 @@ var AdminService = /** @class */ (function () {
                                         // 2️⃣ Update request
                                         _a.sent();
                                         // 3️⃣ Update user → seller có hạn 7 ngày
-                                        return [4 /*yield*/, trx("users").where({ id: req.user_id }).update({
+                                        return [4 /*yield*/, trx("users")
+                                                .where({ id: req.user_id })
+                                                .update({
                                                 role: "seller",
                                                 seller_approved_at: trx.raw("NOW()"),
                                                 seller_expires_at: trx.raw("NOW() + INTERVAL '7 DAYS'")
@@ -702,18 +707,21 @@ var AdminService = /** @class */ (function () {
         });
     };
     // ===============================
-    // Delete user account (admin)
+    // Delete/ Restore user account (admin)
     // ===============================
-    AdminService.deleteUser = function (userId) {
+    AdminService.toggleDeleteUser = function (userId, deleted) {
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
-                            var user, hasBids, hasProducts;
+                            var user;
                             return __generator(this, function (_a) {
                                 switch (_a.label) {
-                                    case 0: return [4 /*yield*/, trx("users").where({ id: userId }).first()];
+                                    case 0: return [4 /*yield*/, trx("users")
+                                            .select("id", "role", "is_deleted")
+                                            .where({ id: userId })
+                                            .first()];
                                     case 1:
                                         user = _a.sent();
                                         if (!user) {
@@ -722,31 +730,35 @@ var AdminService = /** @class */ (function () {
                                         if (user.role === "admin") {
                                             throw new Error("Cannot delete admin account");
                                         }
-                                        return [4 /*yield*/, trx("bids").where({ bidder_id: userId }).first()];
-                                    case 2:
-                                        hasBids = _a.sent();
-                                        if (hasBids) {
-                                            throw new Error("Cannot delete user with bid history");
+                                        // ❌ Không làm gì nếu trạng thái không đổi
+                                        if (user.is_deleted === deleted) {
+                                            return [2 /*return*/, {
+                                                    message: deleted ? "User already deleted" : "User already active"
+                                                }];
                                         }
-                                        return [4 /*yield*/, trx("products")
-                                                .where({ seller_id: userId })
-                                                .first()];
-                                    case 3:
-                                        hasProducts = _a.sent();
-                                        if (hasProducts) {
-                                            throw new Error("Cannot delete seller with products");
-                                        }
-                                        // ❗ Delete seller requests
+                                        if (!deleted) return [3 /*break*/, 4];
                                         return [4 /*yield*/, trx("seller_upgrade_requests").where({ user_id: userId }).del()];
-                                    case 4:
-                                        // ❗ Delete seller requests
+                                    case 2:
                                         _a.sent();
-                                        // ❗ Delete user
-                                        return [4 /*yield*/, trx("users").where({ id: userId }).del()];
+                                        // revoke session
+                                        return [4 /*yield*/, trx("user_sessions").where({ user_id: userId }).del()];
+                                    case 3:
+                                        // revoke session
+                                        _a.sent();
+                                        _a.label = 4;
+                                    case 4: 
+                                    // ✅ Toggle is_deleted
+                                    return [4 /*yield*/, trx("users").where({ id: userId }).update({
+                                            is_deleted: deleted
+                                        })];
                                     case 5:
-                                        // ❗ Delete user
+                                        // ✅ Toggle is_deleted
                                         _a.sent();
-                                        return [2 /*return*/, { message: "User deleted permanently" }];
+                                        return [2 /*return*/, {
+                                                message: deleted
+                                                    ? "User soft-deleted successfully"
+                                                    : "User restored successfully"
+                                            }];
                                 }
                             });
                         }); })];

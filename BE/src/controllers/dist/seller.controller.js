@@ -503,7 +503,7 @@ var SellerController = /** @class */ (function () {
             return __generator(this, function (_c) {
                 switch (_c.label) {
                     case 0:
-                        _c.trys.push([0, 4, , 5]);
+                        _c.trys.push([0, 3, , 4]);
                         _b = req.params, productId = _b.productId, bidderId = _b.bidderId;
                         sellerId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
                         reason = req.body.reason;
@@ -533,30 +533,30 @@ var SellerController = /** @class */ (function () {
                             })];
                     case 1:
                         result = _c.sent();
-                        if (!result.wasHighest) return [3 /*break*/, 3];
+                        // 2️⃣ Nếu bidder bị kick đang là highest → recalc auction
                         return [4 /*yield*/, seller_service_1.SellerService.recalculateAfterKick({
                                 productId: productId,
                                 kickedBidderId: bidderId
                             })];
                     case 2:
+                        // 2️⃣ Nếu bidder bị kick đang là highest → recalc auction
                         _c.sent();
-                        _c.label = 3;
-                    case 3: return [2 /*return*/, res.status(200).json({
-                            success: true,
-                            message: "Bidder removed from auction",
-                            data: {
-                                productId: productId,
-                                bidderId: bidderId,
-                                wasHighest: result.wasHighest
-                            }
-                        })];
-                    case 4:
+                        return [2 /*return*/, res.status(200).json({
+                                success: true,
+                                message: "Bidder removed from auction",
+                                data: {
+                                    productId: productId,
+                                    bidderId: bidderId,
+                                    wasHighest: result.wasHighest
+                                }
+                            })];
+                    case 3:
                         error_4 = _c.sent();
                         return [2 /*return*/, res.status(400).json({
                                 success: false,
                                 message: error_4.message || "Failed to remove bidder"
                             })];
-                    case 5: return [2 /*return*/];
+                    case 4: return [2 /*return*/];
                 }
             });
         });

@@ -98,8 +98,8 @@ export const DELETE_SUB_CATEGORY_API = (categoryId: number) =>
 export const GET_PRODUCTS_FOR_ADMIN_API = `${API_BASE_URL}/admin/products`;
 export const UPDATE_PRODUCTS_FOR_ADMIN_API = (productId: string) =>
   `${API_BASE_URL}/admin/products/${productId}`;
-export const DELETE_PRODUCTS_FOR_ADMIN_API = (productId: string) =>
-  `${API_BASE_URL}/admin/products/${productId}`;
+export const TOGGLE_DELETE_PRODUCTS_FOR_ADMIN_API = (productId: string) =>
+  `${API_BASE_URL}/admin/products/${productId}/delete`;
 
 export const GET_USERS_FOR_ADMIN_API = `${API_BASE_URL}/admin/get-users`;
 
@@ -114,11 +114,7 @@ export const GET_USER_DETAILS_API = (id: string) =>
 export const UPDATE_USER_DETAILS_API = (id: string) =>
   `${API_BASE_URL}/admin/users/${id}`;
 
-export const BAN_USER_API = (id: string) =>
+export const TOGGLE_BAN_USER_API = (id: string) =>
   `${API_BASE_URL}/admin/users/${id}/ban`;
-
-export const UNBAN_USER_API = (id: string) =>
-  `${API_BASE_URL}/admin/users/${id}/unban`;
-
-export const DELETE_USER_API = (id: string) =>
-  `${API_BASE_URL}/admin/users/${id}`;
+export const TOGGLE_DELETE_USER_API = (id: string) =>
+  `${API_BASE_URL}/admin/users/${id}/delete`;

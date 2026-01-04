@@ -276,10 +276,11 @@ export class AdminController {
   // ==================================================
   // DELETE /admin/products/:id
   // ==================================================
-  static async deleteProduct(req: AuthRequest, res: Response) {
+  static async toggleDeleteProduct(req: AuthRequest, res: Response) {
     try {
       const adminId = req.user?.userId;
       const { id } = req.params;
+      const { expired } = req.body; // boolean
 
       if (!adminId) {
         return res.status(401).json({
@@ -295,19 +296,27 @@ export class AdminController {
         });
       }
 
-      const result = await AdminService.deleteProduct(id);
+      if (typeof expired !== "boolean") {
+        return res.status(400).json({
+          success: false,
+          message: "`expired` boolean is required",
+        });
+      }
+
+      const result = await AdminService.toggleDeleteProduct(id, expired);
 
       return res.status(200).json({
         success: true,
         message: result.message,
       });
-    } catch (error: any) {
+    } catch (e: any) {
       return res.status(400).json({
         success: false,
-        message: error.message || "Delete product failed",
+        message: e.message || "Toggle delete product failed",
       });
     }
   }
+
   // ==================================================
   // GET /admin/users
   // ==================================================
@@ -458,27 +467,34 @@ export class AdminController {
     }
   }
 
-  // ==================================================
-  // POST /admin/users/:id/ban
-  // ==================================================
-  static async banUser(req: AuthRequest, res: Response) {
+  static async toggleBanUser(req: AuthRequest, res: Response) {
     try {
       const adminId = req.user?.userId;
       const { id } = req.params;
+      const { ban } = req.body; // boolean
 
       if (!adminId) {
-        return res
-          .status(401)
-          .json({ success: false, message: "Unauthorized" });
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
       }
 
       if (!id) {
-        return res
-          .status(400)
-          .json({ success: false, message: "User id is required" });
+        return res.status(400).json({
+          success: false,
+          message: "User id is required",
+        });
       }
 
-      const result = await AdminService.toggleBanUser(id, true);
+      if (typeof ban !== "boolean") {
+        return res.status(400).json({
+          success: false,
+          message: "`ban` boolean is required",
+        });
+      }
+
+      const result = await AdminService.toggleBanUser(id, ban);
 
       return res.status(200).json({
         success: true,
@@ -487,41 +503,7 @@ export class AdminController {
     } catch (e: any) {
       return res.status(400).json({
         success: false,
-        message: e.message,
-      });
-    }
-  }
-
-  // ==================================================
-  // POST /admin/users/:id/unban
-  // ==================================================
-  static async unbanUser(req: AuthRequest, res: Response) {
-    try {
-      const adminId = req.user?.userId;
-      const { id } = req.params;
-
-      if (!adminId) {
-        return res
-          .status(401)
-          .json({ success: false, message: "Unauthorized" });
-      }
-
-      if (!id) {
-        return res
-          .status(400)
-          .json({ success: false, message: "User id is required" });
-      }
-
-      const result = await AdminService.toggleBanUser(id, false);
-
-      return res.status(200).json({
-        success: true,
-        message: result.message,
-      });
-    } catch (e: any) {
-      return res.status(400).json({
-        success: false,
-        message: e.message,
+        message: e.message || "Toggle ban failed",
       });
     }
   }
@@ -529,24 +511,34 @@ export class AdminController {
   // ==================================================
   // DELETE /admin/users/:id
   // ==================================================
-  static async deleteUser(req: AuthRequest, res: Response) {
+  static async toggleDeleteUser(req: AuthRequest, res: Response) {
     try {
       const adminId = req.user?.userId;
       const { id } = req.params;
+      const { deleted } = req.body; // boolean
 
       if (!adminId) {
-        return res
-          .status(401)
-          .json({ success: false, message: "Unauthorized" });
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
       }
 
       if (!id) {
-        return res
-          .status(400)
-          .json({ success: false, message: "User id is required" });
+        return res.status(400).json({
+          success: false,
+          message: "User id is required",
+        });
       }
 
-      const result = await AdminService.deleteUser(id);
+      if (typeof deleted !== "boolean") {
+        return res.status(400).json({
+          success: false,
+          message: "`deleted` boolean is required",
+        });
+      }
+
+      const result = await AdminService.toggleDeleteUser(id, deleted);
 
       return res.status(200).json({
         success: true,
@@ -555,7 +547,7 @@ export class AdminController {
     } catch (e: any) {
       return res.status(400).json({
         success: false,
-        message: e.message,
+        message: e.message || "Toggle delete user failed",
       });
     }
   }

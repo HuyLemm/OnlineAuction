@@ -1999,7 +1999,6 @@
     border-color: var(--color-red-500);
   }
 
-
   .border-red-500\/20 {
     border-color: color-mix(
       in srgb,
@@ -2486,6 +2485,10 @@
         transparent
       );
     }
+  }
+
+  .bg-red-500 {
+    background-color: var(--color-red-500);
   }
 
   .bg-red-500\/10 {

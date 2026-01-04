@@ -11,7 +11,10 @@ import { supabase } from "../config/supabase";
 import crypto from "crypto";
 import path from "path";
 
-import { sendQuestionNotificationMail } from "../utils/sendOtpMail";
+import {
+  sendQuestionNotificationMail,
+  sendBidRejectedMail,
+} from "../utils/sendOtpMail";
 import { getDbNowMs } from "../utils/time";
 
 /* ===============================
@@ -497,11 +500,13 @@ export class SellerService {
       /* 3️⃣ INSERT hoặc UPDATE */
       if (existing) {
         // 👉 UPDATE (EDIT rating)
-        await trx("ratings").where({ id: existing.id }).update({
-          score,
-          comment: comment.trim(),
-          created_at: trx.raw("NOW()"), // hoặc updated_at nếu bạn có
-        });
+        await trx("ratings")
+          .where({ id: existing.id })
+          .update({
+            score,
+            comment: comment.trim(),
+            created_at: trx.raw("NOW()"), // hoặc updated_at nếu bạn có
+          });
 
         return {
           message: "Rating updated successfully",
@@ -705,10 +710,12 @@ export class SellerService {
 
     const newStatus = action === "approve" ? "approved" : "rejected";
 
-    await db("bid_requests").where({ id: requestId }).update({
-      status: newStatus,
-      updated_at: db.raw("NOW()"),
-    });
+    await db("bid_requests")
+      .where({ id: requestId })
+      .update({
+        status: newStatus,
+        updated_at: db.raw("NOW()"),
+      });
 
     return {
       requestId,
@@ -843,6 +850,35 @@ export class SellerService {
         description: "Bidder was removed by seller during auction",
       });
 
+      const [bidder, productNew] = await Promise.all([
+        trx("users")
+          .select("email", "full_name")
+          .where({ id: bidderId })
+          .first(),
+
+        trx("products").select("title").where({ id: productId }).first(),
+      ]);
+
+      const mailData =
+        bidder && productNew
+          ? {
+              bidder_email: bidder.email,
+              bidder_name: bidder.full_name,
+              product_title: productNew.title,
+            }
+          : null;
+
+      if (mailData) {
+        await sendBidRejectedMail({
+          to: mailData.bidder_email,
+          bidderName: mailData.bidder_name,
+          productTitle: mailData.product_title,
+          productId,
+          reason:
+            "The seller has restricted your bidding access for this auction.",
+        });
+      }
+
       return {
         productId,
         bidderId,
@@ -875,15 +911,6 @@ export class SellerService {
 
       if (!product) throw new Error("Product not found");
       if (product.status !== "active") return null;
-
-      // Nếu bidder bị kick KHÔNG phải highest → không cần recalc
-      if (product.highest_bidder_id !== kickedBidderId) {
-        return {
-          productId,
-          skipped: true,
-          reason: "Kicked bidder was not highest bidder",
-        };
-      }
 
       const startPrice = Number(product.start_price);
       const bidStep = Number(product.bid_step);

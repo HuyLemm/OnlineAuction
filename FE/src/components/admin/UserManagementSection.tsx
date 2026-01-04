@@ -47,14 +47,12 @@ import {
   REJECT_SELLER_UPGRADE_API,
   GET_USER_DETAILS_API,
   UPDATE_USER_DETAILS_API,
-  BAN_USER_API,
-  UNBAN_USER_API,
-  DELETE_USER_API,
+  TOGGLE_BAN_USER_API,
+  TOGGLE_DELETE_USER_API,
 } from "../utils/api";
 
 import { LoadingSpinner } from "../state";
 
-/* ================= TYPES ================= */
 
 interface UserData {
   id: string;
@@ -75,6 +73,7 @@ interface UserData {
   sellerApprovalDate?: string;
 
   sellerRequestId?: string;
+  isDeleted: boolean;
 }
 
 /* ================= COMPONENT ================= */
@@ -84,12 +83,13 @@ export function UserManagementSection() {
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [users, setUsers] = useState<UserData[]>([]);
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
-  const [deletingUser, setDeletingUser] = useState<UserData | null>(null);
 
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [viewLoading, setViewLoading] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<UserData | null>(null);
+  const [deleteMode, setDeleteMode] = useState<"delete" | "restore">("delete");
 
   /* ================= FETCH USERS ================= */
 
@@ -134,6 +134,8 @@ export function UserManagementSection() {
             : u.latest_seller_request_status === "rejected"
             ? "rejected"
             : "none",
+
+        isDeleted: u.is_deleted,
       }));
 
       setUsers(mapped);
@@ -221,6 +223,7 @@ export function UserManagementSection() {
         totalSales: Number(u.products_sold),
 
         verificationStatus: u.is_verified ? "verified" : "unverified",
+        isDeleted: u.is_deleted,
       });
     } catch (e: any) {
       toast.error(e.message || "Load user failed");
@@ -229,12 +232,25 @@ export function UserManagementSection() {
     }
   };
 
+
+
+  const getDeletedBadge = () => (
+    <Badge className="bg-red-500/20 text-red-400 border-0 text-xs">
+      Deleted
+    </Badge>
+  );
+
   const openEditDialog = (user: UserData) => {
     setEditingUser(user);
   };
 
   const openDeleteDialog = (user: UserData) => {
-    setDeletingUser(user);
+    setDeleteMode("delete");
+    setDeleteTarget(user);
+  };
+  const openRestoreDialog = (user: UserData) => {
+    setDeleteMode("restore");
+    setDeleteTarget(user);
   };
 
   /* ================= API ACTIONS ================= */
@@ -268,35 +284,49 @@ export function UserManagementSection() {
     }
   };
 
-  const handleBanUser = async (userId: string) => {
-    await fetchWithAuth(BAN_USER_API(userId), { method: "POST" });
-    toast.success("User banned");
-    fetchUsers();
-  };
-
-  const handleUnbanUser = async (userId: string) => {
-    await fetchWithAuth(UNBAN_USER_API(userId), { method: "POST" });
-    toast.success("User unbanned");
-    fetchUsers();
-  };
-
-  const handleDeleteUser = async () => {
-    if (!deletingUser) return;
-
+  const handleToggleBanUser = async (userId: string, ban: boolean) => {
     try {
-      setDeleteLoading(true);
-      const res = await fetchWithAuth(DELETE_USER_API(deletingUser.id), {
-        method: "DELETE",
+      const res = await fetchWithAuth(TOGGLE_BAN_USER_API(userId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ban }),
       });
 
       const json = await res.json();
       if (!json.success) throw new Error(json.message);
 
-      toast.success("User deleted permanently");
-      setDeletingUser(null);
+      toast.success(ban ? "User banned" : "User unbanned");
       fetchUsers();
-    } catch (err: any) {
-      toast.error(err.message || "Delete user failed");
+    } catch (e: any) {
+      toast.error(e.message || "Toggle ban failed");
+    }
+  };
+
+  const handleConfirmDeleteToggle = async () => {
+    if (!deleteTarget) return;
+
+    const isDelete = deleteMode === "delete";
+
+    try {
+      setDeleteLoading(true);
+
+      const res = await fetchWithAuth(TOGGLE_DELETE_USER_API(deleteTarget.id), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deleted: isDelete }),
+      });
+
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message);
+
+      toast.success(
+        isDelete ? "User deleted successfully" : "User restored successfully"
+      );
+
+      setDeleteTarget(null);
+      fetchUsers();
+    } catch (e: any) {
+      toast.error(e.message || "Action failed");
     } finally {
       setDeleteLoading(false);
     }
@@ -320,7 +350,9 @@ export function UserManagementSection() {
 
   const totalUsers = filteredUsers.length;
 
-  const activeUsers = filteredUsers.filter((u) => u.status === "active").length;
+  const activeUsers = filteredUsers.filter(
+    (u) => u.status === "active" && !u.isDeleted
+  ).length;
 
   const sellerCount = filteredUsers.filter((u) => u.role === "seller").length;
 
@@ -497,6 +529,9 @@ export function UserManagementSection() {
 
                       <div>
                         <p className="text-foreground">{user.name}</p>
+                        <div className="flex gap-1 mt-1">
+                          {user.isDeleted && getDeletedBadge()}
+                        </div>
                         <Badge className="bg-[#d4a446]/20 text-[#d4a446] border-0 text-xs mt-1 inline-flex items-center gap-1">
                           <UserCheck className="h-3 w-3" />
                           Seller Request
@@ -620,6 +655,9 @@ export function UserManagementSection() {
                     </Avatar>
                     <div>
                       <p>{user.name}</p>
+                      <div className="flex gap-1 mt-1">
+                        {user.isDeleted && getDeletedBadge()}
+                      </div>
                       {user.role === "seller" && (
                         <Badge className="bg-blue-500/10 text-blue-500 border-0 text-xs">
                           <CheckCircle className="h-3 w-3 mr-1" />
@@ -707,7 +745,7 @@ export function UserManagementSection() {
                           className="text-red-500"
                           onSelect={(e) => {
                             e.preventDefault();
-                            handleBanUser(user.id);
+                            handleToggleBanUser(user.id, true);
                           }}
                         >
                           <Ban className="h-4 w-4 mr-2" />
@@ -721,7 +759,7 @@ export function UserManagementSection() {
                           className="text-green-500"
                           onSelect={(e) => {
                             e.preventDefault();
-                            handleUnbanUser(user.id);
+                            handleToggleBanUser(user.id, false);
                           }}
                         >
                           <CheckCircle className="h-4 w-4 mr-2" />
@@ -730,16 +768,31 @@ export function UserManagementSection() {
                       )}
 
                       {/* DELETE */}
-                      <DropdownMenuItem
-                        className="text-red-600"
-                        onSelect={(e) => {
-                          e.preventDefault();
-                          openDeleteDialog(user);
-                        }}
-                      >
-                        <X className="h-4 w-4 mr-2" />
-                        Delete Account
-                      </DropdownMenuItem>
+                      {!user.isDeleted && (
+                        <DropdownMenuItem
+                          className="text-red-600"
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            openDeleteDialog(user);
+                          }}
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Delete Account
+                        </DropdownMenuItem>
+                      )}
+
+                      {user.isDeleted && (
+                        <DropdownMenuItem
+                          className="text-green-500"
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            openRestoreDialog(user);
+                          }}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Restore Account
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -951,16 +1004,29 @@ export function UserManagementSection() {
       )}
 
       {/* DELETE DIALOG */}
-      {deletingUser && (
+      {deleteTarget && (
         <Dialog
-          open={!!deletingUser}
-          onOpenChange={() => setDeletingUser(null)}
+          open={!!deleteTarget}
+          onOpenChange={() => setDeleteTarget(null)}
         >
-          <DialogContent className=" bg-[#0a0a0a] border-[#fbbf24]/20 border-red-500/30 max-w-md">
+          <DialogContent className="bg-[#0a0a0a] border-[#fbbf24]/20 max-w-md">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-red-500">
-                <X className="h-5 w-5" />
-                Delete User Account
+              <DialogTitle
+                className={`flex items-center gap-2 ${
+                  deleteMode === "delete" ? "text-red-500" : "text-green-500"
+                }`}
+              >
+                {deleteMode === "delete" ? (
+                  <>
+                    <X className="h-5 w-5" />
+                    Delete User Account
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-5 w-5" />
+                    Restore User Account
+                  </>
+                )}
               </DialogTitle>
             </DialogHeader>
 
@@ -968,40 +1034,58 @@ export function UserManagementSection() {
               <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-black to-[#d4a446]/20 rounded-lg border border-[#d4a446]/50">
                 <Avatar>
                   <AvatarFallback className="bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] text-black">
-                    {deletingUser.name
+                    {deleteTarget.name
                       .split(" ")
                       .map((n) => n[0])
                       .join("")}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-lg text-white font-semibold">{deletingUser.name}</p>
+                  <p className="text-lg text-white font-semibold">
+                    {deleteTarget.name}
+                  </p>
                   <p className="text-sm text-muted-foreground">
-                    {deletingUser.email}
+                    {deleteTarget.email}
                   </p>
                 </div>
               </div>
 
-              <p className="text-sm text-red-400">
-                ⚠️ This action cannot be undone.
-              </p>
+              {deleteMode === "delete" ? (
+                <p className="text-sm text-red-400">
+                  ⚠️ User will be disabled. Admin can restore this account
+                  later.
+                </p>
+              ) : (
+                <p className="text-sm text-green-400">
+                  ✅ This will restore user access and allow login again.
+                </p>
+              )}
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDeletingUser(null)}>
+              <Button variant="outline" onClick={() => setDeleteTarget(null)}>
                 Cancel
               </Button>
               <Button
-                onClick={handleDeleteUser}
+                onClick={handleConfirmDeleteToggle}
                 disabled={deleteLoading}
-                className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90"
+                className={`${
+                  deleteMode === "delete"
+                    ? "bg-red-500 hover:bg-red-600"
+                    : "bg-green-500 hover:bg-green-600"
+                } text-black`}
               >
                 {deleteLoading ? (
                   <LoadingSpinner size="sm" />
-                ) : (
+                ) : deleteMode === "delete" ? (
                   <>
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete User
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Restore User
                   </>
                 )}
               </Button>

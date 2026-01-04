@@ -1,6 +1,11 @@
 import bcrypt from "bcrypt";
 import { db } from "../config/db";
-import { sendQuestionNotificationMail } from "../utils/sendOtpMail";
+import {
+  sendQuestionNotificationMail,
+  sendOutbidMail,
+  sendSellerBidUpdateMail,
+  sendWinningBidMail,
+} from "../utils/sendOtpMail";
 import { getDbNowMs } from "../utils/time";
 
 const SALT_ROUNDS = 10;
@@ -761,6 +766,7 @@ export class UserService {
       const product = await trx("products")
         .select(
           "id",
+          "title as product_title", 
           "seller_id",
           "status",
           "start_price",
@@ -998,6 +1004,64 @@ export class UserService {
               "Your bid was instantly surpassed by an existing auto bid",
           });
         }
+      }
+
+      const previousHighestBidderId = product.highest_bidder_id;
+
+      const userIdsToLoad = new Set<string>();
+
+      userIdsToLoad.add(product.seller_id);
+      userIdsToLoad.add(highestBidderId);
+
+      if (
+        previousHighestBidderId &&
+        previousHighestBidderId !== highestBidderId
+      ) {
+        userIdsToLoad.add(previousHighestBidderId);
+      }
+
+      const users = await trx("users")
+        .whereIn("id", [...userIdsToLoad])
+        .select("id", "email", "full_name");
+
+      const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
+      const productTitle = product.product_title;
+
+
+      if (priceChanged) {
+        const seller = userMap[product.seller_id];
+        const winner = userMap[highestBidderId];
+        const previous = previousHighestBidderId
+          ? userMap[previousHighestBidderId]
+          : null;
+
+        await Promise.all([
+          sendSellerBidUpdateMail({
+            to: seller.email,
+            sellerName: seller.full_name,
+            productTitle: productTitle,
+            currentPrice: newCurrentPrice,
+            productId,
+          }),
+
+          sendWinningBidMail({
+            to: winner.email,
+            bidderName: winner.full_name,
+            productTitle: productTitle,
+            currentPrice: newCurrentPrice,
+            productId,
+          }),
+
+          previous && previous.id !== highestBidderId
+            ? sendOutbidMail({
+                to: previous.email,
+                bidderName: previous.full_name,
+                productTitle: productTitle,
+                currentPrice: newCurrentPrice,
+                productId,
+              })
+            : Promise.resolve(),
+        ]);
       }
 
       if (product.auto_extend && priceChanged) {

@@ -22,12 +22,24 @@ export class AuthService {
   static async login(email: string, password: string) {
     // 1️⃣ Tìm user
     const user = await db("users")
-      .select("id", "email", "password_hash", "is_verified", "role")
+      .select(
+        "id",
+        "email",
+        "password_hash",
+        "is_verified",
+        "role",
+        "is_deleted"
+      )
       .where({ email })
       .first();
 
     if (!user) {
       throw new Error("Email not found.");
+    }
+
+    // 🚫 NEW: chặn user bị xóa
+    if (user.is_deleted) {
+      throw new Error("Account has been disabled. Please contact support.");
     }
 
     // 2️⃣ Check verify
@@ -270,8 +282,7 @@ export class AuthService {
       user_id: user.id,
       otp_code: otp,
       purpose: "reset_password",
-      expired_at: db.raw(`NOW() + INTERVAL '${OTP_EXPIRE_MINUTES} MINUTES'`)
-,
+      expired_at: db.raw(`NOW() + INTERVAL '${OTP_EXPIRE_MINUTES} MINUTES'`),
     });
 
     // gửi mail

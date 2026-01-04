@@ -35,6 +35,13 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __spreadArrays = (this && this.__spreadArrays) || function () {
+    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
+    for (var r = Array(s), k = 0, i = 0; i < il; i++)
+        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
+            r[k] = a[j];
+    return r;
+};
 exports.__esModule = true;
 exports.UserService = void 0;
 var bcrypt_1 = require("bcrypt");
@@ -753,7 +760,7 @@ var UserService = /** @class */ (function () {
                             throw new Error("Invalid max price");
                         }
                         return [4 /*yield*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
-                                var bidder, product, blocked, existingAutoBid, autoBids, bidStep, startPrice, previousPrice, newCurrentPrice, highestBidderId, a, b, winner, loser, aMax, bMax, winnerMax, loserMax, priceChanged, winnerChanged, loser, settings, cfg, thresholdMin, durationMin, thresholdMs, durationMs, freshProduct, dbNow, endTime, remainingMs;
+                                var bidder, product, blocked, existingAutoBid, autoBids, bidStep, startPrice, previousPrice, newCurrentPrice, highestBidderId, a, b, winner, loser, aMax, bMax, winnerMax, loserMax, priceChanged, winnerChanged, loser, previousHighestBidderId, userIdsToLoad, users, userMap, seller, winner, previous, settings, cfg, thresholdMin, durationMin, thresholdMs, durationMs, freshProduct, dbNow, endTime, remainingMs;
                                 return __generator(this, function (_a) {
                                     switch (_a.label) {
                                         case 0: return [4 /*yield*/, trx("users")
@@ -977,14 +984,63 @@ var UserService = /** @class */ (function () {
                                             _a.sent();
                                             _a.label = 22;
                                         case 22:
-                                            if (!(product.auto_extend && priceChanged)) return [3 /*break*/, 27];
+                                            previousHighestBidderId = product.highest_bidder_id;
+                                            userIdsToLoad = new Set();
+                                            userIdsToLoad.add(product.seller_id);
+                                            userIdsToLoad.add(highestBidderId);
+                                            if (previousHighestBidderId &&
+                                                previousHighestBidderId !== highestBidderId) {
+                                                userIdsToLoad.add(previousHighestBidderId);
+                                            }
+                                            return [4 /*yield*/, trx("users")
+                                                    .whereIn("id", __spreadArrays(userIdsToLoad))
+                                                    .select("id", "email", "full_name")];
+                                        case 23:
+                                            users = _a.sent();
+                                            userMap = Object.fromEntries(users.map(function (u) { return [u.id, u]; }));
+                                            if (!priceChanged) return [3 /*break*/, 25];
+                                            seller = userMap[product.seller_id];
+                                            winner = userMap[highestBidderId];
+                                            previous = previousHighestBidderId
+                                                ? userMap[previousHighestBidderId]
+                                                : null;
+                                            return [4 /*yield*/, Promise.all([
+                                                    sendOtpMail_1.sendSellerBidUpdateMail({
+                                                        to: seller.email,
+                                                        sellerName: seller.full_name,
+                                                        productTitle: product.title,
+                                                        currentPrice: newCurrentPrice,
+                                                        productId: productId
+                                                    }),
+                                                    sendOtpMail_1.sendWinningBidMail({
+                                                        to: winner.email,
+                                                        bidderName: winner.full_name,
+                                                        productTitle: product.title,
+                                                        currentPrice: newCurrentPrice,
+                                                        productId: productId
+                                                    }),
+                                                    previous && previous.id !== highestBidderId
+                                                        ? sendOtpMail_1.sendOutbidMail({
+                                                            to: previous.email,
+                                                            bidderName: previous.full_name,
+                                                            productTitle: product.title,
+                                                            currentPrice: newCurrentPrice,
+                                                            productId: productId
+                                                        })
+                                                        : Promise.resolve(),
+                                                ])];
+                                        case 24:
+                                            _a.sent();
+                                            _a.label = 25;
+                                        case 25:
+                                            if (!(product.auto_extend && priceChanged)) return [3 /*break*/, 30];
                                             return [4 /*yield*/, trx("system_settings")
                                                     .whereIn("key", [
                                                     "auto_extend_threshold_minutes",
                                                     "auto_extend_duration_minutes",
                                                 ])
                                                     .select("key", "value")];
-                                        case 23:
+                                        case 26:
                                             settings = _a.sent();
                                             cfg = Object.fromEntries(settings.map(function (s) { return [s.key, Number(String(s.value).trim())]; }));
                                             thresholdMin = cfg.auto_extend_threshold_minutes;
@@ -998,23 +1054,23 @@ var UserService = /** @class */ (function () {
                                                     .select("end_time")
                                                     .where({ id: productId })
                                                     .first()];
-                                        case 24:
+                                        case 27:
                                             freshProduct = _a.sent();
                                             return [4 /*yield*/, time_1.getDbNowMs(trx)];
-                                        case 25:
+                                        case 28:
                                             dbNow = _a.sent();
                                             endTime = new Date(freshProduct.end_time).getTime();
                                             remainingMs = endTime - dbNow;
-                                            if (!(remainingMs > 0 && remainingMs <= thresholdMs)) return [3 /*break*/, 27];
+                                            if (!(remainingMs > 0 && remainingMs <= thresholdMs)) return [3 /*break*/, 30];
                                             return [4 /*yield*/, trx("products")
                                                     .where({ id: productId })
                                                     .update({
                                                     end_time: trx.raw("end_time + INTERVAL '" + durationMin + " MINUTES'")
                                                 })];
-                                        case 26:
+                                        case 29:
                                             _a.sent();
-                                            _a.label = 27;
-                                        case 27: return [2 /*return*/, {
+                                            _a.label = 30;
+                                        case 30: return [2 /*return*/, {
                                                 productId: productId,
                                                 currentPrice: newCurrentPrice,
                                                 highestBidderId: highestBidderId,

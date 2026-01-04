@@ -57,13 +57,17 @@ var AuthService = /** @class */ (function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, db_1.db("users")
-                            .select("id", "email", "password_hash", "is_verified", "role")
+                            .select("id", "email", "password_hash", "is_verified", "role", "is_deleted")
                             .where({ email: email })
                             .first()];
                     case 1:
                         user = _a.sent();
                         if (!user) {
                             throw new Error("Email not found.");
+                        }
+                        // 🚫 NEW: chặn user bị xóa
+                        if (user.is_deleted) {
+                            throw new Error("Account has been disabled. Please contact support.");
                         }
                         // 2️⃣ Check verify
                         if (!user.is_verified) {
@@ -321,7 +325,7 @@ var AuthService = /** @class */ (function () {
     // ===============================
     AuthService.requestForgotPassword = function (email) {
         return __awaiter(this, void 0, void 0, function () {
-            var now, user, otp, expiredAt;
+            var now, user, otp;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -349,7 +353,6 @@ var AuthService = /** @class */ (function () {
                         // ❌ xoá OTP reset cũ
                         _a.sent();
                         otp = AuthService.generateOTP();
-                        expiredAt = new Date(now.getTime() + OTP_EXPIRE_MINUTES * 60 * 1000);
                         return [4 /*yield*/, db_1.db("user_otps").insert({
                                 user_id: user.id,
                                 otp_code: otp,

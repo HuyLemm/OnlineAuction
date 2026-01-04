@@ -79,11 +79,11 @@ router.put(
   authorize("admin"),
   AdminController.updateProduct
 );
-router.delete(
-  "/products/:id",
+router.patch(
+  "/products/:id/delete",
   authenticate,
   authorize("admin"),
-  AdminController.deleteProduct
+  AdminController.toggleDeleteProduct
 );
 
 router.get(
@@ -105,23 +105,18 @@ router.put(
   authorize("admin"),
   AdminController.updateUser
 );
-router.post(
+router.patch(
   "/users/:id/ban",
   authenticate,
   authorize("admin"),
-  AdminController.banUser
+  AdminController.toggleBanUser
 );
-router.post(
-  "/users/:id/unban",
+
+router.patch(
+  "/users/:id/delete",
   authenticate,
   authorize("admin"),
-  AdminController.unbanUser
-);
-router.delete(
-  "/users/:id",
-  authenticate,
-  authorize("admin"),
-  AdminController.deleteUser
+  AdminController.toggleDeleteUser
 );
 
 export default router;
