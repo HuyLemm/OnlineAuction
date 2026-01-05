@@ -2487,6 +2487,14 @@
     }
   }
 
+  .bg-yellow-500\/20 {
+    background-color: color-mix(
+      in srgb,
+      oklch(88.361% 0.19689 114.497 / 0.952) 20%,
+      transparent
+    );
+  }
+
   .bg-red-500 {
     background-color: var(--color-red-500);
   }

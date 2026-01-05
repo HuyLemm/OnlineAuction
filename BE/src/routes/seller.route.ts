@@ -81,5 +81,10 @@ router.post(
   SellerController.kickBidder
 );
 
+router.post(
+  "/orders/:orderId/shipment",
+  authenticate,
+  SellerController.submitShipment
+);
 
 export default router;

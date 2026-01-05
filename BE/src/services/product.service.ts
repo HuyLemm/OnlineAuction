@@ -1,6 +1,5 @@
 import { db } from "../config/db";
 import {
-  AutoBidEventDTO,
   AUTO_BID_EVENT_DESCRIPTION,
   AutoBidEventRow,
   ViewerDTO,
@@ -745,6 +744,130 @@ export class ProductService {
       questions,
       relatedProducts,
       blockedBidderIds,
+    };
+  }
+
+  static async getOrderDetail(orderId: string, viewerUserId?: string) {
+    // =========================
+    // 0️⃣ Guard
+    // =========================
+    if (!orderId) {
+      throw new Error("Order id is required");
+    }
+
+    if (!viewerUserId) {
+      throw new Error("Unauthorized");
+    }
+
+    // =========================
+    // 1️⃣ Core order + product
+    // =========================
+    const order = await db("orders as o")
+      .join("products as p", "p.id", "o.product_id")
+      .leftJoin("categories as c", "c.id", "p.category_id")
+      .leftJoin("product_images as pi", function () {
+        this.on("pi.product_id", "=", "p.id").andOn(
+          "pi.is_main",
+          "=",
+          db.raw("true")
+        );
+      })
+      .select(
+        "o.id as orderId",
+        "o.status as orderStatus",
+        "o.created_at as wonDate",
+
+        "p.title",
+        db.raw(`COALESCE(pi.image_url, '') AS image`),
+        "c.name as category",
+        "o.final_price as winningBid",
+
+        "o.buyer_id as buyerId",
+        "o.seller_id as sellerId"
+      )
+      .where("o.id", orderId)
+      .first();
+
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    // =========================
+    // 2️⃣ Permission check
+    // =========================
+    if (viewerUserId !== order.buyerId && viewerUserId !== order.sellerId) {
+      throw new Error("Forbidden");
+    }
+
+    // =========================
+    // 3️⃣ Buyer & Seller info
+    // =========================
+    const [buyer, seller] = await Promise.all([
+      db("users")
+        .select("full_name", "email", "address")
+        .where("id", order.buyerId)
+        .first(),
+
+      db("users")
+        .select("full_name", "email")
+        .where("id", order.sellerId)
+        .first(),
+    ]);
+
+    if (!buyer || !seller) {
+      throw new Error("User not found");
+    }
+
+    // =========================
+    // 4️⃣ Status mapping (DB → FE)
+    // =========================
+    const mapStatus = (status: string) => {
+      switch (status) {
+        case "payment_pending":
+          return "payment_pending";
+        case "shipping_pending":
+          return "shipping_pending";
+        case "delivered_pending":
+          return "delivered_pending";
+        case "completed":
+          return "completed";
+        case "cancelled":
+          return "cancelled";
+        default:
+          return "payment_pending";
+      }
+    };
+
+    // =========================
+    // 5️⃣ Final DTO
+    // =========================
+    return {
+      orderId: order.orderId,
+      status: mapStatus(order.orderStatus),
+      wonDate: order.wonDate,
+
+      item: {
+        title: order.title,
+        image: order.image,
+        category: order.category,
+        winningBid: Number(order.winningBid),
+      },
+
+      buyer: {
+        id: order.buyerId,
+        name: buyer.full_name,
+        email: buyer.email,
+        address: buyer.address,
+      },
+
+      seller: {
+        id: order.sellerId,
+        name: seller.full_name,
+        email: seller.email,
+      },
+
+      // 🔥 CỰC QUAN TRỌNG cho FE (chat, isOwn, role)
+      currentUserId: viewerUserId,
     };
   }
 }

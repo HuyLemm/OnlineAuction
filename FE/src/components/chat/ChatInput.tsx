@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent } from "react";
-import { Send, Paperclip, Smile } from "lucide-react";
+import { Send, Smile } from "lucide-react";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 
@@ -29,17 +29,6 @@ export function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
   return (
     <div className="border-t border-border/50 p-4 bg-card">
       <div className="flex gap-2 items-end">
-        {/* Attachment Button */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="flex-shrink-0"
-          disabled={disabled}
-        >
-          <Paperclip className="h-5 w-5 text-muted-foreground" />
-        </Button>
-
         {/* Message Input */}
         <div className="flex-1 relative">
           <Textarea
@@ -48,7 +37,7 @@ export function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
             onKeyDown={handleKeyDown}
             placeholder="Type a message..."
             disabled={disabled}
-            className="bg-input border-border/50 resize-none pr-12 min-h-[44px] max-h-[120px]"
+            className="bg-input border-border/50 resize-none pr-12 min-h-[44px] max-h-[120px] text-muted-foreground"
             rows={1}
           />
           <Button
@@ -72,7 +61,7 @@ export function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
           <Send className="h-5 w-5" />
         </Button>
       </div>
-      
+
       <p className="text-muted-foreground mt-2 px-1">
         Press Enter to send, Shift+Enter for new line
       </p>

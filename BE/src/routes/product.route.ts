@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { ProductController } from "../controllers/product.controller";
-import { authenticateOptional } from "../middlewares/auth.middleware";
+import { authenticateOptional, authenticate } from "../middlewares/auth.middleware";
 
 const router = Router();
 
@@ -11,5 +11,6 @@ router.get(
   authenticateOptional,
   ProductController.getProductDetail
 );
+router.get("/orders/:orderId", authenticate, ProductController.getOrderDetail);
 
 export default router;

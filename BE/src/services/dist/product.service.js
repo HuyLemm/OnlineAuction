@@ -637,6 +637,103 @@ var ProductService = /** @class */ (function () {
             });
         });
     };
+    ProductService.getOrderDetail = function (orderId, viewerUserId) {
+        return __awaiter(this, void 0, void 0, function () {
+            var order, _a, buyer, seller, mapStatus;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        // =========================
+                        // 0️⃣ Guard
+                        // =========================
+                        if (!orderId) {
+                            throw new Error("Order id is required");
+                        }
+                        if (!viewerUserId) {
+                            throw new Error("Unauthorized");
+                        }
+                        return [4 /*yield*/, db_1.db("orders as o")
+                                .join("products as p", "p.id", "o.product_id")
+                                .leftJoin("categories as c", "c.id", "p.category_id")
+                                .leftJoin("product_images as pi", function () {
+                                this.on("pi.product_id", "=", "p.id").andOn("pi.is_main", "=", db_1.db.raw("true"));
+                            })
+                                .select("o.id as orderId", "o.status as orderStatus", "o.created_at as wonDate", "p.title", db_1.db.raw("COALESCE(pi.image_url, '') AS image"), "c.name as category", "o.final_price as winningBid", "o.buyer_id as buyerId", "o.seller_id as sellerId")
+                                .where("o.id", orderId)
+                                .first()];
+                    case 1:
+                        order = _b.sent();
+                        if (!order) {
+                            throw new Error("Order not found");
+                        }
+                        // =========================
+                        // 2️⃣ Permission check
+                        // =========================
+                        if (viewerUserId !== order.buyerId && viewerUserId !== order.sellerId) {
+                            throw new Error("Forbidden");
+                        }
+                        return [4 /*yield*/, Promise.all([
+                                db_1.db("users")
+                                    .select("full_name", "email", "address")
+                                    .where("id", order.buyerId)
+                                    .first(),
+                                db_1.db("users")
+                                    .select("full_name", "email")
+                                    .where("id", order.sellerId)
+                                    .first(),
+                            ])];
+                    case 2:
+                        _a = _b.sent(), buyer = _a[0], seller = _a[1];
+                        if (!buyer || !seller) {
+                            throw new Error("User not found");
+                        }
+                        mapStatus = function (status) {
+                            switch (status) {
+                                case "payment_pending":
+                                    return "payment_pending";
+                                case "shipping_pending":
+                                    return "shipping_pending";
+                                case "delivered_pending":
+                                    return "delivered_pending";
+                                case "completed":
+                                    return "completed";
+                                case "cancelled":
+                                    return "cancelled";
+                                default:
+                                    return "payment_pending";
+                            }
+                        };
+                        // =========================
+                        // 5️⃣ Final DTO
+                        // =========================
+                        return [2 /*return*/, {
+                                orderId: order.orderId,
+                                status: mapStatus(order.orderStatus),
+                                wonDate: order.wonDate,
+                                item: {
+                                    title: order.title,
+                                    image: order.image,
+                                    category: order.category,
+                                    winningBid: Number(order.winningBid)
+                                },
+                                buyer: {
+                                    id: order.buyerId,
+                                    name: buyer.full_name,
+                                    email: buyer.email,
+                                    address: buyer.address
+                                },
+                                seller: {
+                                    id: order.sellerId,
+                                    name: seller.full_name,
+                                    email: seller.email
+                                },
+                                // 🔥 CỰC QUAN TRỌNG cho FE (chat, isOwn, role)
+                                currentUserId: viewerUserId
+                            }];
+                }
+            });
+        });
+    };
     return ProductService;
 }());
 exports.ProductService = ProductService;

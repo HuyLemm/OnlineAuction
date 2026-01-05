@@ -128,4 +128,11 @@ router.get(
   UserController.getWonAuctions
 );
 
+router.post(
+  "/orders/:orderId/payment",
+  authenticate,
+  authorize("bidder"),
+  UserController.submitPayment
+);
+
 export default router;

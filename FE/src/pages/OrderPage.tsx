@@ -1,7 +1,27 @@
-import { useState } from "react";
-import { ArrowLeft, MessageCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+
+import {
+  ArrowLeft,
+  MessageCircle,
+  Copy,
+  CreditCard,
+  PhoneCall,
+  Box,
+  Package,
+  Truck,
+  Hourglass,
+  CheckCircle2,
+} from "lucide-react";
 import { Button } from "../components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
+import { formatCurrency } from "../lib/utils";
+
 import { OrderTimeline } from "../components/order/OrderTimeline";
 import { OrderStatusPanel } from "../components/order/OrderStatusPanel";
 import { PaymentSubmissionForm } from "../components/order/PaymentSubmissionForm";
@@ -10,276 +30,610 @@ import { DeliveryConfirmationPanel } from "../components/order/DeliveryConfirmat
 import { RatingReviewModal } from "../components/order/RatingReviewModal";
 import { ChatInterface } from "../components/chat/ChatInterface";
 
+import {
+  GET_ORDER_DETAIL_API,
+  ORDER_PAYMENT_API,
+  GET_PAYMENT_ORDER_API,
+  SUBMIT_SHIPMENT_API,
+  GET_SHIPPING_ORDER_API,
+} from "../components/utils/api";
+import { fetchWithAuth } from "../components/utils/fetchWithAuth";
+import { toast } from "sonner";
+import { LoadingSpinner } from "../components/state";
+
+interface Message {
+  id: string;
+  senderId: string;
+  senderName: string;
+  content: string;
+  timestamp: Date;
+  isOwn: boolean;
+}
+
+type OrderStatus =
+  | "payment_pending"
+  | "shipping_pending"
+  | "delivered_pending"
+  | "completed"
+  | "cancelled";
+
 type OrderStep = "payment" | "shipping" | "delivery" | "review";
-type OrderStatus = "payment-pending" | "payment-submitted" | "shipping-pending" | "in-transit" | "delivered" | "completed";
+
+const statusToStep: Record<OrderStatus, OrderStep> = {
+  payment_pending: "payment",
+  shipping_pending: "shipping",
+  delivered_pending: "delivery",
+  completed: "review",
+  cancelled: "review",
+};
+
+const statusToCompletedSteps: Record<OrderStatus, OrderStep[]> = {
+  payment_pending: [],
+
+  shipping_pending: ["payment"],
+
+  delivered_pending: ["payment", "shipping"],
+
+  completed: ["payment", "shipping", "delivery", "review"],
+
+  cancelled: ["payment"], // huỷ sau khi buyer gửi payment
+};
 
 interface OrderPageProps {
   onBack?: () => void;
 }
 
 export function OrderPage({ onBack }: OrderPageProps) {
-  const [currentStep, setCurrentStep] = useState<OrderStep>("payment");
-  const [completedSteps, setCompletedSteps] = useState<OrderStep[]>([]);
-  const [orderStatus, setOrderStatus] = useState<OrderStatus>("payment-pending");
+  const { orderId } = useParams<{ orderId: string }>();
+  if (!orderId) {
+    return <div className="p-10 text-center">Invalid order</div>;
+  }
+  const [orderData, setOrderData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
   const [ratingModalOpen, setRatingModalOpen] = useState(false);
   const [chatMinimized, setChatMinimized] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+  const [paymentInfo, setPaymentInfo] = useState<any>(null);
+  const [shippingInfo, setShippingInfo] = useState<any>(null);
 
-  // Mock order data
-  const orderData = {
-    orderId: "ORDER-2024-001",
-    wonDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
-    item: {
-      title: "Patek Philippe Nautilus 5711/1A Steel Blue Dial",
-      image: "https://images.unsplash.com/photo-1670177257750-9b47927f68eb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjB3YXRjaHxlbnwxfHx8fDE3NjMzOTExMzB8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      category: "Watches",
-      winningBid: 156000
-    },
-    buyer: {
-      name: "John Anderson",
-      email: "john.anderson@email.com",
-      phone: "+1 (555) 123-4567",
-      address: "123 Luxury Ave, Suite 100, New York, NY 10001, USA"
-    },
-    seller: {
-      name: "LuxuryTimepieces",
-      email: "contact@luxurytimepieces.com",
-      phone: "+1 (555) 987-6543"
+  const [submittingPayment, setSubmittingPayment] = useState(false);
+  const [submittingShipping, setSubmittingShipping] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetchWithAuth(GET_SHIPPING_ORDER_API(orderId));
+        const json = await res.json();
+        console.log(json);
+        if (json.success) {
+          setShippingInfo(json.data);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, [orderId]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetchWithAuth(GET_PAYMENT_ORDER_API(orderId));
+        const json = await res.json();
+        if (json.success) {
+          setPaymentInfo(json.data);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, [orderId]);
+
+  /* ===============================
+   * Fetch order detail
+   * =============================== */
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetchWithAuth(GET_ORDER_DETAIL_API(orderId));
+        const json = await res.json();
+
+        if (!json.success) {
+          throw new Error(json.message || "Failed to load order");
+        }
+
+        setOrderData(json.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [orderId]);
+
+  if (loading) {
+    return (
+      <div className="p-10 text-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (!orderData) {
+    return <div className="p-10 text-center">Order not found</div>;
+  }
+
+  const orderStatus = orderData.status as OrderStatus;
+
+  const currentStep = statusToStep[orderStatus] ?? "payment";
+
+  const completedSteps = statusToCompletedSteps[orderStatus] ?? [];
+
+  /* ===============================
+   * Handlers (demo – sau này gọi API)
+   * =============================== */
+
+  const handlePaymentSubmit = async (data: any) => {
+    try {
+      setSubmittingPayment(true);
+
+      const res = await fetchWithAuth(ORDER_PAYMENT_API(orderId), {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+
+      const json = await res.json();
+      if (!json.success) throw new Error("Payment failed");
+
+      // ✅ refetch payment
+      const payRes = await fetchWithAuth(GET_PAYMENT_ORDER_API(orderId));
+      const payJson = await payRes.json();
+      if (payJson.success) setPaymentInfo(payJson.data);
+
+      // ✅ refetch order
+      const refetch = await fetchWithAuth(GET_ORDER_DETAIL_API(orderId));
+      const refetchJson = await refetch.json();
+      if (refetchJson.success) setOrderData(refetchJson.data);
+
+      toast.success("Payment submitted");
+    } catch (err: any) {
+      toast.error(err.message || "Payment failed");
+    } finally {
+      setSubmittingPayment(false);
     }
   };
 
-  const [shippingData, setShippingData] = useState<any>(null);
-  const [paymentVerified, setPaymentVerified] = useState(false);
-  const [deliveryConfirmed, setDeliveryConfirmed] = useState(false);
+  const handleSubmitShipping = async (data: any) => {
+    try {
+      setSubmittingShipping(true);
 
-  const handlePaymentSubmit = (data: any) => {
-    console.log("Payment submitted:", data);
-    setCompletedSteps([...completedSteps, "payment"]);
-    setOrderStatus("payment-submitted");
-    setCurrentStep("shipping");
-    
-    // Simulate payment verification after 3 seconds
-    setTimeout(() => {
-      setPaymentVerified(true);
-      setOrderStatus("shipping-pending");
-      
-      // Simulate shipping after 5 more seconds
-      setTimeout(() => {
-        setShippingData({
-          carrier: "FedEx International Priority",
-          trackingNumber: "FX123456789US",
-          shippedDate: new Date(),
-          estimatedDelivery: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3),
-          shippingAddress: orderData.buyer.address,
-          invoiceNumber: "INV-2024-001",
-          shippingCost: 150.00
-        });
-        setCompletedSteps([...completedSteps, "payment", "shipping"]);
-        setOrderStatus("in-transit");
-        setCurrentStep("delivery");
-      }, 5000);
-    }, 3000);
+      const res = await fetchWithAuth(SUBMIT_SHIPMENT_API(orderId), {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+
+      const json = await res.json();
+
+      if (!json.success) {
+        throw new Error(json.message || "Submit shipping failed");
+      }
+
+      toast.success("Shipping information submitted");
+
+      // ✅ refetch order
+      const refetch = await fetchWithAuth(GET_ORDER_DETAIL_API(orderId));
+      const refetchJson = await refetch.json();
+
+      if (refetchJson.success) {
+        setOrderData(refetchJson.data);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit shipping");
+    } finally {
+      setSubmittingShipping(false);
+    }
   };
 
   const handleDeliveryConfirm = (data: any) => {
     console.log("Delivery confirmed:", data);
-    setDeliveryConfirmed(true);
-    setCompletedSteps([...completedSteps, "payment", "shipping", "delivery"]);
-    setOrderStatus("delivered");
-    setCurrentStep("review");
-    
-    // Auto-open rating modal
-    setTimeout(() => {
-      setRatingModalOpen(true);
-    }, 1000);
+    // TODO: PATCH /orders/:id → completed
+    setRatingModalOpen(true);
   };
 
   const handleRatingSubmit = (data: any) => {
     console.log("Rating submitted:", data);
-    setCompletedSteps(["payment", "shipping", "delivery", "review"]);
-    setOrderStatus("completed");
+    // TODO: POST /ratings
   };
+
+  const currentUserId: string = orderData.currentUserId;
+
+  const isBuyer = currentUserId === orderData.buyer.id;
+
+  const currentUser = isBuyer ? orderData.buyer : orderData.seller;
+  const otherParty = isBuyer ? orderData.seller : orderData.buyer;
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b border-border/50 bg-card/50 sticky top-0 z-10 backdrop-blur-sm">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onBack}
-                className="flex-shrink-0"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-foreground">Order Details</h1>
-                <p className="text-muted-foreground">#{orderData.orderId}</p>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => setChatMinimized(!chatMinimized)}
-              className="border-border/50"
-            >
-              <MessageCircle className="h-4 w-4 mr-2" />
-              Chat with Seller
+      <div className="border-b border-border/50 bg-card/50 sticky top-0 z-10">
+        <div className="container mx-auto px-6 py-4 flex justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={onBack}>
+              <ArrowLeft className="h-5 w-5" />
             </Button>
+            <div>
+              <h1 className="text-foreground">Order Completion</h1>
+              <p className="text-muted-foreground">#{orderData.orderId}</p>
+            </div>
           </div>
+
+          <Button
+            variant="outline"
+            onClick={() => setChatMinimized(!chatMinimized)}
+          >
+            <MessageCircle className="h-4 w-4 mr-2" />
+            Chat
+          </Button>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="container mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Timeline & Status */}
-          <div className="space-y-6">
-            <OrderTimeline 
-              currentStep={currentStep} 
-              completedSteps={completedSteps}
-            />
-            <OrderStatusPanel
-              orderId={orderData.orderId}
-              status={orderStatus}
-              item={orderData.item}
-              buyer={orderData.buyer}
-              seller={orderData.seller}
-              wonDate={orderData.wonDate}
-            />
-          </div>
+      {/* Body */}
+      <div className="container mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left */}
+        <div className="space-y-6">
+          <OrderTimeline
+            currentStep={currentStep}
+            completedSteps={completedSteps}
+          />
 
-          {/* Right Column - Action Panels */}
-          <div className="lg:col-span-2">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="bg-secondary/50 border border-border/50 mb-6">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="chat">Chat</TabsTrigger>
-              </TabsList>
+          <OrderStatusPanel
+            orderId={orderData.orderId}
+            status={orderStatus}
+            item={orderData.item}
+            buyer={orderData.buyer}
+            seller={orderData.seller}
+            wonDate={new Date(orderData.wonDate)}
+          />
+        </div>
 
-              <TabsContent value="overview" className="space-y-6">
-                {/* Payment Step */}
-                {currentStep === "payment" && (
+        {/* Right */}
+        <div className="lg:col-span-2">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-6">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="chat">Chat</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="space-y-6">
+              {/* =====================
+      STEP 1: PAYMENT
+     ===================== */}
+              {orderStatus === "payment_pending" &&
+                (isBuyer ? (
                   <PaymentSubmissionForm
-                    totalAmount={orderData.item.winningBid}
                     onSubmit={handlePaymentSubmit}
+                    loading={submittingPayment}
                   />
-                )}
+                ) : (
+                  <div className="bg-card border border-border/50 p-6 text-center">
+                    <h3 className="text-foreground mb-2">
+                      Waiting for buyer to submit payment
+                    </h3>
+                    <p className="text-muted-foreground">
+                      The buyer has not completed the payment information yet.
+                    </p>
+                  </div>
+                ))}
 
-                {/* Shipping Step */}
-                {currentStep === "shipping" && (
-                  <ShippingInvoicePanel
-                    shippingData={shippingData}
-                    paymentVerified={paymentVerified}
-                    onDownloadInvoice={() => {
-                      console.log("Download invoice");
-                    }}
-                  />
-                )}
+              {/* =====================
+      STEP 2: SHIPPING
+     ===================== */}
+              {orderStatus === "shipping_pending" && (
+                <>
+                  {/* ✅ Luôn hiện payment info cho cả 2 */}
+                  <PaymentInfoBox paymentInfo={paymentInfo} />
 
-                {/* Delivery Step */}
-                {currentStep === "delivery" && (
-                  <>
+                  {isBuyer ? (
+                    <div className="bg-card border border-green-500/20 rounded-xl p-6 flex flex-col items-center gap-3 text-center">
+                      {/* Icon */}
+                      <div className="relative">
+                        <Package className="w-10 h-10 text-primary" />
+                        <Truck className="w-4 h-4 text-muted-foreground absolute -bottom-1 -right-1 animate-pulse" />
+                      </div>
+
+                      {/* Title */}
+                      <h3 className="text-lg font-semibold text-foreground">
+                        Seller is preparing your shipment
+                      </h3>
+
+                      {/* Description */}
+                      <p className="text-sm text-muted-foreground max-w-md">
+                        Your order has been confirmed. The seller is packing the
+                        item and will provide shipping information shortly.
+                      </p>
+
+                      {/* Status badge */}
+                      <span className="mt-2 inline-flex items-center gap-2 rounded-full bg-primary/10 text-primary px-4 py-1 text-xs font-medium">
+                        📦 Preparing shipment
+                      </span>
+                    </div>
+                  ) : (
                     <ShippingInvoicePanel
-                      shippingData={shippingData}
-                      paymentVerified={paymentVerified}
-                      onDownloadInvoice={() => {
-                        console.log("Download invoice");
-                      }}
+                      mode="seller"
+                      shippingData={undefined}
+                      onSubmitShipping={handleSubmitShipping}
+                      loading={submittingShipping}
                     />
+                  )}
+                </>
+              )}
+
+              {/* =====================
+      STEP 3: DELIVERY CONFIRM
+     ===================== */}
+              {orderStatus === "delivered_pending" && (
+                <>
+                  <PaymentInfoBox paymentInfo={paymentInfo} />
+
+                  <ShippingInfoBox
+                    shippingData={shippingInfo}
+                    shippingAddress={paymentInfo?.deliveryAddress}
+                  />
+
+                  {isBuyer ? (
                     <DeliveryConfirmationPanel
-                      isDelivered={orderStatus === "in-transit" || orderStatus === "delivered"}
-                      deliveryConfirmed={deliveryConfirmed}
+                      isDelivered={false}
                       onConfirmDelivery={handleDeliveryConfirm}
                     />
-                  </>
-                )}
-
-                {/* Review Step */}
-                {currentStep === "review" && (
-                  <div className="space-y-6">
-                    <ShippingInvoicePanel
-                      shippingData={shippingData}
-                      paymentVerified={paymentVerified}
-                      onDownloadInvoice={() => {
-                        console.log("Download invoice");
-                      }}
-                    />
-                    <div className="bg-card border border-border/50 rounded-xl p-6 text-center">
-                      <div className="py-8">
-                        <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[#10b981]/20 to-[#10b981]/10 flex items-center justify-center mx-auto mb-4">
-                          <MessageCircle className="h-8 w-8 text-[#10b981]" />
-                        </div>
-                        <h3 className="text-foreground mb-2">Transaction Complete!</h3>
-                        <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                          {completedSteps.includes("review") 
-                            ? "Thank you for your review! This order is now complete."
-                            : "Please rate your experience with this seller."
-                          }
-                        </p>
-                        {!completedSteps.includes("review") && (
-                          <Button
-                            onClick={() => setRatingModalOpen(true)}
-                            className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90"
-                          >
-                            Rate & Review
-                          </Button>
-                        )}
+                  ) : (
+                    <div className="bg-card border border-green-500/20 rounded-xl p-6 flex flex-col items-center gap-3 text-center">
+                      {/* Icon */}
+                      <div className="relative">
+                        <Hourglass className="w-10 h-10 text-primary animate-pulse" />
+                        <CheckCircle2 className="w-4 h-4 text-muted-foreground absolute -bottom-1 -right-1" />
                       </div>
-                    </div>
-                  </div>
-                )}
-              </TabsContent>
 
-              <TabsContent value="chat">
-                <ChatInterface
-                  orderId={orderData.orderId}
-                  otherParty={{
-                    id: "seller-1",
-                    name: orderData.seller.name,
-                    role: "seller"
-                  }}
-                  currentUserId="buyer-1"
-                  currentUserName={orderData.buyer.name}
-                  isMinimized={false}
-                />
-              </TabsContent>
-            </Tabs>
-          </div>
+                      {/* Title */}
+                      <h3 className="text-lg font-semibold text-foreground">
+                        Waiting for buyer confirmation
+                      </h3>
+
+                      {/* Description */}
+                      <p className="text-sm text-muted-foreground max-w-md">
+                        The item has been shipped successfully. Please wait
+                        while the buyer confirms that they have received the
+                        package.
+                      </p>
+
+                      {/* Status badge */}
+                      <span className="mt-2 inline-flex items-center gap-2 rounded-full bg-primary/10 text-primary px-4 py-1 text-xs font-medium">
+                        ⏳ Awaiting confirmation
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* =====================
+      STEP 4: REVIEW
+     ===================== */}
+              {orderStatus === "completed" && (
+                <div className="bg-card border border-border/50 p-6 text-center">
+                  <h3 className="text-foreground mb-2">Order Completed</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Please leave a review for this transaction.
+                  </p>
+                  <Button onClick={() => setRatingModalOpen(true)}>
+                    Rate & Review
+                  </Button>
+                </div>
+              )}
+
+              {/* =====================
+      CANCELLED
+     ===================== */}
+              {orderStatus === "cancelled" && (
+                <div className="bg-card border border-border/50 p-6 text-center">
+                  <h3 className="text-destructive mb-2">Order Cancelled</h3>
+                  <p className="text-muted-foreground">
+                    This transaction has been cancelled.
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="chat">
+              <ChatInterface
+                orderId={orderData.orderId}
+                otherParty={{
+                  id: otherParty.id,
+                  name: otherParty.name,
+                  role: isBuyer ? "seller" : "buyer",
+                }}
+                currentUserId={currentUserId}
+                currentUserName={currentUser.name}
+                isMinimized={false}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 
-      {/* Chat Minimized */}
-      {chatMinimized && activeTab !== "chat" && (
-        <ChatInterface
-          orderId={orderData.orderId}
-          otherParty={{
-            id: "seller-1",
-            name: orderData.seller.name,
-            role: "seller"
-          }}
-          currentUserId="buyer-1"
-          currentUserName={orderData.buyer.name}
-          isMinimized={true}
-          onToggleMinimize={() => {
-            setChatMinimized(false);
-            setActiveTab("chat");
-          }}
-        />
-      )}
-
-      {/* Rating Modal */}
       <RatingReviewModal
         open={ratingModalOpen}
         onOpenChange={setRatingModalOpen}
         orderParty={{
           name: orderData.seller.name,
-          role: "seller"
+          role: "seller",
         }}
         onSubmit={handleRatingSubmit}
       />
+    </div>
+  );
+}
+
+function PaymentInfoBox({ paymentInfo }: { paymentInfo: any }) {
+  if (!paymentInfo) return null;
+
+  const handleCopyInvoice = () => {
+    navigator.clipboard.writeText(paymentInfo.paymentRef);
+    toast.success("Invoice ID copied");
+  };
+
+  return (
+    <div className="bg-card border border-border/60 rounded-xl p-6 space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <CreditCard className="w-5 h-5 text-primary" />
+        <h3 className="text-foreground font-semibold text-lg">
+          Payment Information
+        </h3>
+      </div>
+
+      {/* Amount */}
+      <div className="flex justify-between text-lg">
+        <span className="text-muted-foreground">Amount</span>
+        <span className="text-yellow-500 font-semibold">
+          {formatCurrency(paymentInfo.amount)}
+        </span>
+      </div>
+
+      {/* Buyer */}
+      {paymentInfo.buyerName && (
+        <div className="flex justify-between text-lg">
+          <span className="text-muted-foreground">Paid by</span>
+          <span className="text-yellow-500">{paymentInfo.buyerName}</span>
+        </div>
+      )}
+
+      {/* Invoice / payment ref */}
+      <div className="space-y-1">
+        <span className="text-muted-foreground text-lg">Invoice ID</span>
+        <div className="flex items-center justify-between bg-muted/40 rounded-md px-3 py-2">
+          <code className="text-lg text-foreground break-all">
+            {paymentInfo.paymentRef}
+          </code>
+          <button
+            onClick={handleCopyInvoice}
+            className="text-muted-foreground hover:text-foreground transition"
+          >
+            <Copy className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Delivery info */}
+      {(paymentInfo.deliveryAddress || paymentInfo.phoneNumber) && (
+        <div className="pt-3 border-t border-border/50 space-y-3">
+          {paymentInfo.deliveryAddress && (
+            <p className="flex items-center gap-2 text-lg text-muted-foreground">
+              <Box className="w-5 h-5" />
+              <span>Address:</span>
+              <span className="text-foreground">
+                {paymentInfo.deliveryAddress}
+              </span>
+            </p>
+          )}
+
+          {paymentInfo.phoneNumber && (
+            <p className="flex items-center gap-2 text-lg text-muted-foreground">
+              <PhoneCall className="w-5 h-5" />
+              <span>Phone: </span>
+              <span className="text-foreground">{paymentInfo.phoneNumber}</span>
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Note */}
+      {paymentInfo.note && (
+        <div className="bg-green-500/20 border border-border/40 border-green-500/20 rounded-md p-3">
+          <span className="text-muted-foreground text-lg">Note:</span>{" "}
+          <span className="text-foreground text-sm">{paymentInfo.note}</span>
+        </div>
+      )}
+
+      {/* Submitted time */}
+      <p className="text-xs text-muted-foreground text-right">
+        Submitted at {new Date(paymentInfo.submittedAt).toLocaleString()}
+      </p>
+    </div>
+  );
+}
+
+function ShippingInfoBox({
+  shippingData,
+  shippingAddress,
+}: {
+  shippingData: any;
+  shippingAddress?: string;
+}) {
+  if (!shippingData) return null;
+
+  return (
+    <div className="bg-card border border-border/60 rounded-xl p-6 space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <Truck className="w-5 h-5 text-primary" />
+        <h3 className="text-foreground font-semibold text-lg">
+          Shipping Information
+        </h3>
+      </div>
+
+      {/* Shipping code */}
+      <div className="space-y-1">
+        <span className="text-muted-foreground text-lg">Tracking Code</span>
+        <div className="flex items-center justify-between bg-muted/40 rounded-md px-3 py-2">
+          <code className="text-lg text-foreground break-all">
+            {shippingData.shipping_code}
+          </code>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(shippingData.shipping_code);
+              toast.success("Tracking code copied");
+            }}
+            className="text-muted-foreground hover:text-foreground transition"
+          >
+            <Copy className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Provider */}
+      {shippingData.shipping_provider && (
+        <div className="flex justify-between text-lg">
+          <span className="text-muted-foreground">Carrier</span>
+          <span className="text-foreground">
+            {shippingData.shipping_provider}
+          </span>
+        </div>
+      )}
+
+      {/* Address */}
+      {shippingAddress && (
+        <div className="pt-3 border-t border-border/50 space-y-2">
+          <p className="flex items-center gap-2 text-lg text-muted-foreground">
+            <Box className="w-5 h-5" />
+            <span>Delivery Address:</span>
+            <span className="text-foreground">{shippingAddress}</span>
+          </p>
+        </div>
+      )}
+
+      {/* Note */}
+      {shippingData.note && (
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-md p-3">
+          <span className="text-muted-foreground text-lg">Seller Note:</span>{" "}
+          <span className="text-foreground text-sm">{shippingData.note}</span>
+        </div>
+      )}
+
+      {/* Time */}
+      {shippingData.shipped_at && (
+        <p className="text-xs text-muted-foreground text-right">
+          Shipped at {new Date(shippingData.shipped_at).toLocaleString()}
+        </p>
+      )}
     </div>
   );
 }

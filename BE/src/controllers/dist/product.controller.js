@@ -264,6 +264,48 @@ var ProductController = /** @class */ (function () {
             });
         });
     };
+    ProductController.getOrderDetail = function (req, res) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function () {
+            var userId, orderId, data, err_1, status;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        _b.trys.push([0, 2, , 3]);
+                        userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+                        orderId = req.params.orderId;
+                        if (!userId) {
+                            return [2 /*return*/, res.status(401).json({
+                                    success: false,
+                                    message: "Unauthorized"
+                                })];
+                        }
+                        if (!orderId) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "orderId is required"
+                                })];
+                        }
+                        return [4 /*yield*/, product_service_1.ProductService.getOrderDetail(orderId, userId)];
+                    case 1:
+                        data = _b.sent();
+                        return [2 /*return*/, res.json({ success: true, data: data })];
+                    case 2:
+                        err_1 = _b.sent();
+                        status = err_1.message === "Forbidden"
+                            ? 403
+                            : err_1.message === "Order not found"
+                                ? 404
+                                : 500;
+                        return [2 /*return*/, res.status(status).json({
+                                success: false,
+                                message: err_1.message
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
     return ProductController;
 }());
 exports.ProductController = ProductController;

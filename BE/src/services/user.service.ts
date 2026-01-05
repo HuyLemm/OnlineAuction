@@ -8,6 +8,7 @@ import {
   sendAutoBidUpdatedMail,
 } from "../utils/sendOtpMail";
 import { getDbNowMs } from "../utils/time";
+import { SubmitPaymentInput } from "../dto/product.dto";
 
 const SALT_ROUNDS = 10;
 
@@ -1322,8 +1323,6 @@ export class UserService {
 
         // ✅ order info
         "o.status as order_status",
-        "o.payment_deadline",
-
         "s.full_name as seller_name"
       )
       .orderBy("p.end_time", "desc");
@@ -1339,11 +1338,41 @@ export class UserService {
       wonDate: r.end_time,
 
       category: r.category,
-      orderStatus: r.order_status, // pending_payment | paid | cancelled | expired
+      orderStatus: r.order_status,
       sellerName: r.seller_name,
-
-      // ⬅️ QUAN TRỌNG
-      paymentDeadline: r.payment_deadline,
     }));
+  }
+
+  static async submitPayment(input: SubmitPaymentInput) {
+    return db.transaction(async (trx) => {
+      const order = await trx("orders").where({ id: input.orderId }).first();
+
+      if (!order) {
+        throw new Error("Order not found");
+      }
+
+      if (order.buyer_id !== input.buyerId) {
+        throw new Error("You are not allowed to submit this order");
+      }
+
+      if (order.status !== "payment_pending") {
+        throw new Error("Order is not awaiting payment");
+      }
+
+      // 1️⃣ Insert payment info
+      await trx("order_payments").insert({
+        order_id: input.orderId,
+        buyer_id: input.buyerId,
+        payment_ref: input.invoiceCode,
+        delivery_address: input.shippingAddress,
+        phone_number: input.phoneNumber,
+        note: input.description ?? null,
+      });
+
+      // 2️⃣ Update order status
+      await trx("orders").where({ id: input.orderId }).update({
+        status: "shipping_pending",
+      });
+    });
   }
 }

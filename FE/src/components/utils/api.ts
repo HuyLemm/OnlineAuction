@@ -6,6 +6,9 @@ export const GET_BROWSE_PRODUCT_API = `${API_BASE_URL}/products/get-browse-produ
 export const GET_PRODUCT_DETAIL_API = (productId: string) =>
   `${API_BASE_URL}/products/${productId}/get-product-detail`;
 
+export const GET_ORDER_DETAIL_API = (orderId: string) =>
+  `${API_BASE_URL}/products/orders/${orderId}`;
+
 //Categories
 export const GET_CATEGORIES_FOR_SIDEBAR_API = `${API_BASE_URL}/categories/get-categories-for-sidebar`;
 export const GET_MAIN_CATEGORIES_API = `${API_BASE_URL}/categories/get-main-categories`;
@@ -56,6 +59,9 @@ export const BUY_NOW_API = `${API_BASE_URL}/users/buy-now`;
 
 export const GET_WON_AUCTIONS_API = `${API_BASE_URL}/users/won-auctions`;
 
+export const ORDER_PAYMENT_API = (orderId: string) =>
+  `${API_BASE_URL}/users/orders/${orderId}/payment`;
+
 //Seller
 export const CREATE_AUCTION_API = `${API_BASE_URL}/seller/create-auction`;
 export const GET_AUTO_EXTEND_CONFIG_API = `${API_BASE_URL}/seller/auto-extend-config`;
@@ -81,6 +87,9 @@ export const GET_ACTIVE_BIDDERS_API = (productId: string) =>
 
 export const KICK_BIDDER_API = (productId: string, bidderId: string) =>
   `${API_BASE_URL}/seller/products/${productId}/kick-bidder/${bidderId}`;
+
+export const SUBMIT_SHIPMENT_API = (orderId: string) =>
+  `${API_BASE_URL}/seller/orders/${orderId}/shipment`;
 
 //Admin
 export const CREATE_PARENT_CATEGORY_API = `${API_BASE_URL}/admin/categories/parent`;
@@ -118,3 +127,15 @@ export const TOGGLE_BAN_USER_API = (id: string) =>
   `${API_BASE_URL}/admin/users/${id}/ban`;
 export const TOGGLE_DELETE_USER_API = (id: string) =>
   `${API_BASE_URL}/admin/users/${id}/delete`;
+
+// Order
+export const GET_MESSAGE_ORDER_API = (orderId: string) =>
+  `${API_BASE_URL}/orders/${orderId}/messages`;
+export const SEND_MESSAGE_ORDER_API = (orderId: string) =>
+  `${API_BASE_URL}/orders/${orderId}/messages`;
+
+export const GET_PAYMENT_ORDER_API = (orderId: string) =>
+  `${API_BASE_URL}/orders/${orderId}/payment`;
+
+export const GET_SHIPPING_ORDER_API = (orderId: string) =>
+  `${API_BASE_URL}/orders/${orderId}/shipping`;

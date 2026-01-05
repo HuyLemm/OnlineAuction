@@ -3,8 +3,14 @@ import { MessageCircle, User, X } from "lucide-react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { ScrollArea } from "../ui/scroll-area";
-import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+
+import { GET_MESSAGE_ORDER_API, SEND_MESSAGE_ORDER_API } from "../utils/api";
+import { fetchWithAuth } from "../utils/fetchWithAuth";
+
+/* ===============================
+ * Types
+ * =============================== */
 
 interface Message {
   id: string;
@@ -13,7 +19,6 @@ interface Message {
   content: string;
   timestamp: Date;
   isOwn: boolean;
-  read: boolean;
 }
 
 interface ChatInterfaceProps {
@@ -29,88 +34,88 @@ interface ChatInterfaceProps {
   onToggleMinimize?: () => void;
 }
 
-export function ChatInterface({ 
-  orderId, 
-  otherParty, 
-  currentUserId, 
+/* ===============================
+ * Component
+ * =============================== */
+
+export function ChatInterface({
+  orderId,
+  otherParty,
+  currentUserId,
   currentUserName,
   isMinimized = false,
-  onToggleMinimize
+  onToggleMinimize,
 }: ChatInterfaceProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      senderId: otherParty.id,
-      senderName: otherParty.name,
-      content: "Hello! Thank you for winning the auction. I'll process your payment shortly.",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-      isOwn: false,
-      read: true
-    },
-    {
-      id: "2",
-      senderId: currentUserId,
-      senderName: currentUserName,
-      content: "Great! I've submitted the payment proof. Please let me know once you confirm.",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 1.5),
-      isOwn: true,
-      read: true
-    },
-    {
-      id: "3",
-      senderId: otherParty.id,
-      senderName: otherParty.name,
-      content: "Payment confirmed! I'm preparing the item for shipment. You'll receive tracking information soon.",
-      timestamp: new Date(Date.now() - 1000 * 60 * 30),
-      isOwn: false,
-      read: true
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
+  /* ===============================
+   * Load messages
+   * =============================== */
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    (async () => {
+      try {
+        const res = await fetchWithAuth(GET_MESSAGE_ORDER_API(orderId));
+        const json = await res.json();
+        console.log(json);
 
-  const handleSendMessage = (content: string) => {
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      senderId: currentUserId,
-      senderName: currentUserName,
-      content,
-      timestamp: new Date(),
-      isOwn: true,
-      read: false
-    };
+        if (!json.success) {
+          throw new Error(json.message || "Failed to load messages");
+        }
 
-    setMessages([...messages, newMessage]);
+        const mapped: Message[] = json.data.map((m: any) => ({
+          id: m.id,
+          senderId: m.senderId,
+          senderName: m.senderName,
+          content: m.content,
+          timestamp: new Date(m.timestamp),
+          isOwn: m.senderId === currentUserId,
+        }));
 
-    // Simulate response after 2 seconds
-    setTimeout(() => {
-      const response: Message = {
-        id: (Date.now() + 1).toString(),
-        senderId: otherParty.id,
-        senderName: otherParty.name,
-        content: "Thanks for your message. I'll get back to you soon!",
-        timestamp: new Date(),
-        isOwn: false,
-        read: true
+        setMessages(mapped);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [orderId, currentUserId]);
+
+  /* ===============================
+   * Send message
+   * =============================== */
+  const handleSendMessage = async (content: string) => {
+    try {
+      const res = await fetchWithAuth(SEND_MESSAGE_ORDER_API(orderId), {
+        method: "POST",
+        body: JSON.stringify({ content }),
+      });
+
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.message || "Send message failed");
+      }
+
+      const newMessage: Message = {
+        id: json.data.id,
+        senderId: currentUserId,
+        senderName: currentUserName,
+        content: json.data.content,
+        timestamp: new Date(json.data.created_at),
+        isOwn: true,
       };
-      setMessages(prev => [...prev, response]);
-      
-      // Mark previous message as read
-      setMessages(prev => prev.map(msg => 
-        msg.id === newMessage.id ? { ...msg, read: true } : msg
-      ));
-    }, 2000);
+
+      setMessages((prev) => [...prev, newMessage]);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
+  /* ===============================
+   * Minimized view
+   * =============================== */
   if (isMinimized) {
     return (
       <div className="fixed bottom-4 right-4 z-50">
@@ -120,16 +125,14 @@ export function ChatInterface({
         >
           <MessageCircle className="h-5 w-5 mr-2" />
           Chat with {otherParty.name}
-          {messages.filter(m => !m.isOwn && !m.read).length > 0 && (
-            <Badge className="ml-2 bg-[#ef4444] text-white">
-              {messages.filter(m => !m.isOwn && !m.read).length}
-            </Badge>
-          )}
         </Button>
       </div>
     );
   }
 
+  /* ===============================
+   * Full chat UI
+   * =============================== */
   return (
     <div className="bg-card border border-border/50 rounded-xl overflow-hidden flex flex-col h-[600px]">
       {/* Header */}
@@ -141,16 +144,14 @@ export function ChatInterface({
             </div>
             <div>
               <h4 className="text-foreground">{otherParty.name}</h4>
-              <p className="text-muted-foreground capitalize">{otherParty.role}</p>
+              <p className="text-muted-foreground capitalize">
+                {otherParty.role}
+              </p>
             </div>
           </div>
+
           {onToggleMinimize && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleMinimize}
-              className="flex-shrink-0"
-            >
+            <Button variant="ghost" size="icon" onClick={onToggleMinimize}>
               <X className="h-5 w-5" />
             </Button>
           )}
@@ -158,19 +159,24 @@ export function ChatInterface({
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+      <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
-          {/* Order Context */}
           <div className="flex justify-center">
             <div className="bg-secondary/50 rounded-full px-4 py-2 text-muted-foreground">
               Order #{orderId}
             </div>
           </div>
 
-          {/* Message List */}
+          {loading && (
+            <p className="text-center text-muted-foreground">
+              Loading messages...
+            </p>
+          )}
+
           {messages.map((message) => (
             <ChatMessage key={message.id} message={message} />
           ))}
+
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>

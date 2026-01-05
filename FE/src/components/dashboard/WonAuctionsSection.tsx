@@ -20,6 +20,13 @@ function getPaymentTimeLeft(deadline?: string | null) {
   return `${hours}h ${minutes}m`;
 }
 
+type OrderStatus =
+  | "payment_pending"
+  | "shipping_pending"
+  | "delivered_pending"
+  | "completed"
+  | "cancelled";
+
 interface ApiWonAuction {
   id: string;
   itemId: string;
@@ -28,16 +35,9 @@ interface ApiWonAuction {
   winningBid: number;
   wonDate: string;
   category: string;
-  orderStatus: "pending_payment" | "paid" | "cancelled" | "expired";
+  orderStatus: OrderStatus;
   sellerName: string;
-  paymentDeadline: string | null;
 }
-
-type OrderStatusUI =
-  | "pending_payment"
-  | "paid completed"
-  | "cancelled"
-  | "expired";
 
 interface WonAuction {
   id: string;
@@ -47,22 +47,78 @@ interface WonAuction {
   winningBid: number;
   wonDate: Date;
   category: string;
-  orderStatus: OrderStatusUI;
+  orderStatus: OrderStatus;
   sellerName: string;
-  paymentDeadline: string | null;
 }
 
-function mapOrderStatus(status: ApiWonAuction["orderStatus"]): OrderStatusUI {
+/* ===============================
+ * Helpers
+ * =============================== */
+
+function getStepBadge(status: OrderStatus) {
   switch (status) {
-    case "pending_payment":
-      return "pending_payment";
-    case "paid":
-      return "paid completed";
+    case "payment_pending":
+      return (
+        <Badge className="bg-yellow-500/20 text-yellow-500">
+          Step 1 · Payment Info
+        </Badge>
+      );
+
+    case "shipping_pending":
+      return (
+        <Badge className="bg-blue-500/20 text-blue-500">
+          Step 2 · Shipping
+        </Badge>
+      );
+
+    case "delivered_pending":
+      return (
+        <Badge className="bg-purple-500/20 text-purple-500">
+          Step 3 · Confirm Delivery
+        </Badge>
+      );
+
+    case "completed":
+      return (
+        <Badge className="bg-green-500/20 text-green-500">
+          Step 4 · Completed
+        </Badge>
+      );
+
     case "cancelled":
-      return "cancelled";
-    case "expired":
-      return "expired";
+      return <Badge className="bg-gray-500/20 text-gray-500">Cancelled</Badge>;
   }
+}
+
+function getActionButton(
+  auction: WonAuction,
+  navigate: ReturnType<typeof useNavigate>
+) {
+  const handleClick = () => {
+    navigate(`/order/${auction.id}`);
+  };
+
+  if (auction.orderStatus === "cancelled") {
+    return (
+      <Button variant="ghost" size="sm" onClick={handleClick}>
+        View Details
+      </Button>
+    );
+  }
+
+  if (auction.orderStatus === "completed") {
+    return (
+      <Button variant="outline" size="sm" onClick={handleClick}>
+        View & Review
+      </Button>
+    );
+  }
+
+  return (
+    <Button size="sm" onClick={handleClick}>
+      Continue Order
+    </Button>
+  );
 }
 
 export function WonAuctionsSection() {
@@ -80,7 +136,6 @@ export function WonAuctionsSection() {
           data.map((a: ApiWonAuction) => ({
             ...a,
             wonDate: new Date(a.wonDate),
-            orderStatus: mapOrderStatus(a.orderStatus),
           }))
         );
       } finally {
@@ -98,62 +153,17 @@ export function WonAuctionsSection() {
     );
   }
 
-  const getStatusBadge = (auction: WonAuction) => {
-    switch (auction.orderStatus) {
-      case "pending_payment":
-        return (
-          <Badge className="bg-[#d4a446]/20 text-yellow-500">
-            Payment Required
-          </Badge>
-        );
+  /* ===============================
+   * Stats
+   * =============================== */
 
-      case "paid completed":
-        return (
-          <Badge className="bg-blue-500/20 text-blue-500">Paid Completed</Badge>
-        );
+  const inProgressCount = wonAuctions.filter(
+    (a) => a.orderStatus !== "completed" && a.orderStatus !== "cancelled"
+  ).length;
 
-      case "expired":
-        return (
-          <Badge className="bg-red-500/20 text-red-500">Payment Expired</Badge>
-        );
-
-      case "cancelled":
-        return (
-          <Badge className="bg-gray-500/20 text-gray-500">Cancelled</Badge>
-        );
-    }
-  };
-
-  const getActionButton = (auction: WonAuction) => {
-    const handleClick = () => {
-      navigate(`/order/${auction.id}`);
-    };
-    if (auction.orderStatus === "pending_payment") {
-      return (
-        <Button
-          size="sm"
-          className="bg-[#d4a446] text-black text-sm"
-          onClick={handleClick}
-        >
-          Pay Now
-        </Button>
-      );
-    }
-
-    if (auction.orderStatus === "paid completed") {
-      return (
-        <Button variant="outline" size="sm" onClick={handleClick}>
-          View Order
-        </Button>
-      );
-    }
-
-    return (
-      <Button variant="ghost" size="sm" onClick={handleClick}>
-        View Details
-      </Button>
-    );
-  };
+  const completedCount = wonAuctions.filter(
+    (a) => a.orderStatus === "completed"
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -186,13 +196,7 @@ export function WonAuctionsSection() {
             </div>
             <div>
               <p className="text-muted-foreground">In Progress</p>
-              <p className="text-foreground">
-                {
-                  wonAuctions.filter((a) => a.orderStatus !== "paid completed")
-                    .length
-                }{" "}
-                Orders
-              </p>
+              <p className="text-foreground">{inProgressCount} Orders</p>
             </div>
           </div>
         </div>
@@ -204,13 +208,7 @@ export function WonAuctionsSection() {
             </div>
             <div>
               <p className="text-muted-foreground">Completed</p>
-              <p className="text-foreground">
-                {
-                  wonAuctions.filter((a) => a.orderStatus === "paid completed")
-                    .length
-                }{" "}
-                Orders
-              </p>
+              <p className="text-foreground">{completedCount} Orders</p>
             </div>
           </div>
         </div>
@@ -243,7 +241,7 @@ export function WonAuctionsSection() {
                     >
                       {auction.category}
                     </Badge>
-                    {getStatusBadge(auction)}
+                    {getStepBadge(auction.orderStatus)}
                   </div>
                   <h3 className="text-foreground line-clamp-1">
                     {auction.title}
@@ -268,16 +266,8 @@ export function WonAuctionsSection() {
                   <p className="text-muted-foreground">
                     Won {new Date(auction.wonDate).toLocaleDateString()}
                   </p>
-                  {auction.orderStatus === "pending_payment" && (
-                    <p className="text-sm text-muted-foreground ml-42">
-                      Time for payment:{" "}
-                      <span className="text-yellow-500">
-                        {getPaymentTimeLeft(auction.paymentDeadline)}
-                      </span>
-                    </p>
-                  )}
 
-                  {getActionButton(auction)}
+                  {getActionButton(auction, navigate)}
                 </div>
               </div>
             </div>

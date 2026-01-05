@@ -522,4 +522,47 @@ export class UserController {
       data,
     });
   }
+
+  static async submitPayment(req: AuthRequest, res: Response) {
+    try {
+      const { orderId } = req.params;
+      const buyerId = req.user!.userId;
+
+      const { invoiceCode, shippingAddress, phoneNumber, description } =
+        req.body;
+
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: "orderId is required",
+        });
+      }
+
+      if (!invoiceCode || !shippingAddress || !phoneNumber) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields",
+        });
+      }
+
+      await UserService.submitPayment({
+        orderId,
+        buyerId,
+        invoiceCode,
+        shippingAddress,
+        phoneNumber,
+        description,
+      });
+
+      return res.json({
+        success: true,
+        message: "Payment information submitted successfully",
+      });
+    } catch (err: any) {
+      return res.status(400).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
 }

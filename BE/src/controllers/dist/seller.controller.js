@@ -561,6 +561,55 @@ var SellerController = /** @class */ (function () {
             });
         });
     };
+    // ===============================
+    // POST /seller/orders/:orderId/shipment
+    // ===============================
+    SellerController.submitShipment = function (req, res) {
+        return __awaiter(this, void 0, void 0, function () {
+            var orderId, sellerId, _a, shipping_code, shipping_provider, note, shipment, error_5;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        _b.trys.push([0, 2, , 3]);
+                        orderId = req.params.orderId;
+                        sellerId = req.user.userId;
+                        _a = req.body, shipping_code = _a.shipping_code, shipping_provider = _a.shipping_provider, note = _a.note;
+                        if (!shipping_code) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "shipping_code is required"
+                                })];
+                        }
+                        if (!orderId) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "orderId is required"
+                                })];
+                        }
+                        return [4 /*yield*/, seller_service_1.SellerService.createShipment({
+                                orderId: orderId,
+                                sellerId: sellerId,
+                                shipping_code: shipping_code,
+                                shipping_provider: shipping_provider,
+                                note: note
+                            })];
+                    case 1:
+                        shipment = _b.sent();
+                        return [2 /*return*/, res.status(201).json({
+                                success: true,
+                                data: shipment
+                            })];
+                    case 2:
+                        error_5 = _b.sent();
+                        return [2 /*return*/, res.status(400).json({
+                                success: false,
+                                message: error_5.message
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
     return SellerController;
 }());
 exports.SellerController = SellerController;

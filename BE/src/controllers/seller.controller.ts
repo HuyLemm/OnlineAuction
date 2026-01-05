@@ -426,4 +426,47 @@ export class SellerController {
       });
     }
   }
+  // ===============================
+  // POST /seller/orders/:orderId/shipment
+  // ===============================
+  static async submitShipment(req: AuthRequest, res: Response) {
+    try {
+      const { orderId } = req.params;
+      const sellerId = req.user!.userId;
+
+      const { shipping_code, shipping_provider, note } = req.body;
+
+      if (!shipping_code) {
+        return res.status(400).json({
+          success: false,
+          message: "shipping_code is required",
+        });
+      }
+
+      if (!orderId){
+        return res.status(400).json({
+          success: false,
+          message: "orderId is required",
+        });
+      }
+
+      const shipment = await SellerService.createShipment({
+        orderId,
+        sellerId,
+        shipping_code,
+        shipping_provider,
+        note,
+      });
+
+      return res.status(201).json({
+        success: true,
+        data: shipment,
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
 }

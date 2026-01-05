@@ -3,6 +3,7 @@ import {
   CreateAuctionDTO,
   SellerActiveProductDTO,
   EndedAuctionRow,
+  CreateShipmentInput,
 } from "../dto/product.dto";
 
 import { RateWinnerInput } from "../dto/seller.dto";
@@ -1054,6 +1055,57 @@ export class SellerService {
         newCurrentPrice,
         newHighestBidderId,
       };
+    });
+  }
+
+  static async createShipment(input: CreateShipmentInput) {
+    const { orderId, sellerId, shipping_code, shipping_provider, note } = input;
+
+    return await db.transaction(async (trx) => {
+      // 1️⃣ Load order + permission check
+      const order = await trx("orders")
+        .select("id", "seller_id", "status")
+        .where("id", orderId)
+        .first();
+
+      if (!order) throw new Error("Order not found");
+
+      if (order.seller_id !== sellerId) {
+        throw new Error("Forbidden");
+      }
+
+      // 2️⃣ Check order status hợp lệ
+      if (!["shipping_pending"].includes(order.status)) {
+        throw new Error("Order is not ready for shipping");
+      }
+
+      // 3️⃣ Prevent duplicate shipment
+      const existingShipment = await trx("order_shipments")
+        .where("order_id", orderId)
+        .first();
+
+      if (existingShipment) {
+        throw new Error("Shipment already exists for this order");
+      }
+
+      // 4️⃣ Insert shipment
+      const [shipment] = await trx("order_shipments")
+        .insert({
+          order_id: orderId,
+          seller_id: sellerId,
+          shipping_code,
+          shipping_provider: shipping_provider ?? null,
+          note: note ?? null,
+          shipped_at: trx.fn.now(),
+        })
+        .returning("*");
+
+      // 5️⃣ Update order status
+      await trx("orders").where("id", orderId).update({
+        status: "delivered_pending",
+      });
+
+      return shipment;
     });
   }
 }

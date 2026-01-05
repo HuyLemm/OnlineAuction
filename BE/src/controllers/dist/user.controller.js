@@ -705,6 +705,53 @@ var UserController = /** @class */ (function () {
             });
         });
     };
+    UserController.submitPayment = function (req, res) {
+        return __awaiter(this, void 0, void 0, function () {
+            var orderId, buyerId, _a, invoiceCode, shippingAddress, phoneNumber, description, err_8;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        _b.trys.push([0, 2, , 3]);
+                        orderId = req.params.orderId;
+                        buyerId = req.user.userId;
+                        _a = req.body, invoiceCode = _a.invoiceCode, shippingAddress = _a.shippingAddress, phoneNumber = _a.phoneNumber, description = _a.description;
+                        if (!orderId) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "orderId is required"
+                                })];
+                        }
+                        if (!invoiceCode || !shippingAddress || !phoneNumber) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "Missing required fields"
+                                })];
+                        }
+                        return [4 /*yield*/, user_service_1.UserService.submitPayment({
+                                orderId: orderId,
+                                buyerId: buyerId,
+                                invoiceCode: invoiceCode,
+                                shippingAddress: shippingAddress,
+                                phoneNumber: phoneNumber,
+                                description: description
+                            })];
+                    case 1:
+                        _b.sent();
+                        return [2 /*return*/, res.json({
+                                success: true,
+                                message: "Payment information submitted successfully"
+                            })];
+                    case 2:
+                        err_8 = _b.sent();
+                        return [2 /*return*/, res.status(400).json({
+                                success: false,
+                                message: err_8.message
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
     return UserController;
 }());
 exports.UserController = UserController;

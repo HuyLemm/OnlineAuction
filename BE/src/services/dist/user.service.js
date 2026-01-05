@@ -1304,7 +1304,7 @@ var UserService = /** @class */ (function () {
                             .andWhere("p.highest_bidder_id", userId)
                             .select("o.id as orderId", "p.id as itemId", "p.title", "img.image_url as image", "o.final_price", "p.end_time", "c.name as category", 
                         // ✅ order info
-                        "o.status as order_status", "o.payment_deadline", "s.full_name as seller_name")
+                        "o.status as order_status", "s.full_name as seller_name")
                             .orderBy("p.end_time", "desc")];
                     case 1:
                         rows = _a.sent();
@@ -1320,12 +1320,57 @@ var UserService = /** @class */ (function () {
                                     wonDate: r.end_time,
                                     category: r.category,
                                     orderStatus: r.order_status,
-                                    sellerName: r.seller_name,
-                                    // ⬅️ QUAN TRỌNG
-                                    paymentDeadline: r.payment_deadline
+                                    sellerName: r.seller_name
                                 });
                             })];
                 }
+            });
+        });
+    };
+    UserService.submitPayment = function (input) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_a) {
+                return [2 /*return*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
+                        var order;
+                        var _a;
+                        return __generator(this, function (_b) {
+                            switch (_b.label) {
+                                case 0: return [4 /*yield*/, trx("orders").where({ id: input.orderId }).first()];
+                                case 1:
+                                    order = _b.sent();
+                                    if (!order) {
+                                        throw new Error("Order not found");
+                                    }
+                                    if (order.buyer_id !== input.buyerId) {
+                                        throw new Error("You are not allowed to submit this order");
+                                    }
+                                    if (order.status !== "payment_pending") {
+                                        throw new Error("Order is not awaiting payment");
+                                    }
+                                    // 1️⃣ Insert payment info
+                                    return [4 /*yield*/, trx("order_payments").insert({
+                                            order_id: input.orderId,
+                                            buyer_id: input.buyerId,
+                                            payment_ref: input.invoiceCode,
+                                            delivery_address: input.shippingAddress,
+                                            phone_number: input.phoneNumber,
+                                            note: (_a = input.description) !== null && _a !== void 0 ? _a : null
+                                        })];
+                                case 2:
+                                    // 1️⃣ Insert payment info
+                                    _b.sent();
+                                    // 2️⃣ Update order status
+                                    return [4 /*yield*/, trx("orders").where({ id: input.orderId }).update({
+                                            status: "shipping_pending"
+                                        })];
+                                case 3:
+                                    // 2️⃣ Update order status
+                                    _b.sent();
+                                    return [2 /*return*/];
+                            }
+                        });
+                    }); })];
             });
         });
     };

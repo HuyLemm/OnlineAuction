@@ -95,8 +95,7 @@ export class CronService {
             buyer_id: product.highest_bidder_id,
             seller_id: product.seller_id,
             final_price: product.current_price,
-            status: "pending_payment",
-            payment_deadline: trx.raw("NOW() + INTERVAL '24 HOURS'"),
+            status: "payment_pending",
           })
           .onConflict("product_id")
           .ignore();

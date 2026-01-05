@@ -1024,6 +1024,69 @@ var SellerService = /** @class */ (function () {
             });
         });
     };
+    SellerService.createShipment = function (input) {
+        return __awaiter(this, void 0, void 0, function () {
+            var orderId, sellerId, shipping_code, shipping_provider, note;
+            var _this = this;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        orderId = input.orderId, sellerId = input.sellerId, shipping_code = input.shipping_code, shipping_provider = input.shipping_provider, note = input.note;
+                        return [4 /*yield*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
+                                var order, existingShipment, shipment;
+                                return __generator(this, function (_a) {
+                                    switch (_a.label) {
+                                        case 0: return [4 /*yield*/, trx("orders")
+                                                .select("id", "seller_id", "status")
+                                                .where("id", orderId)
+                                                .first()];
+                                        case 1:
+                                            order = _a.sent();
+                                            if (!order)
+                                                throw new Error("Order not found");
+                                            if (order.seller_id !== sellerId) {
+                                                throw new Error("Forbidden");
+                                            }
+                                            // 2️⃣ Check order status hợp lệ
+                                            if (!["shipping_pending"].includes(order.status)) {
+                                                throw new Error("Order is not ready for shipping");
+                                            }
+                                            return [4 /*yield*/, trx("order_shipments")
+                                                    .where("order_id", orderId)
+                                                    .first()];
+                                        case 2:
+                                            existingShipment = _a.sent();
+                                            if (existingShipment) {
+                                                throw new Error("Shipment already exists for this order");
+                                            }
+                                            return [4 /*yield*/, trx("order_shipments")
+                                                    .insert({
+                                                    order_id: orderId,
+                                                    seller_id: sellerId,
+                                                    shipping_code: shipping_code,
+                                                    shipping_provider: shipping_provider !== null && shipping_provider !== void 0 ? shipping_provider : null,
+                                                    note: note !== null && note !== void 0 ? note : null,
+                                                    shipped_at: trx.fn.now()
+                                                })
+                                                    .returning("*")];
+                                        case 3:
+                                            shipment = (_a.sent())[0];
+                                            // 5️⃣ Update order status
+                                            return [4 /*yield*/, trx("orders").where("id", orderId).update({
+                                                    status: "delivered_pending"
+                                                })];
+                                        case 4:
+                                            // 5️⃣ Update order status
+                                            _a.sent();
+                                            return [2 /*return*/, shipment];
+                                    }
+                                });
+                            }); })];
+                    case 1: return [2 /*return*/, _a.sent()];
+                }
+            });
+        });
+    };
     return SellerService;
 }());
 exports.SellerService = SellerService;

@@ -225,4 +225,44 @@ export class ProductController {
       });
     }
   }
+
+  static async getOrderDetail(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.userId;
+      const { orderId } = req.params;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
+      }
+
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: "orderId is required",
+        });
+      }
+
+      const data = await ProductService.getOrderDetail(
+        orderId,
+        userId
+      );
+
+      return res.json({ success: true, data });
+    } catch (err: any) {
+      const status =
+        err.message === "Forbidden"
+          ? 403
+          : err.message === "Order not found"
+          ? 404
+          : 500;
+
+      return res.status(status).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
 }

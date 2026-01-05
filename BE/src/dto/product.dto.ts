@@ -304,3 +304,20 @@ export type ViewerDTO = {
     reason?: string;
   };
 };
+
+export interface SubmitPaymentInput {
+  orderId: string;
+  buyerId: string;
+  invoiceCode: string;
+  shippingAddress: string;
+  phoneNumber: string;
+  description?: string;
+}
+
+export interface CreateShipmentInput {
+  orderId: string;
+  sellerId: string;
+  shipping_code: string;
+  shipping_provider?: string;
+  note?: string;
+}
