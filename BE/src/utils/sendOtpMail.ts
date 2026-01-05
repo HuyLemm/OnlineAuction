@@ -271,3 +271,178 @@ export async function sendBidRejectedMail({
     `,
   });
 }
+
+export async function sendAutoBidUpdatedMail({
+  to,
+  bidderName,
+  productTitle,
+  maxBid,
+  productId,
+}: {
+  to: string;
+  bidderName: string;
+  productTitle: string;
+  maxBid: number;
+  productId: string;
+}) {
+  const link = `${env.FRONTEND_URL}/product/${productId}`;
+
+  await mailer.sendMail({
+    from: env.MAIL_FROM,
+    to,
+    subject: `Your auto-bid was updated for "${productTitle}"`,
+    html: `
+      <div style="font-family: Arial; line-height:1.6">
+        <h2>Hello ${bidderName},</h2>
+
+        <p>Your automatic bid has been successfully updated.</p>
+
+        <p>
+          <b>Item:</b> ${productTitle}<br/>
+          <b>Your new maximum bid:</b>
+          <span style="color:#d4a446;font-weight:bold">
+            ${maxBid.toLocaleString()}₫
+          </span>
+        </p>
+
+        <p>
+          The current auction price did not change, and you are still protected
+          by your automatic bidding limit.
+        </p>
+
+        <a href="${link}"
+           style="display:inline-block;margin-top:16px;
+           padding:10px 16px;background:#d4a446;color:black;
+           text-decoration:none;font-weight:bold;border-radius:6px;">
+          View auction
+        </a>
+
+        <p style="margin-top:24px">— LuxeAuction Team</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendAuctionExpiredNoBidMail({
+  to,
+  sellerName,
+  productTitle,
+  productId,
+}: {
+  to: string;
+  sellerName: string;
+  productTitle: string;
+  productId: string;
+}) {
+  await mailer.sendMail({
+    from: env.MAIL_FROM,
+    to,
+    subject: `Your auction ended without bids – "${productTitle}"`,
+    html: `
+      <div style="font-family: Arial; line-height:1.6">
+        <h2>Hello ${sellerName},</h2>
+
+        <p>Your auction has ended, but unfortunately no bids were placed.</p>
+
+        <p><b>Item:</b> ${productTitle}</p>
+
+        <a href="${env.FRONTEND_URL}/product/${productId}"
+           style="display:inline-block;margin-top:16px;
+           padding:10px 16px;background:#d4a446;color:black;
+           text-decoration:none;font-weight:bold;border-radius:6px;">
+          Relist item
+        </a>
+
+        <p style="margin-top:24px">— LuxeAuction Team</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendAuctionWonMail({
+  to,
+  buyerName,
+  productTitle,
+  finalPrice,
+  productId,
+}: {
+  to: string;
+  buyerName: string;
+  productTitle: string;
+  finalPrice: number;
+  productId: string;
+}) {
+  await mailer.sendMail({
+    from: env.MAIL_FROM,
+    to,
+    subject: `You won the auction – "${productTitle}"`,
+    html: `
+      <div style="font-family: Arial; line-height:1.6">
+        <h2>Congratulations ${buyerName} 🎉</h2>
+
+        <p>You won the auction for:</p>
+        <p><b>${productTitle}</b></p>
+
+        <p>
+          <b>Final price:</b>
+          <span style="color:#d4a446;font-weight:bold">
+            ${finalPrice.toLocaleString()}₫
+          </span>
+        </p>
+
+        <a href="${env.FRONTEND_URL}/orders"
+           style="display:inline-block;margin-top:16px;
+           padding:10px 16px;background:#d4a446;color:black;
+           text-decoration:none;font-weight:bold;border-radius:6px;">
+          Complete payment
+        </a>
+
+        <p style="margin-top:24px">— LuxeAuction Team</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendAuctionSoldMail({
+  to,
+  sellerName,
+  productTitle,
+  finalPrice,
+  productId,
+}: {
+  to: string;
+  sellerName: string;
+  productTitle: string;
+  finalPrice: number;
+  productId: string;
+}) {
+  await mailer.sendMail({
+    from: env.MAIL_FROM,
+    to,
+    subject: `Your item has been sold – "${productTitle}"`,
+    html: `
+      <div style="font-family: Arial; line-height:1.6">
+        <h2>Hello ${sellerName},</h2>
+
+        <p>Your auction has ended successfully.</p>
+
+        <p>
+          <b>Item:</b> ${productTitle}<br/>
+          <b>Final price:</b>
+          <span style="color:#d4a446;font-weight:bold">
+            ${finalPrice.toLocaleString()}₫
+          </span>
+        </p>
+
+        <a href="${env.FRONTEND_URL}/seller/orders"
+           style="display:inline-block;margin-top:16px;
+           padding:10px 16px;background:#d4a446;color:black;
+           text-decoration:none;font-weight:bold;border-radius:6px;">
+          View order
+        </a>
+
+        <p style="margin-top:24px">— LuxeAuction Team</p>
+      </div>
+    `,
+  });
+}

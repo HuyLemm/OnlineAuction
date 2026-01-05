@@ -393,10 +393,10 @@ export class SellerService {
    * =============================== */
   static async getEndedAuctions(sellerId: string): Promise<EndedAuctionRow[]> {
     const rows = (await db("products as p")
-      // winner
-      .join("users as u", "u.id", "p.highest_bidder_id")
+      // 🏆 winner (NULL nếu expired)
+      .leftJoin("users as u", "u.id", "p.highest_bidder_id")
 
-      // main image
+      // 🖼️ main image
       .leftJoin("product_images as img", function () {
         this.on("img.product_id", "p.id").andOn("img.is_main", db.raw("true"));
       })
@@ -432,15 +432,17 @@ export class SellerService {
       .select(
         "p.id",
         "p.title",
+        "p.status", // ⭐ thêm để FE phân biệt
         "p.current_price",
         "p.end_time",
 
+        // buyer (NULL nếu expired)
         "u.id as buyer_id",
         "u.full_name as buyer_name",
 
         "img.image_url as image",
 
-        // aggregate buyer rating
+        // aggregate buyer rating (NULL-safe)
         db.raw("COALESCE(r_agg.score, 0) AS buyer_rating_score"),
         db.raw("COALESCE(r_agg.total, 0) AS buyer_rating_total"),
 
@@ -565,11 +567,11 @@ export class SellerService {
       }
 
       /* =============================
-       * 2️⃣ Get question + product + bidder
+       * 2️⃣ Get question + product + original bidder
        * ============================= */
       const question = await trx("questions as q")
         .join("products as p", "p.id", "q.product_id")
-        .join("users as u", "u.id", "q.user_id") // bidder
+        .join("users as u", "u.id", "q.user_id") // người hỏi gốc
         .select(
           "q.id as questionId",
           "q.product_id as productId",
@@ -578,9 +580,9 @@ export class SellerService {
           "p.seller_id as sellerId",
           "p.status as productStatus",
 
-          "u.id as bidderId",
-          "u.full_name as bidderName",
-          "u.email as bidderEmail"
+          "u.id as askerId",
+          "u.full_name as askerName",
+          "u.email as askerEmail"
         )
         .where("q.id", questionId)
         .first();
@@ -598,7 +600,7 @@ export class SellerService {
       }
 
       /* =============================
-       * 3️⃣ Insert answer (timeline)
+       * 3️⃣ Insert seller answer
        * ============================= */
       const [answer] = await trx("answers")
         .insert({
@@ -611,19 +613,57 @@ export class SellerService {
         .returning(["id", "content", "created_at"]);
 
       /* =============================
-       * 4️⃣ Send mail to bidder
+       * 4️⃣ Load ALL participants in thread
        * ============================= */
-      if (question.bidderEmail) {
-        await sendQuestionNotificationMail({
-          to: question.bidderEmail,
-          receiverName: question.bidderName,
-          senderName: seller.full_name,
-          productTitle: question.productTitle,
-          productId: question.productId,
-          message: content,
+      const participants = await trx("answers as a")
+        .join("users as u", "u.id", "a.user_id")
+        .where("a.question_id", questionId)
+        .andWhereNot("a.user_id", sellerId) // ❌ không gửi cho seller
+        .select("u.id", "u.email", "u.full_name");
+
+      /* =============================
+       * 5️⃣ Build unique receivers (Map)
+       * ============================= */
+      const receiversMap = new Map<
+        string,
+        { id: string; email: string; full_name: string }
+      >();
+
+      // 5.1️⃣ Người hỏi gốc LUÔN được notify
+      if (question.askerId !== sellerId && question.askerEmail) {
+        receiversMap.set(question.askerId, {
+          id: question.askerId,
+          email: question.askerEmail,
+          full_name: question.askerName,
         });
       }
 
+      // 5.2️⃣ Các user đã reply trong thread
+      for (const p of participants) {
+        if (!receiversMap.has(p.id)) {
+          receiversMap.set(p.id, p);
+        }
+      }
+
+      /* =============================
+       * 6️⃣ Send mail to ALL participants
+       * ============================= */
+      await Promise.all(
+        [...receiversMap.values()].map((user) =>
+          sendQuestionNotificationMail({
+            to: user.email,
+            receiverName: user.full_name,
+            senderName: seller.full_name,
+            productTitle: question.productTitle,
+            productId: question.productId,
+            message: content,
+          })
+        )
+      );
+
+      /* =============================
+       * 7️⃣ Return answer DTO
+       * ============================= */
       return {
         id: answer.id,
         content: answer.content,

@@ -35,9 +35,17 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __spreadArrays = (this && this.__spreadArrays) || function () {
+    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
+    for (var r = Array(s), k = 0, i = 0; i < il; i++)
+        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
+            r[k] = a[j];
+    return r;
+};
 exports.__esModule = true;
 exports.CronService = void 0;
 var db_1 = require("../config/db");
+var sendOtpMail_1 = require("../utils/sendOtpMail");
 var CronService = /** @class */ (function () {
     function CronService() {
     }
@@ -75,39 +83,65 @@ var CronService = /** @class */ (function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
-                            var expiredProducts, _i, expiredProducts_1, product;
-                            return __generator(this, function (_a) {
-                                switch (_a.label) {
+                            var expiredProducts, userIds, _i, expiredProducts_1, p, users, userMap, _a, expiredProducts_2, product, seller, buyer;
+                            return __generator(this, function (_b) {
+                                switch (_b.label) {
                                     case 0: return [4 /*yield*/, trx("products")
-                                            .select("id", "seller_id", "highest_bidder_id", "current_price")
+                                            .select("id", "title", "seller_id", "highest_bidder_id", "current_price")
                                             .where("status", "active")
                                             .andWhere("end_time", "<=", trx.fn.now())];
                                     case 1:
-                                        expiredProducts = _a.sent();
-                                        _i = 0, expiredProducts_1 = expiredProducts;
-                                        _a.label = 2;
+                                        expiredProducts = _b.sent();
+                                        if (expiredProducts.length === 0)
+                                            return [2 /*return*/, 0];
+                                        userIds = new Set();
+                                        for (_i = 0, expiredProducts_1 = expiredProducts; _i < expiredProducts_1.length; _i++) {
+                                            p = expiredProducts_1[_i];
+                                            userIds.add(p.seller_id);
+                                            if (p.highest_bidder_id) {
+                                                userIds.add(p.highest_bidder_id);
+                                            }
+                                        }
+                                        return [4 /*yield*/, trx("users")
+                                                .whereIn("id", __spreadArrays(userIds))
+                                                .select("id", "email", "full_name")];
                                     case 2:
-                                        if (!(_i < expiredProducts_1.length)) return [3 /*break*/, 8];
-                                        product = expiredProducts_1[_i];
-                                        if (!!product.highest_bidder_id) return [3 /*break*/, 4];
+                                        users = _b.sent();
+                                        userMap = Object.fromEntries(users.map(function (u) { return [u.id, u]; }));
+                                        _a = 0, expiredProducts_2 = expiredProducts;
+                                        _b.label = 3;
+                                    case 3:
+                                        if (!(_a < expiredProducts_2.length)) return [3 /*break*/, 14];
+                                        product = expiredProducts_2[_a];
+                                        seller = userMap[product.seller_id];
+                                        buyer = product.highest_bidder_id
+                                            ? userMap[product.highest_bidder_id]
+                                            : null;
+                                        if (!!product.highest_bidder_id) return [3 /*break*/, 7];
                                         return [4 /*yield*/, trx("products")
                                                 .where({ id: product.id })
                                                 .update({ status: "expired" })];
-                                    case 3:
-                                        _a.sent();
-                                        return [3 /*break*/, 7];
-                                    case 4: 
-                                    // =============================
-                                    // CASE 2: Có người thắng
-                                    // =============================
+                                    case 4:
+                                        _b.sent();
+                                        if (!seller) return [3 /*break*/, 6];
+                                        return [4 /*yield*/, sendOtpMail_1.sendAuctionExpiredNoBidMail({
+                                                to: seller.email,
+                                                sellerName: seller.full_name,
+                                                productTitle: product.title,
+                                                productId: product.id
+                                            })];
+                                    case 5:
+                                        _b.sent();
+                                        _b.label = 6;
+                                    case 6: return [3 /*break*/, 13];
+                                    case 7: 
+                                    // ===== CASE 2: Có người thắng =====
                                     return [4 /*yield*/, trx("products")
                                             .where({ id: product.id })
                                             .update({ status: "closed" })];
-                                    case 5:
-                                        // =============================
-                                        // CASE 2: Có người thắng
-                                        // =============================
-                                        _a.sent();
+                                    case 8:
+                                        // ===== CASE 2: Có người thắng =====
+                                        _b.sent();
                                         // Tạo order (idempotent)
                                         return [4 /*yield*/, trx("orders")
                                                 .insert({
@@ -120,14 +154,36 @@ var CronService = /** @class */ (function () {
                                             })
                                                 .onConflict("product_id")
                                                 .ignore()];
-                                    case 6:
+                                    case 9:
                                         // Tạo order (idempotent)
-                                        _a.sent();
-                                        _a.label = 7;
-                                    case 7:
-                                        _i++;
-                                        return [3 /*break*/, 2];
-                                    case 8: return [2 /*return*/, expiredProducts.length];
+                                        _b.sent();
+                                        if (!seller) return [3 /*break*/, 11];
+                                        return [4 /*yield*/, sendOtpMail_1.sendAuctionSoldMail({
+                                                to: seller.email,
+                                                sellerName: seller.full_name,
+                                                productTitle: product.title,
+                                                finalPrice: product.current_price,
+                                                productId: product.id
+                                            })];
+                                    case 10:
+                                        _b.sent();
+                                        _b.label = 11;
+                                    case 11:
+                                        if (!buyer) return [3 /*break*/, 13];
+                                        return [4 /*yield*/, sendOtpMail_1.sendAuctionWonMail({
+                                                to: buyer.email,
+                                                buyerName: buyer.full_name,
+                                                productTitle: product.title,
+                                                finalPrice: product.current_price,
+                                                productId: product.id
+                                            })];
+                                    case 12:
+                                        _b.sent();
+                                        _b.label = 13;
+                                    case 13:
+                                        _a++;
+                                        return [3 /*break*/, 3];
+                                    case 14: return [2 /*return*/, expiredProducts.length];
                                 }
                             });
                         }); })];

@@ -35,6 +35,13 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __spreadArrays = (this && this.__spreadArrays) || function () {
+    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
+    for (var r = Array(s), k = 0, i = 0; i < il; i++)
+        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
+            r[k] = a[j];
+    return r;
+};
 exports.__esModule = true;
 exports.SellerService = void 0;
 var db_1 = require("../config/db");
@@ -414,9 +421,9 @@ var SellerService = /** @class */ (function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, db_1.db("products as p")
-                            // winner
-                            .join("users as u", "u.id", "p.highest_bidder_id")
-                            // main image
+                            // 🏆 winner (NULL nếu expired)
+                            .leftJoin("users as u", "u.id", "p.highest_bidder_id")
+                            // 🖼️ main image
                             .leftJoin("product_images as img", function () {
                             this.on("img.product_id", "p.id").andOn("img.is_main", db_1.db.raw("true"));
                         })
@@ -433,8 +440,11 @@ var SellerService = /** @class */ (function () {
                             .where("p.seller_id", sellerId)
                             .whereIn("p.status", ["closed", "expired"])
                             .orderBy("p.end_time", "desc")
-                            .select("p.id", "p.title", "p.current_price", "p.end_time", "u.id as buyer_id", "u.full_name as buyer_name", "img.image_url as image", 
-                        // aggregate buyer rating
+                            .select("p.id", "p.title", "p.status", // ⭐ thêm để FE phân biệt
+                        "p.current_price", "p.end_time", 
+                        // buyer (NULL nếu expired)
+                        "u.id as buyer_id", "u.full_name as buyer_name", "img.image_url as image", 
+                        // aggregate buyer rating (NULL-safe)
                         db_1.db.raw("COALESCE(r_agg.score, 0) AS buyer_rating_score"), db_1.db.raw("COALESCE(r_agg.total, 0) AS buyer_rating_total"), 
                         // ⭐ rating của seller hiện tại
                         "r_my.score as my_rating_score", "r_my.comment as my_rating_comment")];
@@ -550,7 +560,7 @@ var SellerService = /** @class */ (function () {
                             throw new Error("Answer content is required");
                         }
                         return [4 /*yield*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
-                                var seller, question, answer;
+                                var seller, question, answer, participants, receiversMap, _i, participants_1, p;
                                 return __generator(this, function (_a) {
                                     switch (_a.label) {
                                         case 0: return [4 /*yield*/, trx("users")
@@ -569,8 +579,8 @@ var SellerService = /** @class */ (function () {
                                             }
                                             return [4 /*yield*/, trx("questions as q")
                                                     .join("products as p", "p.id", "q.product_id")
-                                                    .join("users as u", "u.id", "q.user_id") // bidder
-                                                    .select("q.id as questionId", "q.product_id as productId", "p.title as productTitle", "p.seller_id as sellerId", "p.status as productStatus", "u.id as bidderId", "u.full_name as bidderName", "u.email as bidderEmail")
+                                                    .join("users as u", "u.id", "q.user_id") // người hỏi gốc
+                                                    .select("q.id as questionId", "q.product_id as productId", "p.title as productTitle", "p.seller_id as sellerId", "p.status as productStatus", "u.id as askerId", "u.full_name as askerName", "u.email as askerEmail")
                                                     .where("q.id", questionId)
                                                     .first()];
                                         case 2:
@@ -595,23 +605,55 @@ var SellerService = /** @class */ (function () {
                                                     .returning(["id", "content", "created_at"])];
                                         case 3:
                                             answer = (_a.sent())[0];
-                                            if (!question.bidderEmail) return [3 /*break*/, 5];
-                                            return [4 /*yield*/, sendOtpMail_1.sendQuestionNotificationMail({
-                                                    to: question.bidderEmail,
-                                                    receiverName: question.bidderName,
-                                                    senderName: seller.full_name,
-                                                    productTitle: question.productTitle,
-                                                    productId: question.productId,
-                                                    message: content
-                                                })];
+                                            return [4 /*yield*/, trx("answers as a")
+                                                    .join("users as u", "u.id", "a.user_id")
+                                                    .where("a.question_id", questionId)
+                                                    .andWhereNot("a.user_id", sellerId) // ❌ không gửi cho seller
+                                                    .select("u.id", "u.email", "u.full_name")];
                                         case 4:
+                                            participants = _a.sent();
+                                            receiversMap = new Map();
+                                            // 5.1️⃣ Người hỏi gốc LUÔN được notify
+                                            if (question.askerId !== sellerId && question.askerEmail) {
+                                                receiversMap.set(question.askerId, {
+                                                    id: question.askerId,
+                                                    email: question.askerEmail,
+                                                    full_name: question.askerName
+                                                });
+                                            }
+                                            // 5.2️⃣ Các user đã reply trong thread
+                                            for (_i = 0, participants_1 = participants; _i < participants_1.length; _i++) {
+                                                p = participants_1[_i];
+                                                if (!receiversMap.has(p.id)) {
+                                                    receiversMap.set(p.id, p);
+                                                }
+                                            }
+                                            /* =============================
+                                             * 6️⃣ Send mail to ALL participants
+                                             * ============================= */
+                                            return [4 /*yield*/, Promise.all(__spreadArrays(receiversMap.values()).map(function (user) {
+                                                    return sendOtpMail_1.sendQuestionNotificationMail({
+                                                        to: user.email,
+                                                        receiverName: user.full_name,
+                                                        senderName: seller.full_name,
+                                                        productTitle: question.productTitle,
+                                                        productId: question.productId,
+                                                        message: content
+                                                    });
+                                                }))];
+                                        case 5:
+                                            /* =============================
+                                             * 6️⃣ Send mail to ALL participants
+                                             * ============================= */
                                             _a.sent();
-                                            _a.label = 5;
-                                        case 5: return [2 /*return*/, {
-                                                id: answer.id,
-                                                content: answer.content,
-                                                createdAt: answer.created_at
-                                            }];
+                                            /* =============================
+                                             * 7️⃣ Return answer DTO
+                                             * ============================= */
+                                            return [2 /*return*/, {
+                                                    id: answer.id,
+                                                    content: answer.content,
+                                                    createdAt: answer.created_at
+                                                }];
                                     }
                                 });
                             }); })];

@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
-import { Eye, ThumbsUp, ThumbsDown, Star } from "lucide-react";
-
+import {
+  Eye,
+  ThumbsUp,
+  ThumbsDown,
+  Star,
+  AlertTriangle,
+  Trophy,
+  User,
+} from "lucide-react";
+import { AuctionStatusBadge } from "./AuctionStatusBadge";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { ImageWithFallback } from "../check/ImageWithFallback";
@@ -10,6 +18,8 @@ import { LoadingSpinner } from "../state";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
+import { formatCurrency } from "../../lib/utils";
+
 /* ===============================
  * Backend type
  * =============================== */
@@ -17,16 +27,16 @@ interface SellerEndedAuction {
   id: string;
   title: string;
 
+  status: "closed" | "expired";
   current_price: string;
   end_time: string;
 
-  buyer_id: string;
+  buyer_id: string | null;
   buyer_name: string;
 
   buyer_rating_score: string;
   buyer_rating_total: string;
 
-  // ⬇️ thêm 2 field này (backend nên trả)
   my_rating_score?: number | null;
   my_rating_comment?: string | null;
 
@@ -139,7 +149,7 @@ export function EndedAuctions({ onCountChange }: EndedAuctionsProps) {
           </h1>
 
           <p className="text-muted-foreground">
-            Auctions with a winning bidder
+            Auctions that have ended (closed or expired)
           </p>
         </div>
 
@@ -147,6 +157,9 @@ export function EndedAuctions({ onCountChange }: EndedAuctionsProps) {
           {items.map((item) => {
             const ratingScore = Number(item.buyer_rating_score);
             const ratingTotal = Number(item.buyer_rating_total);
+
+            const isExpired = item.status === "expired";
+            const isClosed = item.status === "closed";
 
             const myScore = item.my_rating_score;
 
@@ -167,9 +180,7 @@ export function EndedAuctions({ onCountChange }: EndedAuctionsProps) {
                             className="h-full w-full object-cover"
                           />
                           <div className="absolute top-2 left-2">
-                            <Badge className="bg-[#6b7280] text-white">
-                              Ended
-                            </Badge>
+                            <AuctionStatusBadge status={item.status} />
                           </div>
                         </div>
 
@@ -178,14 +189,23 @@ export function EndedAuctions({ onCountChange }: EndedAuctionsProps) {
                             {item.title}
                           </h3>
 
-                          <div>
-                            <p className="text-muted-foreground text-sm">
-                              Final Price
-                            </p>
-                            <p className="text-[#fbbf24] text-xl font-semibold">
-                              ${Number(item.current_price).toLocaleString()}
-                            </p>
-                          </div>
+                          {isClosed ? (
+                            <div>
+                              <p className="text-muted-foreground text-sm">
+                                Final Price
+                              </p>
+                              <p className="text-[#fbbf24] text-xl font-semibold">
+                                {formatCurrency(Number(item.current_price))}
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-red-500 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                              <AlertTriangle className="h-4 w-4" />
+                              <span className="text-sm">
+                                The auction has expired with no winning bidder
+                              </span>
+                            </div>
+                          )}
 
                           <div className="text-sm text-muted-foreground">
                             Ended at: {formatDate(item.end_time)}
@@ -205,81 +225,83 @@ export function EndedAuctions({ onCountChange }: EndedAuctionsProps) {
                   </div>
 
                   {/* ================= RIGHT ================= */}
-                  <div className="border border-border/50 rounded-lg p-5 flex flex-col justify-between">
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-yellow-500 text-lg">Winner</p>
-                        <p className="text-foreground font-medium">
-                          {item.buyer_name}
-                        </p>
-                      </div>
+                  {isClosed && (
+                    <div className="border border-border/50 rounded-lg p-5 flex flex-col justify-between">
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-yellow-500 text-lg">Winner</p>
+                          <p className="text-foreground font-medium">
+                            {item.buyer_name}
+                          </p>
+                        </div>
 
-                      <div>
-                        <p className="text-muted-foreground mb-1">
-                          Buyer Rating
-                        </p>
-                        <div className="flex items-center gap-3">
-                          <Star
-                            className="h-6 w-6 text-yellow-500"
-                            fill="currentColor"
-                          />
-                          <div>
-                            <span className="text-foreground text-lg font-medium">
-                              {ratingScore >= 0 ? "+" : ""}
-                              {ratingScore}
-                            </span>
-                            <span className="text-muted-foreground text-sm">
-                              {" "}
-                              ({ratingTotal} reviews)
-                            </span>
+                        <div>
+                          <p className="text-muted-foreground mb-1">
+                            Buyer Rating
+                          </p>
+                          <div className="flex items-center gap-3">
+                            <Star
+                              className="h-6 w-6 text-yellow-500"
+                              fill="currentColor"
+                            />
+                            <div>
+                              <span className="text-foreground text-lg font-medium">
+                                {ratingScore >= 0 ? "+" : ""}
+                                {ratingScore}
+                              </span>
+                              <span className="text-muted-foreground text-sm">
+                                {" "}
+                                ({ratingTotal} reviews)
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* ACTIONS */}
-                    <div className="flex gap-3 mt-6">
-                      <Button
-                        variant={myScore === 1 ? "default" : "outline"}
-                        size="lg"
-                        className="flex-1"
-                        onClick={() => {
-                          setTarget(item);
-                          setScore(1);
-                          setComment("");
-                          setOpen(true);
-                        }}
-                      >
-                        <ThumbsUp className="h-4 w-4 mr-2" />
-                        +1
-                      </Button>
+                      {/* ACTIONS */}
+                      <div className="flex gap-3 mt-6">
+                        <Button
+                          variant={myScore === 1 ? "default" : "outline"}
+                          size="lg"
+                          className="flex-1"
+                          onClick={() => {
+                            setTarget(item);
+                            setScore(1);
+                            setComment("");
+                            setOpen(true);
+                          }}
+                        >
+                          <ThumbsUp className="h-4 w-4 mr-2" />
+                          +1
+                        </Button>
 
-                      <Button
-                        variant={myScore === -1 ? "destructive" : "outline"}
-                        size="lg"
-                        className="flex-1"
-                        onClick={() => {
-                          setTarget(item);
-                          setScore(-1);
-                          setComment("");
-                          setOpen(true);
-                        }}
-                      >
-                        <ThumbsDown className="h-4 w-4 mr-2" />
-                        -1
-                      </Button>
-                    </div>
-                    {item.my_rating_comment && (
-                      <div className="mt-3 rounded-md border border-border/50 bg-muted/40 p-3">
-                        <p className="text-sm text-yellow-500 mb-1">
-                          Your previous comment
-                        </p>
-                        <p className="text-sm text-foreground">
-                          {item.my_rating_comment}
-                        </p>
+                        <Button
+                          variant={myScore === -1 ? "destructive" : "outline"}
+                          size="lg"
+                          className="flex-1"
+                          onClick={() => {
+                            setTarget(item);
+                            setScore(-1);
+                            setComment("");
+                            setOpen(true);
+                          }}
+                        >
+                          <ThumbsDown className="h-4 w-4 mr-2" />
+                          -1
+                        </Button>
                       </div>
-                    )}
-                  </div>
+                      {item.my_rating_comment && (
+                        <div className="mt-3 rounded-md border border-border/50 bg-muted/40 p-3">
+                          <p className="text-sm text-yellow-500 mb-1">
+                            Your previous comment
+                          </p>
+                          <p className="text-sm text-foreground">
+                            {item.my_rating_comment}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );

@@ -1,4 +1,9 @@
 import { db } from "../config/db";
+import {
+  sendAuctionExpiredNoBidMail,
+  sendAuctionWonMail,
+  sendAuctionSoldMail,
+} from "../utils/sendOtpMail";
 
 export class CronService {
   /**
@@ -23,27 +28,62 @@ export class CronService {
    */
   static async closeExpiredAuctions() {
     return await db.transaction(async (trx) => {
-      // 1️⃣ Lấy tất cả auction active đã hết hạn (DB time)
+      // 1️⃣ Lấy auction active đã hết hạn
       const expiredProducts = await trx("products")
-        .select("id", "seller_id", "highest_bidder_id", "current_price")
+        .select(
+          "id",
+          "title",
+          "seller_id",
+          "highest_bidder_id",
+          "current_price"
+        )
         .where("status", "active")
         .andWhere("end_time", "<=", trx.fn.now());
 
+      if (expiredProducts.length === 0) return 0;
+
+      // 2️⃣ Load all users liên quan
+      const userIds = new Set<string>();
+
+      for (const p of expiredProducts) {
+        userIds.add(p.seller_id);
+        if (p.highest_bidder_id) {
+          userIds.add(p.highest_bidder_id);
+        }
+      }
+
+      const users = await trx("users")
+        .whereIn("id", [...userIds])
+        .select("id", "email", "full_name");
+
+      const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
+
+      // 3️⃣ Process từng auction
       for (const product of expiredProducts) {
-        // =============================
-        // CASE 1: Không có bid → expired
-        // =============================
+        const seller = userMap[product.seller_id];
+        const buyer = product.highest_bidder_id
+          ? userMap[product.highest_bidder_id]
+          : null;
+
+        // ===== CASE 1: Không có bid =====
         if (!product.highest_bidder_id) {
           await trx("products")
             .where({ id: product.id })
             .update({ status: "expired" });
 
+          if (seller) {
+            await sendAuctionExpiredNoBidMail({
+              to: seller.email,
+              sellerName: seller.full_name,
+              productTitle: product.title,
+              productId: product.id,
+            });
+          }
+
           continue;
         }
 
-        // =============================
-        // CASE 2: Có người thắng
-        // =============================
+        // ===== CASE 2: Có người thắng =====
         await trx("products")
           .where({ id: product.id })
           .update({ status: "closed" });
@@ -60,6 +100,26 @@ export class CronService {
           })
           .onConflict("product_id")
           .ignore();
+
+        if (seller) {
+          await sendAuctionSoldMail({
+            to: seller.email,
+            sellerName: seller.full_name,
+            productTitle: product.title,
+            finalPrice: product.current_price,
+            productId: product.id,
+          });
+        }
+
+        if (buyer) {
+          await sendAuctionWonMail({
+            to: buyer.email,
+            buyerName: buyer.full_name,
+            productTitle: product.title,
+            finalPrice: product.current_price,
+            productId: product.id,
+          });
+        }
       }
 
       return expiredProducts.length;

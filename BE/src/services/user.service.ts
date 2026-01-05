@@ -5,6 +5,7 @@ import {
   sendOutbidMail,
   sendSellerBidUpdateMail,
   sendWinningBidMail,
+  sendAutoBidUpdatedMail,
 } from "../utils/sendOtpMail";
 import { getDbNowMs } from "../utils/time";
 
@@ -766,7 +767,7 @@ export class UserService {
       const product = await trx("products")
         .select(
           "id",
-          "title as product_title", 
+          "title as product_title",
           "seller_id",
           "status",
           "start_price",
@@ -1012,6 +1013,7 @@ export class UserService {
 
       userIdsToLoad.add(product.seller_id);
       userIdsToLoad.add(highestBidderId);
+      userIdsToLoad.add(userId);
 
       if (
         previousHighestBidderId &&
@@ -1026,7 +1028,6 @@ export class UserService {
 
       const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
       const productTitle = product.product_title;
-
 
       if (priceChanged) {
         const seller = userMap[product.seller_id];
@@ -1062,6 +1063,21 @@ export class UserService {
               })
             : Promise.resolve(),
         ]);
+      }
+
+      // 🔔 CASE: update max bid nhưng KHÔNG làm thay đổi giá
+      if (existingAutoBid && !priceChanged) {
+        const bidderUser = userMap[userId];
+
+        if (bidderUser) {
+          await sendAutoBidUpdatedMail({
+            to: bidderUser.email,
+            bidderName: bidderUser.full_name,
+            productTitle: productTitle,
+            maxBid: maxPrice,
+            productId,
+          });
+        }
       }
 
       if (product.auto_extend && priceChanged) {
