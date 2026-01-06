@@ -18,6 +18,17 @@ import {
 } from "../utils/sendOtpMail";
 import { getDbNowMs } from "../utils/time";
 
+type CancelReason =
+  | "payment_timeout"
+  | "buyer_unresponsive"
+  | "suspicious_activity";
+
+const CANCEL_REASON_COMMENT: Record<CancelReason, string> = {
+  payment_timeout: "Buyer did not submit payment on time",
+  buyer_unresponsive: "Buyer did not respond to messages",
+  suspicious_activity: "Suspicious buyer activity",
+};
+
 /* ===============================
  * Types
  * =============================== */
@@ -392,67 +403,67 @@ export class SellerService {
   /* ===============================
    * Get ended auctions with winner + rating
    * =============================== */
-  static async getEndedAuctions(sellerId: string): Promise<EndedAuctionRow[]> {
-    const rows = (await db("products as p")
-      // 🏆 winner (NULL nếu expired)
-      .leftJoin("users as u", "u.id", "p.highest_bidder_id")
+  static async getEndedAuctions(sellerId: string) {
+    const rows = await db("products as p")
+      // ✅ order (bắt buộc)
+      .join("orders as o", "o.product_id", "p.id")
 
-      // 🖼️ main image
+      // buyer
+      .leftJoin("users as b", "b.id", "o.buyer_id")
+
+      // seller
+      .join("users as s", "s.id", "p.seller_id")
+
+      // ✅ category
+      .leftJoin("categories as c", "c.id", "p.category_id")
+
+      // main image
       .leftJoin("product_images as img", function () {
         this.on("img.product_id", "p.id").andOn("img.is_main", db.raw("true"));
       })
 
-      // ⭐ aggregate rating of buyer (all users)
-      .leftJoin(
-        db("ratings")
-          .select(
-            "to_user",
-            db.raw("COALESCE(SUM(score), 0) AS score"),
-            db.raw("COUNT(*) AS total")
-          )
-          .groupBy("to_user")
-          .as("r_agg"),
-        "r_agg.to_user",
-        "u.id"
-      )
-
-      // ⭐ rating của CHÍNH seller này cho product này
-      .leftJoin("ratings as r_my", function () {
-        this.on("r_my.product_id", "p.id").andOn(
-          "r_my.from_user",
-          db.raw("?", [sellerId])
-        );
-      })
-
-      // 🔒 quyền + trạng thái
+      // 🔒 quyền
       .where("p.seller_id", sellerId)
-      .whereIn("p.status", ["closed", "expired"])
 
-      .orderBy("p.end_time", "desc")
+      // 🔒 auction đã kết thúc
+      .where("p.status", "closed")
 
       .select(
-        "p.id",
+        // order
+        "o.id as id",
+        "o.status as order_status",
+        "o.final_price",
+
+        // product
+        "p.id as productId",
         "p.title",
-        "p.status", // ⭐ thêm để FE phân biệt
-        "p.current_price",
         "p.end_time",
 
-        // buyer (NULL nếu expired)
-        "u.id as buyer_id",
-        "u.full_name as buyer_name",
+        // buyer
+        "b.full_name as buyerName",
 
-        "img.image_url as image",
+        // category
+        "c.name as category",
 
-        // aggregate buyer rating (NULL-safe)
-        db.raw("COALESCE(r_agg.score, 0) AS buyer_rating_score"),
-        db.raw("COALESCE(r_agg.total, 0) AS buyer_rating_total"),
+        // image
+        "img.image_url as image"
+      )
+      .orderBy("p.end_time", "desc");
 
-        // ⭐ rating của seller hiện tại
-        "r_my.score as my_rating_score",
-        "r_my.comment as my_rating_comment"
-      )) as EndedAuctionRow[];
+    return rows.map((r) => ({
+      id: r.id, // orderId
+      productId: r.productId,
+      title: r.title,
+      image: r.image ?? null,
 
-    return rows;
+      finalPrice: Number(r.final_price),
+      endTime: r.end_time,
+
+      buyerName: r.buyerName ?? null,
+      orderStatus: r.order_status,
+
+      category: r.category ?? "Uncategorized",
+    }));
   }
 
   /* ===============================
@@ -1098,6 +1109,66 @@ export class SellerService {
         score,
         created: true,
       };
+    });
+  }
+
+  static async cancelOrderBySeller(
+    orderId: string,
+    sellerId: string,
+    reason: CancelReason
+  ) {
+    return db.transaction(async (trx) => {
+      // 1️⃣ Load order (KHÔNG cần join product)
+      const order = await trx("orders")
+        .where({ id: orderId })
+        .select("id", "status", "product_id", "buyer_id", "seller_id")
+        .first();
+
+      if (!order) {
+        throw new Error("Order not found");
+      }
+
+      if (order.seller_id !== sellerId) {
+        throw new Error("Unauthorized");
+      }
+
+      if (order.status !== "payment_pending") {
+        throw new Error("Only payment pending orders can be cancelled");
+      }
+
+      // 2️⃣ Update order status
+      await trx("orders")
+        .where({ id: orderId })
+        .update({ status: "cancelled" });
+
+      // 3️⃣ Upsert rating (BASED ON product_id)
+      const comment = CANCEL_REASON_COMMENT[reason];
+
+      const existingRating = await trx("ratings")
+        .where({
+          product_id: order.product_id,
+          from_user: sellerId,
+          to_user: order.buyer_id,
+        })
+        .first();
+
+      if (existingRating) {
+        await trx("ratings").where({ id: existingRating.id }).update({
+          score: -1,
+          comment,
+          created_at: trx.fn.now(),
+        });
+      } else {
+        await trx("ratings").insert({
+          product_id: order.product_id,
+          from_user: sellerId,
+          to_user: order.buyer_id,
+          score: -1,
+          comment,
+        });
+      }
+
+      return { success: true };
     });
   }
 }

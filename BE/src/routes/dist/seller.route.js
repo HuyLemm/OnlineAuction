@@ -17,4 +17,5 @@ router.get("/products/:productId/active-bidders", auth_middleware_1.authenticate
 router.post("/products/:productId/kick-bidder/:bidderId", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.kickBidder);
 router.post("/orders/:orderId/shipment", auth_middleware_1.authenticate, seller_controller_1.SellerController.submitShipment);
 router.post("/orders/:orderId/rate-buyer", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.rateBuyer);
+router.post("/orders/:orderId/cancel", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.cancelOrder);
 exports["default"] = router;

@@ -87,4 +87,11 @@ router.post(
   SellerController.rateBuyer
 );
 
+router.post(
+  "/orders/:orderId/cancel",
+  authenticate,
+  authorize("seller"),
+  SellerController.cancelOrder
+);
+
 export default router;

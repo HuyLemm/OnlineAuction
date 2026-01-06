@@ -86,7 +86,7 @@ export function PaymentSubmissionForm({
           <Textarea
             value={shippingAddress}
             onChange={(e) => setShippingAddress(e.target.value)}
-            className="min-h-[80px]"
+            className="min-h-[80px] text-white"
           />
         </div>
 
@@ -105,7 +105,7 @@ export function PaymentSubmissionForm({
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="min-h-[120px]"
+            className="min-h-[120px] text-white"
           />
         </div>
 

@@ -101,6 +101,9 @@ export const SUBMIT_SHIPMENT_API = (orderId: string) =>
 export const RATE_BUYER_API = (orderId: string) =>
   `${API_BASE_URL}/seller/orders/${orderId}/rate-buyer`;
 
+export const CANCEL_AUCTION_API = (orderId: string) =>
+  `${API_BASE_URL}/seller/orders/${orderId}/cancel`;
+
 //Admin
 export const CREATE_PARENT_CATEGORY_API = `${API_BASE_URL}/admin/categories/parent`;
 export const CREATE_SUB_CATEGORY_API = `${API_BASE_URL}/admin/categories/sub`;

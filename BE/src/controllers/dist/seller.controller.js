@@ -607,6 +607,38 @@ var SellerController = /** @class */ (function () {
             });
         });
     };
+    SellerController.cancelOrder = function (req, res) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function () {
+            var sellerId, orderId, reason, err_8;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        _b.trys.push([0, 2, , 3]);
+                        sellerId = req.user.userId;
+                        orderId = req.params.orderId;
+                        reason = req.body.reason;
+                        if (!orderId) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "Order id is required"
+                                })];
+                        }
+                        return [4 /*yield*/, seller_service_1.SellerService.cancelOrderBySeller(orderId, sellerId, reason)];
+                    case 1:
+                        _b.sent();
+                        return [2 /*return*/, res.json({ success: true })];
+                    case 2:
+                        err_8 = _b.sent();
+                        return [2 /*return*/, res.status(400).json({
+                                success: false,
+                                message: (_a = err_8.message) !== null && _a !== void 0 ? _a : "Cancel order failed"
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
     return SellerController;
 }());
 exports.SellerController = SellerController;

@@ -12,6 +12,11 @@ import {
   Truck,
   Hourglass,
   CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Clock,
+  MessageCircleWarning,
+  ThumbsDown,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
@@ -41,6 +46,7 @@ import {
   RATE_BUYER_API,
   RATE_SELLER_API,
   GET_RATING_API,
+  CANCEL_AUCTION_API,
 } from "../components/utils/api";
 import { fetchWithAuth } from "../components/utils/fetchWithAuth";
 import { toast } from "sonner";
@@ -109,6 +115,9 @@ export function OrderPage({ onBack }: OrderPageProps) {
 
   const [submittingPayment, setSubmittingPayment] = useState(false);
   const [submittingShipping, setSubmittingShipping] = useState(false);
+
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -249,13 +258,20 @@ export function OrderPage({ onBack }: OrderPageProps) {
 
       toast.success("Shipping information submitted");
 
-      // ✅ refetch order
+      // ✅ REFRESH SHIPPING INFO (QUAN TRỌNG)
+      const shipRes = await fetchWithAuth(GET_SHIPPING_ORDER_API(orderId));
+      const shipJson = await shipRes.json();
+      if (shipJson.success) {
+        setShippingInfo(shipJson.data);
+      }
+
+      // ✅ REFRESH ORDER STATUS
       const refetch = await fetchWithAuth(GET_ORDER_DETAIL_API(orderId));
       const refetchJson = await refetch.json();
-
       if (refetchJson.success) {
         setOrderData(refetchJson.data);
       }
+
     } catch (err: any) {
       toast.error(err.message || "Failed to submit shipping");
     } finally {
@@ -325,12 +341,46 @@ export function OrderPage({ onBack }: OrderPageProps) {
     }
   };
 
+  const handleCancelAuction = async (reason: string) => {
+    try {
+      setCancelLoading(true);
+
+      const res = await fetchWithAuth(CANCEL_AUCTION_API(orderId), {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      });
+
+      const json = await res.json();
+
+      if (!json.success) {
+        throw new Error(json.message || "Cancel failed");
+      }
+
+      toast.success("Auction cancelled successfully");
+
+      setCancelModalOpen(false);
+
+      // ✅ refetch order → status = cancelled
+      const refetch = await fetchWithAuth(GET_ORDER_DETAIL_API(orderId));
+      const refetchJson = await refetch.json();
+      if (refetchJson.success) {
+        setOrderData(refetchJson.data);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to cancel auction");
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
   const currentUserId: string = orderData.currentUserId;
 
   const isBuyer = currentUserId === orderData.buyer.id;
 
   const currentUser = isBuyer ? orderData.buyer : orderData.seller;
   const otherParty = isBuyer ? orderData.seller : orderData.buyer;
+
+  const canSellerCancel = !isBuyer && orderStatus === "payment_pending";
 
   return (
     <div className="min-h-screen bg-background">
@@ -358,10 +408,21 @@ export function OrderPage({ onBack }: OrderPageProps) {
             </div>
           </div>
 
-          <Button variant="outline" onClick={() => setActiveTab("chat")}>
-            <MessageCircle className="h-4 w-4 mr-2" />
-            Chat
-          </Button>
+          <div className="flex items-center gap-2">
+            {canSellerCancel && (
+              <Button
+                variant="destructive"
+                onClick={() => setCancelModalOpen(true)}
+              >
+                Cancel Auction
+              </Button>
+            )}
+
+            <Button variant="outline" onClick={() => setActiveTab("chat")}>
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Chat
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -372,6 +433,7 @@ export function OrderPage({ onBack }: OrderPageProps) {
           <OrderTimeline
             currentStep={currentStep}
             completedSteps={completedSteps}
+            isCancelled={orderStatus === "cancelled"}
           />
 
           <OrderStatusPanel
@@ -403,13 +465,31 @@ export function OrderPage({ onBack }: OrderPageProps) {
                     loading={submittingPayment}
                   />
                 ) : (
-                  <div className="bg-card border border-border/50 p-6 text-center">
-                    <h3 className="text-foreground mb-2">
-                      Waiting for buyer to submit payment
+                  <div className="bg-card border border-yellow-500/10 rounded-xl p-6 flex flex-col items-center gap-4 text-center">
+                    {/* Icon */}
+                    <div className="relative">
+                      <div className="h-14 w-14 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                        <CreditCard className="h-7 w-7 text-yellow-500" />
+                      </div>
+                      <span className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full bg-yellow-500 animate-pulse" />
+                    </div>
+
+                    {/* Title */}
+                    <h3 className="text-lg font-semibold text-foreground">
+                      Waiting for buyer payment
                     </h3>
-                    <p className="text-muted-foreground">
-                      The buyer has not completed the payment information yet.
+
+                    {/* Description */}
+                    <p className="text-sm text-muted-foreground max-w-md">
+                      The buyer hasn’t submitted the payment information yet.
+                      Once completed, you’ll be able to prepare and ship the
+                      item.
                     </p>
+
+                    {/* Status badge */}
+                    <span className="inline-flex items-center gap-2 rounded-full bg-yellow-500/15 text-yellow-500 px-4 py-1 text-xs font-medium">
+                      ⏳ Payment pending
+                    </span>
                   </div>
                 ))}
 
@@ -534,15 +614,115 @@ export function OrderPage({ onBack }: OrderPageProps) {
                 </>
               )}
 
-              {/* =====================
-      CANCELLED
-     ===================== */}
-              {orderStatus === "cancelled" && (
-                <div className="bg-card border border-border/50 p-6 text-center">
-                  <h3 className="text-destructive mb-2">Order Cancelled</h3>
-                  <p className="text-muted-foreground">
-                    This transaction has been cancelled.
-                  </p>
+              {orderStatus === "cancelled" && isBuyer && (
+                <div className="space-y-6">
+                  {/* ===== SUMMARY ===== */}
+                  <div className="bg-card border border-red-500/30 rounded-3xl p-8 text-center space-y-5">
+                    <div className="mx-auto h-20 w-20 rounded-full bg-red-500/15 flex items-center justify-center">
+                      <XCircle className="h-10 w-10 text-red-500" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <h3 className="text-2xl font-semibold text-foreground">
+                        Order Cancelled
+                      </h3>
+                      <p className="text-sm text-red-400 font-medium">
+                        Cancelled by seller
+                      </p>
+                    </div>
+
+                    <p className="text-sm text-muted-foreground max-w-lg mx-auto leading-relaxed">
+                      Because you did not submit the payment on time, this order
+                      was cancelled by{" "}
+                      <span className="font-semibold text-foreground">
+                        {otherParty.name}
+                      </span>
+                      .
+                    </p>
+
+                    <span className="inline-flex items-center gap-2 rounded-full bg-red-500/10 text-red-400 px-4 py-1 text-xs font-medium">
+                      ⚠️ Payment deadline missed
+                    </span>
+                  </div>
+
+                  {/* ===== CONSEQUENCE ===== */}
+                  <div className="bg-card border border-red-500/20 rounded-2xl p-6 flex items-start gap-4">
+                    <div className="h-10 w-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                      <ThumbsDown className="h-5 w-5 text-red-500" />
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-red-400">
+                        Negative rating applied
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        You received a <strong>-1 rating</strong> for failing to
+                        complete the payment. This may affect your future
+                        transactions.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {orderStatus === "cancelled" && !isBuyer && (
+                <div className="space-y-6">
+                  {/* ===== SUMMARY ===== */}
+                  <div className="bg-card border border-yellow-500/30 rounded-3xl p-8 space-y-5">
+                    <div className="flex items-start gap-4">
+                      <div className="h-16 w-16 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                        <AlertTriangle className="h-8 w-8 text-yellow-500" />
+                      </div>
+
+                      <div className="space-y-1">
+                        <h3 className="text-xl font-semibold text-foreground">
+                          Order Cancelled
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Buyer failed to submit payment
+                        </p>
+                      </div>
+                    </div>
+
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      This order was cancelled because{" "}
+                      <span className="font-semibold text-foreground">
+                        {otherParty.name}
+                      </span>{" "}
+                      did not submit the payment before the deadline.
+                    </p>
+
+                    <span className="inline-flex items-center gap-2 rounded-full bg-yellow-500/20 text-yellow-500 px-4 py-1 text-xs font-medium">
+                      ⏳ Payment timeout
+                    </span>
+                  </div>
+
+                  {/* ===== RATING RECORD ===== */}
+                  {existingRating && (
+                    <div className="bg-card border border-border/50 rounded-2xl p-6 space-y-5">
+                      <h4 className="text-sm font-semibold text-muted-foreground">
+                        Rating record (final)
+                      </h4>
+
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-full bg-red-500/20 flex items-center justify-center">
+                          <ThumbsDown className="h-5 w-5 text-red-500" />
+                        </div>
+                        <span className="text-red-500 font-semibold">
+                          Negative rating (-1)
+                        </span>
+                      </div>
+
+                      <div className="rounded-xl border border-border/50 bg-muted/40 p-4 text-sm text-foreground">
+                        {existingRating.comment}
+                      </div>
+
+                      <p className="text-xs text-muted-foreground">
+                        This rating is permanently recorded and cannot be
+                        modified.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </TabsContent>
@@ -563,6 +743,12 @@ export function OrderPage({ onBack }: OrderPageProps) {
           </Tabs>
         </div>
       </div>
+      <CancelAuctionModal
+        open={cancelModalOpen}
+        onClose={() => setCancelModalOpen(false)}
+        onConfirm={handleCancelAuction}
+        loading={cancelLoading}
+      />
     </div>
   );
 }
@@ -729,6 +915,120 @@ function ShippingInfoBox({
           Shipped at {new Date(shippingData.shipped_at).toLocaleString()}
         </p>
       )}
+    </div>
+  );
+}
+
+function CancelAuctionModal({
+  open,
+  onClose,
+  onConfirm,
+  loading,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: (reason: string) => void;
+  loading: boolean;
+}) {
+  const reasons = [
+    {
+      value: "payment_timeout",
+      label: "Buyer did not submit payment on time",
+      icon: Clock,
+    },
+    {
+      value: "buyer_unresponsive",
+      label: "Buyer did not respond to messages",
+      icon: MessageCircleWarning,
+    },
+    {
+      value: "suspicious_activity",
+      label: "Suspicious buyer activity",
+      icon: AlertTriangle,
+    },
+  ];
+
+  const [selected, setSelected] = useState<string | null>(null);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4">
+      <div className="bg-card border border-border rounded-2xl w-full max-w-md p-6 space-y-6 shadow-xl">
+        {/* ===== Header ===== */}
+        <div className="flex items-start gap-3">
+          <div className="h-10 w-10 rounded-full bg-destructive/20 flex items-center justify-center">
+            <XCircle className="h-6 w-6 text-destructive" />
+          </div>
+
+          <div>
+            <h3 className="text-xl font-semibold text-destructive">
+              Cancel Auction
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              This action cannot be undone.
+            </p>
+          </div>
+        </div>
+
+        {/* ===== Warning Box ===== */}
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive leading-relaxed">
+          <p className="text-yellow-500 text-lg">
+            Cancelling this auction will:
+          </p>
+          <ul className="list-disc pl-5 mt-2 space-y-1">
+            <li>1. Cancel the order immediately</li>
+            <li>2. Automatically give buyer a negative rating</li>
+            <li>3. Mark the reason publicly in history</li>
+          </ul>
+        </div>
+
+        {/* ===== Reasons ===== */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-foreground">Select a reason</p>
+
+          {reasons.map((r) => {
+            const Icon = r.icon;
+            const active = selected === r.value;
+
+            return (
+              <button
+                key={r.value}
+                onClick={() => setSelected(r.value)}
+                className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-sm transition
+                  ${
+                    active
+                      ? "border-destructive bg-destructive/15 text-destructive"
+                      : "border-border hover:bg-muted/40 text-muted-foreground"
+                  }`}
+              >
+                <Icon
+                  className={`h-4 w-4 ${
+                    active ? "text-destructive" : "text-muted-foreground"
+                  }`}
+                />
+                <span className="flex-1 text-left">{r.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ===== Actions ===== */}
+        <div className="flex justify-end gap-3 pt-2">
+          <Button variant="ghost" onClick={onClose} disabled={loading}>
+            Back
+          </Button>
+
+          <Button
+            variant="destructive"
+            disabled={!selected || loading}
+            onClick={() => onConfirm(selected!)}
+            className="min-w-[140px]"
+          >
+            {loading ? "Cancelling..." : "Confirm Cancel"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

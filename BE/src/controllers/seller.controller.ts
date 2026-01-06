@@ -465,4 +465,28 @@ export class SellerController {
       });
     }
   }
+
+  static async cancelOrder(req: AuthRequest, res: Response) {
+    try {
+      const sellerId = req.user!.userId;
+      const { orderId } = req.params;
+      const { reason } = req.body;
+
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: "Order id is required",
+        });
+      }
+
+      await SellerService.cancelOrderBySeller(orderId, sellerId, reason);
+
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(400).json({
+        success: false,
+        message: err.message ?? "Cancel order failed",
+      });
+    }
+  }
 }

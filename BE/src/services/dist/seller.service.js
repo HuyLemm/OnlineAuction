@@ -50,6 +50,11 @@ var crypto_1 = require("crypto");
 var path_1 = require("path");
 var sendOtpMail_1 = require("../utils/sendOtpMail");
 var time_1 = require("../utils/time");
+var CANCEL_REASON_COMMENT = {
+    payment_timeout: "Buyer did not submit payment on time",
+    buyer_unresponsive: "Buyer did not respond to messages",
+    suspicious_activity: "Suspicious buyer activity"
+};
 var SellerService = /** @class */ (function () {
     function SellerService() {
     }
@@ -416,41 +421,55 @@ var SellerService = /** @class */ (function () {
      * Get ended auctions with winner + rating
      * =============================== */
     SellerService.getEndedAuctions = function (sellerId) {
-        return __awaiter(this, void 0, Promise, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var rows;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, db_1.db("products as p")
-                            // 🏆 winner (NULL nếu expired)
-                            .leftJoin("users as u", "u.id", "p.highest_bidder_id")
-                            // 🖼️ main image
+                            // ✅ order (bắt buộc)
+                            .join("orders as o", "o.product_id", "p.id")
+                            // buyer
+                            .leftJoin("users as b", "b.id", "o.buyer_id")
+                            // seller
+                            .join("users as s", "s.id", "p.seller_id")
+                            // ✅ category
+                            .leftJoin("categories as c", "c.id", "p.category_id")
+                            // main image
                             .leftJoin("product_images as img", function () {
                             this.on("img.product_id", "p.id").andOn("img.is_main", db_1.db.raw("true"));
                         })
-                            // ⭐ aggregate rating of buyer (all users)
-                            .leftJoin(db_1.db("ratings")
-                            .select("to_user", db_1.db.raw("COALESCE(SUM(score), 0) AS score"), db_1.db.raw("COUNT(*) AS total"))
-                            .groupBy("to_user")
-                            .as("r_agg"), "r_agg.to_user", "u.id")
-                            // ⭐ rating của CHÍNH seller này cho product này
-                            .leftJoin("ratings as r_my", function () {
-                            this.on("r_my.product_id", "p.id").andOn("r_my.from_user", db_1.db.raw("?", [sellerId]));
-                        })
-                            // 🔒 quyền + trạng thái
+                            // 🔒 quyền
                             .where("p.seller_id", sellerId)
-                            .whereIn("p.status", ["closed", "expired"])
-                            .orderBy("p.end_time", "desc")
-                            .select("p.id", "p.title", "p.status", // ⭐ thêm để FE phân biệt
-                        "p.current_price", "p.end_time", 
-                        // buyer (NULL nếu expired)
-                        "u.id as buyer_id", "u.full_name as buyer_name", "img.image_url as image", 
-                        // aggregate buyer rating (NULL-safe)
-                        db_1.db.raw("COALESCE(r_agg.score, 0) AS buyer_rating_score"), db_1.db.raw("COALESCE(r_agg.total, 0) AS buyer_rating_total"), 
-                        // ⭐ rating của seller hiện tại
-                        "r_my.score as my_rating_score", "r_my.comment as my_rating_comment")];
+                            // 🔒 auction đã kết thúc
+                            .where("p.status", "closed")
+                            .select(
+                        // order
+                        "o.id as id", "o.status as order_status", "o.final_price", 
+                        // product
+                        "p.id as productId", "p.title", "p.end_time", 
+                        // buyer
+                        "b.full_name as buyerName", 
+                        // category
+                        "c.name as category", 
+                        // image
+                        "img.image_url as image")
+                            .orderBy("p.end_time", "desc")];
                     case 1:
-                        rows = (_a.sent());
-                        return [2 /*return*/, rows];
+                        rows = _a.sent();
+                        return [2 /*return*/, rows.map(function (r) {
+                                var _a, _b, _c;
+                                return ({
+                                    id: r.id,
+                                    productId: r.productId,
+                                    title: r.title,
+                                    image: (_a = r.image) !== null && _a !== void 0 ? _a : null,
+                                    finalPrice: Number(r.final_price),
+                                    endTime: r.end_time,
+                                    buyerName: (_b = r.buyerName) !== null && _b !== void 0 ? _b : null,
+                                    orderStatus: r.order_status,
+                                    category: (_c = r.category) !== null && _c !== void 0 ? _c : "Uncategorized"
+                                });
+                            })];
                 }
             });
         });
@@ -1059,6 +1078,72 @@ var SellerService = /** @class */ (function () {
                                             score: score,
                                             created: true
                                         }];
+                            }
+                        });
+                    }); })];
+            });
+        });
+    };
+    SellerService.cancelOrderBySeller = function (orderId, sellerId, reason) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_a) {
+                return [2 /*return*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
+                        var order, comment, existingRating;
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0: return [4 /*yield*/, trx("orders")
+                                        .where({ id: orderId })
+                                        .select("id", "status", "product_id", "buyer_id", "seller_id")
+                                        .first()];
+                                case 1:
+                                    order = _a.sent();
+                                    if (!order) {
+                                        throw new Error("Order not found");
+                                    }
+                                    if (order.seller_id !== sellerId) {
+                                        throw new Error("Unauthorized");
+                                    }
+                                    if (order.status !== "payment_pending") {
+                                        throw new Error("Only payment pending orders can be cancelled");
+                                    }
+                                    // 2️⃣ Update order status
+                                    return [4 /*yield*/, trx("orders")
+                                            .where({ id: orderId })
+                                            .update({ status: "cancelled" })];
+                                case 2:
+                                    // 2️⃣ Update order status
+                                    _a.sent();
+                                    comment = CANCEL_REASON_COMMENT[reason];
+                                    return [4 /*yield*/, trx("ratings")
+                                            .where({
+                                            product_id: order.product_id,
+                                            from_user: sellerId,
+                                            to_user: order.buyer_id
+                                        })
+                                            .first()];
+                                case 3:
+                                    existingRating = _a.sent();
+                                    if (!existingRating) return [3 /*break*/, 5];
+                                    return [4 /*yield*/, trx("ratings").where({ id: existingRating.id }).update({
+                                            score: -1,
+                                            comment: comment,
+                                            created_at: trx.fn.now()
+                                        })];
+                                case 4:
+                                    _a.sent();
+                                    return [3 /*break*/, 7];
+                                case 5: return [4 /*yield*/, trx("ratings").insert({
+                                        product_id: order.product_id,
+                                        from_user: sellerId,
+                                        to_user: order.buyer_id,
+                                        score: -1,
+                                        comment: comment
+                                    })];
+                                case 6:
+                                    _a.sent();
+                                    _a.label = 7;
+                                case 7: return [2 /*return*/, { success: true }];
                             }
                         });
                     }); })];

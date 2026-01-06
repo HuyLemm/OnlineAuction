@@ -8,18 +8,6 @@ import { LoadingSpinner } from "../state";
 import { GET_WON_AUCTIONS_API } from "../utils/api";
 import { useNavigate } from "react-router-dom";
 
-function getPaymentTimeLeft(deadline?: string | null) {
-  if (!deadline) return null;
-
-  const diff = new Date(deadline).getTime() - Date.now();
-  if (diff <= 0) return "Expired";
-
-  const hours = Math.floor(diff / 36e5);
-  const minutes = Math.floor((diff % 36e5) / 6e4);
-
-  return `${hours}h ${minutes}m`;
-}
-
 type OrderStatus =
   | "payment_pending"
   | "shipping_pending"
@@ -66,14 +54,14 @@ function getStepBadge(status: OrderStatus) {
 
     case "shipping_pending":
       return (
-        <Badge className="bg-blue-500/20 text-blue-500">
+        <Badge className="bg-yellow-500/20 text-yellow-500">
           Step 2 · Shipping
         </Badge>
       );
 
     case "delivered_pending":
       return (
-        <Badge className="bg-purple-500/20 text-purple-500">
+        <Badge className="bg-yellow-500/20 text-yellow-500">
           Step 3 · Confirm Delivery
         </Badge>
       );
@@ -86,7 +74,7 @@ function getStepBadge(status: OrderStatus) {
       );
 
     case "cancelled":
-      return <Badge className="bg-gray-500/20 text-gray-500">Cancelled</Badge>;
+      return <Badge className="bg-red-500/20 text-red-500">Cancelled</Badge>;
   }
 }
 
@@ -100,7 +88,7 @@ function getActionButton(
 
   if (auction.orderStatus === "cancelled") {
     return (
-      <Button variant="ghost" size="sm" onClick={handleClick}>
+      <Button size="sm" onClick={handleClick}>
         View Details
       </Button>
     );
@@ -108,7 +96,7 @@ function getActionButton(
 
   if (auction.orderStatus === "completed") {
     return (
-      <Button variant="outline" size="sm" onClick={handleClick}>
+      <Button size="sm" onClick={handleClick}>
         View & Review
       </Button>
     );
