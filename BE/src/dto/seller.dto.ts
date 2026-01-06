@@ -1,6 +1,6 @@
-export interface RateWinnerInput {
+export interface RateBuyerInput {
   sellerId: string;
-  productId: string;
+  orderId: string;
   score: 1 | -1;
   comment: string;
-};
+}

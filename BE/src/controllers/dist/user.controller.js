@@ -752,6 +752,96 @@ var UserController = /** @class */ (function () {
             });
         });
     };
+    UserController.confirmDelivery = function (req, res) {
+        return __awaiter(this, void 0, void 0, function () {
+            var orderId, buyerId, note, err_9;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 2, , 3]);
+                        orderId = req.params.orderId;
+                        buyerId = req.user.userId;
+                        note = req.body.note;
+                        if (!orderId) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "orderId is required"
+                                })];
+                        }
+                        return [4 /*yield*/, user_service_1.UserService.confirmDelivery({
+                                orderId: orderId,
+                                buyerId: buyerId,
+                                note: note
+                            })];
+                    case 1:
+                        _a.sent();
+                        return [2 /*return*/, res.json({
+                                success: true,
+                                message: "Delivery confirmed successfully"
+                            })];
+                    case 2:
+                        err_9 = _a.sent();
+                        return [2 /*return*/, res.status(400).json({
+                                success: false,
+                                message: err_9.message || "Failed to confirm delivery"
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    UserController.rateSeller = function (req, res) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function () {
+            var buyerId, orderId, _b, score, comment, result, err_10;
+            return __generator(this, function (_c) {
+                switch (_c.label) {
+                    case 0:
+                        _c.trys.push([0, 2, , 3]);
+                        buyerId = req.user.userId;
+                        orderId = req.params.orderId;
+                        _b = req.body, score = _b.score, comment = _b.comment;
+                        if (!orderId) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "Order id is required"
+                                })];
+                        }
+                        if (score !== 1 && score !== -1) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "Score must be +1 or -1"
+                                })];
+                        }
+                        if (!comment || !comment.trim()) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "Comment is required"
+                                })];
+                        }
+                        return [4 /*yield*/, user_service_1.UserService.rateSeller({
+                                buyerId: buyerId,
+                                orderId: orderId,
+                                score: score,
+                                comment: comment
+                            })];
+                    case 1:
+                        result = _c.sent();
+                        return [2 /*return*/, res.json({
+                                success: true,
+                                data: result
+                            })];
+                    case 2:
+                        err_10 = _c.sent();
+                        return [2 /*return*/, res.status(400).json({
+                                success: false,
+                                message: (_a = err_10 === null || err_10 === void 0 ? void 0 : err_10.message) !== null && _a !== void 0 ? _a : "Failed to rate seller"
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
     return UserController;
 }());
 exports.UserController = UserController;

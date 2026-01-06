@@ -565,4 +565,80 @@ export class UserController {
       });
     }
   }
+  static async confirmDelivery(req: AuthRequest, res: Response) {
+    try {
+      const { orderId } = req.params;
+      const buyerId = req.user!.userId;
+      const { note } = req.body;
+
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: "orderId is required",
+        });
+      }
+
+      await UserService.confirmDelivery({
+        orderId,
+        buyerId,
+        note,
+      });
+
+      return res.json({
+        success: true,
+        message: "Delivery confirmed successfully",
+      });
+    } catch (err: any) {
+      return res.status(400).json({
+        success: false,
+        message: err.message || "Failed to confirm delivery",
+      });
+    }
+  }
+
+  static async rateSeller(req: AuthRequest, res: Response) {
+    try {
+      const buyerId = req.user!.userId;
+      const { orderId } = req.params;
+      const { score, comment } = req.body;
+
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: "Order id is required",
+        });
+      }
+
+      if (score !== 1 && score !== -1) {
+        return res.status(400).json({
+          success: false,
+          message: "Score must be +1 or -1",
+        });
+      }
+
+      if (!comment || !comment.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Comment is required",
+        });
+      }
+
+      const result = await UserService.rateSeller({
+        buyerId,
+        orderId,
+        score,
+        comment,
+      });
+
+      return res.json({
+        success: true,
+        data: result, // { message, created?, updated? }
+      });
+    } catch (err: any) {
+      return res.status(400).json({
+        success: false,
+        message: err?.message ?? "Failed to rate seller",
+      });
+    }
+  }
 }

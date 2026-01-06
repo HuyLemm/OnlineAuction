@@ -6,7 +6,7 @@ import {
   CreateShipmentInput,
 } from "../dto/product.dto";
 
-import { RateWinnerInput } from "../dto/seller.dto";
+import { RateBuyerInput } from "../dto/seller.dto";
 
 import { supabase } from "../config/supabase";
 import crypto from "crypto";
@@ -453,87 +453,6 @@ export class SellerService {
       )) as EndedAuctionRow[];
 
     return rows;
-  }
-
-  /* ===============================
-   * Rate winner of ended auction
-   * =============================== */
-  static async rateWinner(input: RateWinnerInput) {
-    const { sellerId, productId, score, comment } = input;
-
-    if (![1, -1].includes(score)) {
-      throw new Error("Invalid score");
-    }
-
-    if (!comment || !comment.trim()) {
-      throw new Error("Comment is required");
-    }
-
-    return await db.transaction(async (trx) => {
-      /* 1️⃣ Lấy product + check quyền */
-      const product = await trx("products")
-        .select("id", "seller_id", "status", "highest_bidder_id")
-        .where({ id: productId })
-        .first();
-
-      if (!product) {
-        throw new Error("Product not found");
-      }
-
-      if (product.seller_id !== sellerId) {
-        throw new Error("You are not the seller of this product");
-      }
-
-      if (product.status !== "closed") {
-        throw new Error("Auction is not ended");
-      }
-
-      if (!product.highest_bidder_id) {
-        throw new Error("This auction has no winner");
-      }
-
-      /* 2️⃣ Check rating đã tồn tại chưa */
-      const existing = await trx("ratings")
-        .where({
-          from_user: sellerId,
-          product_id: productId,
-        })
-        .first();
-
-      /* 3️⃣ INSERT hoặc UPDATE */
-      if (existing) {
-        // 👉 UPDATE (EDIT rating)
-        await trx("ratings")
-          .where({ id: existing.id })
-          .update({
-            score,
-            comment: comment.trim(),
-            created_at: trx.raw("NOW()"), // hoặc updated_at nếu bạn có
-          });
-
-        return {
-          message: "Rating updated successfully",
-          score,
-          updated: true,
-        };
-      }
-
-      // 👉 INSERT (rate lần đầu)
-      await trx("ratings").insert({
-        from_user: sellerId,
-        to_user: product.highest_bidder_id,
-        product_id: productId,
-        score,
-        comment: comment.trim(),
-        created_at: trx.raw("NOW()"),
-      });
-
-      return {
-        message: "Rating submitted successfully",
-        score,
-        created: true,
-      };
-    });
   }
 
   /* ===============================
@@ -1106,6 +1025,79 @@ export class SellerService {
       });
 
       return shipment;
+    });
+  }
+
+  static async rateBuyer({
+    sellerId,
+    orderId,
+    score,
+    comment,
+  }: RateBuyerInput) {
+    return db.transaction(async (trx) => {
+      /* ===============================
+       * 1️⃣ Load order + check quyền
+       * =============================== */
+      const order = await trx("orders")
+        .select("id", "seller_id", "buyer_id", "product_id", "status")
+        .where({ id: orderId })
+        .first();
+
+      if (!order) {
+        throw new Error("Order not found");
+      }
+
+      if (order.seller_id !== sellerId) {
+        throw new Error("You are not the seller of this order");
+      }
+
+      if (order.status !== "completed") {
+        throw new Error("Order is not completed yet");
+      }
+
+      /* ===============================
+       * 2️⃣ Check existing rating
+       * =============================== */
+      const existing = await trx("ratings")
+        .where({
+          from_user: sellerId,
+          product_id: order.product_id,
+        })
+        .first();
+
+      /* ===============================
+       * 3️⃣ INSERT hoặc UPDATE
+       * =============================== */
+      if (existing) {
+        await trx("ratings")
+          .where({ id: existing.id })
+          .update({
+            score,
+            comment: comment.trim(),
+            created_at: trx.raw("NOW()"), // hoặc updated_at nếu có
+          });
+
+        return {
+          message: "Rating updated successfully",
+          score,
+          updated: true,
+        };
+      }
+
+      await trx("ratings").insert({
+        from_user: sellerId,
+        to_user: order.buyer_id,
+        product_id: order.product_id,
+        score,
+        comment: comment.trim(),
+        created_at: trx.raw("NOW()"),
+      });
+
+      return {
+        message: "Rating submitted successfully",
+        score,
+        created: true,
+      };
     });
   }
 }

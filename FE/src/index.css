@@ -1951,6 +1951,11 @@
     border-color: currentColor;
   }
 
+  .border-green-500{
+    border-color: var(--color-green-500);
+  }
+  
+
   .border-green-500\/20 {
     border-color: color-mix(
       in srgb,

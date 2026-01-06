@@ -27,8 +27,9 @@ import { OrderStatusPanel } from "../components/order/OrderStatusPanel";
 import { PaymentSubmissionForm } from "../components/order/PaymentSubmissionForm";
 import { ShippingInvoicePanel } from "../components/order/ShippingInvoicePanel";
 import { DeliveryConfirmationPanel } from "../components/order/DeliveryConfirmationPanel";
-import { RatingReviewModal } from "../components/order/RatingReviewModal";
 import { ChatInterface } from "../components/chat/ChatInterface";
+import { RatingReviewForm } from "../components/order/RatingReviewForm";
+import { useNavigate } from "react-router-dom";
 
 import {
   GET_ORDER_DETAIL_API,
@@ -36,6 +37,10 @@ import {
   GET_PAYMENT_ORDER_API,
   SUBMIT_SHIPMENT_API,
   GET_SHIPPING_ORDER_API,
+  CONFIRM_DELIVERY_API,
+  RATE_BUYER_API,
+  RATE_SELLER_API,
+  GET_RATING_API,
 } from "../components/utils/api";
 import { fetchWithAuth } from "../components/utils/fetchWithAuth";
 import { toast } from "sonner";
@@ -84,21 +89,45 @@ interface OrderPageProps {
 }
 
 export function OrderPage({ onBack }: OrderPageProps) {
+  const navigate = useNavigate();
   const { orderId } = useParams<{ orderId: string }>();
   if (!orderId) {
     return <div className="p-10 text-center">Invalid order</div>;
   }
   const [orderData, setOrderData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-
-  const [ratingModalOpen, setRatingModalOpen] = useState(false);
-  const [chatMinimized, setChatMinimized] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [paymentInfo, setPaymentInfo] = useState<any>(null);
   const [shippingInfo, setShippingInfo] = useState<any>(null);
+  const [existingRating, setExistingRating] = useState<{
+    score: 1 | -1;
+    comment: string;
+    created_at: string;
+  } | null>(null);
+
+  const [ratingLoading, setRatingLoading] = useState(false);
 
   const [submittingPayment, setSubmittingPayment] = useState(false);
   const [submittingShipping, setSubmittingShipping] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setRatingLoading(true);
+
+        const res = await fetchWithAuth(GET_RATING_API(orderId));
+        const json = await res.json();
+
+        if (json.success) {
+          setExistingRating(json.data);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setRatingLoading(false);
+      }
+    })();
+  }, [orderId]);
 
   useEffect(() => {
     (async () => {
@@ -234,15 +263,66 @@ export function OrderPage({ onBack }: OrderPageProps) {
     }
   };
 
-  const handleDeliveryConfirm = (data: any) => {
-    console.log("Delivery confirmed:", data);
-    // TODO: PATCH /orders/:id → completed
-    setRatingModalOpen(true);
+  const handleDeliveryConfirm = async (data: { note?: string }) => {
+    try {
+      const res = await fetchWithAuth(CONFIRM_DELIVERY_API(orderId), {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+
+      const json = await res.json();
+
+      if (!json.success) {
+        throw new Error(json.message || "Confirm delivery failed");
+      }
+
+      toast.success("Delivery confirmed successfully");
+
+      // ✅ Refetch order → status = completed
+      const refetch = await fetchWithAuth(GET_ORDER_DETAIL_API(orderId));
+      const refetchJson = await refetch.json();
+
+      if (refetchJson.success) {
+        setOrderData(refetchJson.data);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to confirm delivery");
+    }
   };
 
-  const handleRatingSubmit = (data: any) => {
-    console.log("Rating submitted:", data);
-    // TODO: POST /ratings
+  const handleRatingSubmit = async (data: {
+    score: number;
+    comment: string;
+  }) => {
+    try {
+      setRatingLoading(true);
+
+      const api = isBuyer ? RATE_SELLER_API : RATE_BUYER_API;
+
+      const res = await fetchWithAuth(api(orderId), {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+
+      const json = await res.json();
+
+      if (!json.success) {
+        throw new Error(json.message || "Rating failed");
+      }
+
+      toast.success("Thank you for your review!");
+
+      // optional: refetch order để disable form
+      const refetch = await fetchWithAuth(GET_ORDER_DETAIL_API(orderId));
+      const refetchJson = await refetch.json();
+      if (refetchJson.success) {
+        setOrderData(refetchJson.data);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit review");
+    } finally {
+      setRatingLoading(false);
+    }
   };
 
   const currentUserId: string = orderData.currentUserId;
@@ -258,19 +338,27 @@ export function OrderPage({ onBack }: OrderPageProps) {
       <div className="border-b border-border/50 bg-card/50 sticky top-0 z-10">
         <div className="container mx-auto px-6 py-4 flex justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={onBack}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                if (onBack) {
+                  onBack();
+                } else {
+                  navigate(-1);
+                }
+              }}
+            >
               <ArrowLeft className="h-5 w-5" />
             </Button>
+
             <div>
               <h1 className="text-foreground">Order Completion</h1>
               <p className="text-muted-foreground">#{orderData.orderId}</p>
             </div>
           </div>
 
-          <Button
-            variant="outline"
-            onClick={() => setChatMinimized(!chatMinimized)}
-          >
+          <Button variant="outline" onClick={() => setActiveTab("chat")}>
             <MessageCircle className="h-4 w-4 mr-2" />
             Chat
           </Button>
@@ -382,8 +470,8 @@ export function OrderPage({ onBack }: OrderPageProps) {
 
                   {isBuyer ? (
                     <DeliveryConfirmationPanel
-                      isDelivered={false}
                       onConfirmDelivery={handleDeliveryConfirm}
+                      loading={false}
                     />
                   ) : (
                     <div className="bg-card border border-green-500/20 rounded-xl p-6 flex flex-col items-center gap-3 text-center">
@@ -418,15 +506,32 @@ export function OrderPage({ onBack }: OrderPageProps) {
       STEP 4: REVIEW
      ===================== */}
               {orderStatus === "completed" && (
-                <div className="bg-card border border-border/50 p-6 text-center">
-                  <h3 className="text-foreground mb-2">Order Completed</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Please leave a review for this transaction.
-                  </p>
-                  <Button onClick={() => setRatingModalOpen(true)}>
-                    Rate & Review
-                  </Button>
-                </div>
+                <>
+                  <div className="bg-card border border-green-500/30 rounded-2xl p-8 text-center space-y-4">
+                    <div className="mx-auto h-16 w-16 rounded-full bg-green-500/20 flex items-center justify-center">
+                      <CheckCircle2 className="h-8 w-8 text-green-500" />
+                    </div>
+
+                    <h3 className="text-xl font-semibold text-foreground">
+                      Order Completed
+                    </h3>
+
+                    <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                      This transaction has been completed successfully. Thank
+                      you for using our marketplace.
+                    </p>
+                  </div>
+
+                  <RatingReviewForm
+                    orderParty={{
+                      name: otherParty.name,
+                      role: isBuyer ? "seller" : "buyer",
+                    }}
+                    existingRating={existingRating}
+                    onSubmit={handleRatingSubmit}
+                    loading={ratingLoading}
+                  />
+                </>
               )}
 
               {/* =====================
@@ -458,16 +563,6 @@ export function OrderPage({ onBack }: OrderPageProps) {
           </Tabs>
         </div>
       </div>
-
-      <RatingReviewModal
-        open={ratingModalOpen}
-        onOpenChange={setRatingModalOpen}
-        orderParty={{
-          name: orderData.seller.name,
-          role: "seller",
-        }}
-        onSubmit={handleRatingSubmit}
-      />
     </div>
   );
 }

@@ -1374,6 +1374,141 @@ var UserService = /** @class */ (function () {
             });
         });
     };
+    UserService.confirmDelivery = function (_a) {
+        var orderId = _a.orderId, buyerId = _a.buyerId, note = _a.note;
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0: return [4 /*yield*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
+                            var order;
+                            return __generator(this, function (_a) {
+                                switch (_a.label) {
+                                    case 0: return [4 /*yield*/, trx("orders")
+                                            .where("id", orderId)
+                                            .forUpdate()
+                                            .first()];
+                                    case 1:
+                                        order = _a.sent();
+                                        if (!order) {
+                                            throw new Error("Order not found");
+                                        }
+                                        /* ===============================
+                                         * 2️⃣ Check buyer
+                                         * =============================== */
+                                        if (order.buyer_id !== buyerId) {
+                                            throw new Error("Forbidden");
+                                        }
+                                        /* ===============================
+                                         * 3️⃣ Check status hợp lệ
+                                         * =============================== */
+                                        if (order.status !== "delivered_pending") {
+                                            throw new Error("Order is not awaiting delivery confirmation");
+                                        }
+                                        /* ===============================
+                                         * 4️⃣ Insert delivery confirmation
+                                         * =============================== */
+                                        return [4 /*yield*/, trx("order_confirmations").insert({
+                                                order_id: orderId,
+                                                buyer_id: buyerId,
+                                                note: note !== null && note !== void 0 ? note : null,
+                                                confirmed_at: trx.fn.now()
+                                            })];
+                                    case 2:
+                                        /* ===============================
+                                         * 4️⃣ Insert delivery confirmation
+                                         * =============================== */
+                                        _a.sent();
+                                        /* ===============================
+                                         * 5️⃣ Update order status
+                                         * =============================== */
+                                        return [4 /*yield*/, trx("orders").where("id", orderId).update({
+                                                status: "completed"
+                                            })];
+                                    case 3:
+                                        /* ===============================
+                                         * 5️⃣ Update order status
+                                         * =============================== */
+                                        _a.sent();
+                                        return [2 /*return*/];
+                                }
+                            });
+                        }); })];
+                    case 1:
+                        _b.sent();
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
+    UserService.rateSeller = function (_a) {
+        var buyerId = _a.buyerId, orderId = _a.orderId, score = _a.score, comment = _a.comment;
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_b) {
+                return [2 /*return*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
+                        var order, existing;
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0: return [4 /*yield*/, trx("orders")
+                                        .select("id", "buyer_id", "seller_id", "product_id", "status")
+                                        .where({ id: orderId })
+                                        .first()];
+                                case 1:
+                                    order = _a.sent();
+                                    if (!order) {
+                                        throw new Error("Order not found");
+                                    }
+                                    if (order.buyer_id !== buyerId) {
+                                        throw new Error("You are not the buyer of this order");
+                                    }
+                                    if (order.status !== "completed") {
+                                        throw new Error("Order is not completed yet");
+                                    }
+                                    return [4 /*yield*/, trx("ratings")
+                                            .where({
+                                            from_user: buyerId,
+                                            product_id: order.product_id
+                                        })
+                                            .first()];
+                                case 2:
+                                    existing = _a.sent();
+                                    if (!existing) return [3 /*break*/, 4];
+                                    return [4 /*yield*/, trx("ratings")
+                                            .where({ id: existing.id })
+                                            .update({
+                                            score: score,
+                                            comment: comment.trim(),
+                                            created_at: trx.raw("NOW()")
+                                        })];
+                                case 3:
+                                    _a.sent();
+                                    return [2 /*return*/, {
+                                            message: "Rating updated successfully",
+                                            score: score,
+                                            updated: true
+                                        }];
+                                case 4: return [4 /*yield*/, trx("ratings").insert({
+                                        from_user: buyerId,
+                                        to_user: order.seller_id,
+                                        product_id: order.product_id,
+                                        score: score,
+                                        comment: comment.trim(),
+                                        created_at: trx.raw("NOW()")
+                                    })];
+                                case 5:
+                                    _a.sent();
+                                    return [2 /*return*/, {
+                                            message: "Rating submitted successfully",
+                                            score: score,
+                                            created: true
+                                        }];
+                            }
+                        });
+                    }); })];
+            });
+        });
+    };
     return UserService;
 }());
 exports.UserService = UserService;

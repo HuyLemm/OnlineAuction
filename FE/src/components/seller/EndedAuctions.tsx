@@ -13,7 +13,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { ImageWithFallback } from "../check/ImageWithFallback";
 import { fetchWithAuth } from "../utils/fetchWithAuth";
-import { GET_ENDED_LISTINGS_API, RATE_WINNER_API } from "../utils/api";
+import { GET_ENDED_LISTINGS_API } from "../utils/api";
 import { LoadingSpinner } from "../state";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -100,7 +100,7 @@ export function EndedAuctions({ onCountChange }: EndedAuctionsProps) {
     try {
       setSubmitting(true);
 
-      await fetchWithAuth(RATE_WINNER_API(target.id), {
+      await fetchWithAuth("", {
         method: "POST",
         body: JSON.stringify({
           score,

@@ -135,4 +135,18 @@ router.post(
   UserController.submitPayment
 );
 
+router.post(
+  "/orders/:orderId/confirm-delivery",
+  authenticate,
+  authorize("bidder"),
+  UserController.confirmDelivery
+);
+
+router.post(
+  "/orders/:orderId/rate-seller",
+  authenticate,
+  authorize("bidder"),
+  UserController.rateSeller
+);
+
 export default router;

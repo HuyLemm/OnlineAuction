@@ -71,7 +71,7 @@ export function OrderStatusPanel({
 
       case "completed":
         return (
-          <Badge className="bg-green-500/20 text-emerald-500 border-green-500/30">
+          <Badge className="bg-green-500/20 text-green-500 border-green-500/30">
             Completed
           </Badge>
         );

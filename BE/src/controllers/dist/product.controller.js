@@ -306,6 +306,43 @@ var ProductController = /** @class */ (function () {
             });
         });
     };
+    // GET /users/orders/:orderId/rating
+    ProductController.getMyRating = function (req, res) {
+        return __awaiter(this, void 0, void 0, function () {
+            var userId, orderId, rating, err_2;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 2, , 3]);
+                        userId = req.user.userId;
+                        orderId = req.params.orderId;
+                        if (!orderId) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "orderId is required"
+                                })];
+                        }
+                        return [4 /*yield*/, product_service_1.ProductService.getMyRatingByOrder({
+                                orderId: orderId,
+                                fromUserId: userId
+                            })];
+                    case 1:
+                        rating = _a.sent();
+                        return [2 /*return*/, res.json({
+                                success: true,
+                                data: rating || null
+                            })];
+                    case 2:
+                        err_2 = _a.sent();
+                        return [2 /*return*/, res.status(400).json({
+                                success: false,
+                                message: err_2.message || "Failed to get rating"
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
     return ProductController;
 }());
 exports.ProductController = ProductController;

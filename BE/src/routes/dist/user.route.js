@@ -37,4 +37,6 @@ router.post("/request-bids", auth_middleware_1.authenticate, authorize_middlewar
 router.post("/buy-now", auth_middleware_1.authenticate, authorize_middleware_1.authorize("bidder"), user_controller_1.UserController.buyNow);
 router.get("/won-auctions", auth_middleware_1.authenticate, authorize_middleware_1.authorize("bidder"), user_controller_1.UserController.getWonAuctions);
 router.post("/orders/:orderId/payment", auth_middleware_1.authenticate, authorize_middleware_1.authorize("bidder"), user_controller_1.UserController.submitPayment);
+router.post("/orders/:orderId/confirm-delivery", auth_middleware_1.authenticate, authorize_middleware_1.authorize("bidder"), user_controller_1.UserController.confirmDelivery);
+router.post("/orders/:orderId/rate-seller", auth_middleware_1.authenticate, authorize_middleware_1.authorize("bidder"), user_controller_1.UserController.rateSeller);
 exports["default"] = router;

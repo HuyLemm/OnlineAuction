@@ -9,6 +9,9 @@ export const GET_PRODUCT_DETAIL_API = (productId: string) =>
 export const GET_ORDER_DETAIL_API = (orderId: string) =>
   `${API_BASE_URL}/products/orders/${orderId}`;
 
+export const GET_RATING_API = (orderId: string) =>
+  `${API_BASE_URL}/products/orders/${orderId}/rating`;
+
 //Categories
 export const GET_CATEGORIES_FOR_SIDEBAR_API = `${API_BASE_URL}/categories/get-categories-for-sidebar`;
 export const GET_MAIN_CATEGORIES_API = `${API_BASE_URL}/categories/get-main-categories`;
@@ -62,6 +65,12 @@ export const GET_WON_AUCTIONS_API = `${API_BASE_URL}/users/won-auctions`;
 export const ORDER_PAYMENT_API = (orderId: string) =>
   `${API_BASE_URL}/users/orders/${orderId}/payment`;
 
+export const CONFIRM_DELIVERY_API = (orderId: string) =>
+  `${API_BASE_URL}/users/orders/${orderId}/confirm-delivery`;
+
+export const RATE_SELLER_API = (orderId: string) =>
+  `${API_BASE_URL}/users/orders/${orderId}/rate-seller`;
+
 //Seller
 export const CREATE_AUCTION_API = `${API_BASE_URL}/seller/create-auction`;
 export const GET_AUTO_EXTEND_CONFIG_API = `${API_BASE_URL}/seller/auto-extend-config`;
@@ -71,8 +80,6 @@ export const APPEND_DESCRIPTION_API = (productId: string) =>
   `${API_BASE_URL}/seller/${productId}/append-description`;
 
 export const GET_ENDED_LISTINGS_API = `${API_BASE_URL}/seller/listings-ended`;
-export const RATE_WINNER_API = (productId: string) =>
-  `${API_BASE_URL}/seller/rate-winner/${productId}`;
 
 export const SELLER_REPLY_QUESTION_API = (questionId: string) =>
   `${API_BASE_URL}/seller/questions/${questionId}/answer`;
@@ -90,6 +97,9 @@ export const KICK_BIDDER_API = (productId: string, bidderId: string) =>
 
 export const SUBMIT_SHIPMENT_API = (orderId: string) =>
   `${API_BASE_URL}/seller/orders/${orderId}/shipment`;
+
+export const RATE_BUYER_API = (orderId: string) =>
+  `${API_BASE_URL}/seller/orders/${orderId}/rate-buyer`;
 
 //Admin
 export const CREATE_PARENT_CATEGORY_API = `${API_BASE_URL}/admin/categories/parent`;

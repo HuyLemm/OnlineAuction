@@ -40,13 +40,6 @@ router.get(
 );
 
 router.post(
-  "/rate-winner/:productId",
-  authenticate,
-  authorize("seller"),
-  SellerController.rateWinner
-);
-
-router.post(
   "/questions/:questionId/answer",
   authenticate,
   authorize("seller"),
@@ -85,6 +78,13 @@ router.post(
   "/orders/:orderId/shipment",
   authenticate,
   SellerController.submitShipment
+);
+
+router.post(
+  "/orders/:orderId/rate-buyer",
+  authenticate,
+  authorize("seller"),
+  SellerController.rateBuyer
 );
 
 export default router;

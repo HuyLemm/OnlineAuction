@@ -8,7 +8,8 @@ import {
   sendAutoBidUpdatedMail,
 } from "../utils/sendOtpMail";
 import { getDbNowMs } from "../utils/time";
-import { SubmitPaymentInput } from "../dto/product.dto";
+import { SubmitPaymentInput, ConfirmDeliveryInput } from "../dto/product.dto";
+import { RateSellerInput } from "../dto/user.dto";
 
 const SALT_ROUNDS = 10;
 
@@ -1373,6 +1374,129 @@ export class UserService {
       await trx("orders").where({ id: input.orderId }).update({
         status: "shipping_pending",
       });
+    });
+  }
+
+  static async confirmDelivery({
+    orderId,
+    buyerId,
+    note,
+  }: ConfirmDeliveryInput) {
+    await db.transaction(async (trx) => {
+      /* ===============================
+       * 1️⃣ Load order + lock row
+       * =============================== */
+      const order = await trx("orders")
+        .where("id", orderId)
+        .forUpdate()
+        .first();
+
+      if (!order) {
+        throw new Error("Order not found");
+      }
+
+      /* ===============================
+       * 2️⃣ Check buyer
+       * =============================== */
+      if (order.buyer_id !== buyerId) {
+        throw new Error("Forbidden");
+      }
+
+      /* ===============================
+       * 3️⃣ Check status hợp lệ
+       * =============================== */
+      if (order.status !== "delivered_pending") {
+        throw new Error("Order is not awaiting delivery confirmation");
+      }
+
+      /* ===============================
+       * 4️⃣ Insert delivery confirmation
+       * =============================== */
+      await trx("order_confirmations").insert({
+        order_id: orderId,
+        buyer_id: buyerId,
+        note: note ?? null,
+        confirmed_at: trx.fn.now(),
+      });
+
+      /* ===============================
+       * 5️⃣ Update order status
+       * =============================== */
+      await trx("orders").where("id", orderId).update({
+        status: "completed",
+      });
+    });
+  }
+  static async rateSeller({
+    buyerId,
+    orderId,
+    score,
+    comment,
+  }: RateSellerInput) {
+    return db.transaction(async (trx) => {
+      /* ===============================
+       * 1️⃣ Load order + check quyền
+       * =============================== */
+      const order = await trx("orders")
+        .select("id", "buyer_id", "seller_id", "product_id", "status")
+        .where({ id: orderId })
+        .first();
+
+      if (!order) {
+        throw new Error("Order not found");
+      }
+
+      if (order.buyer_id !== buyerId) {
+        throw new Error("You are not the buyer of this order");
+      }
+
+      if (order.status !== "completed") {
+        throw new Error("Order is not completed yet");
+      }
+
+      /* ===============================
+       * 2️⃣ Check existing rating
+       * =============================== */
+      const existing = await trx("ratings")
+        .where({
+          from_user: buyerId,
+          product_id: order.product_id,
+        })
+        .first();
+
+      /* ===============================
+       * 3️⃣ INSERT hoặc UPDATE
+       * =============================== */
+      if (existing) {
+        await trx("ratings")
+          .where({ id: existing.id })
+          .update({
+            score,
+            comment: comment.trim(),
+            created_at: trx.raw("NOW()"), // hoặc updated_at nếu có
+          });
+
+        return {
+          message: "Rating updated successfully",
+          score,
+          updated: true,
+        };
+      }
+
+      await trx("ratings").insert({
+        from_user: buyerId,
+        to_user: order.seller_id,
+        product_id: order.product_id,
+        score,
+        comment: comment.trim(),
+        created_at: trx.raw("NOW()"),
+      });
+
+      return {
+        message: "Rating submitted successfully",
+        score,
+        created: true,
+      };
     });
   }
 }

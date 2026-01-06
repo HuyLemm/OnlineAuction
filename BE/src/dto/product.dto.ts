@@ -321,3 +321,9 @@ export interface CreateShipmentInput {
   shipping_provider?: string;
   note?: string;
 }
+
+export interface ConfirmDeliveryInput {
+  orderId: string;
+  buyerId: string;
+  note?: string;
+}

@@ -27,3 +27,10 @@ export interface RecaptchaV2VerifyResponseDTO {
   hostname?: string;
   "error-codes"?: string[];
 }
+
+export interface RateSellerInput {
+  buyerId: string;
+  orderId: string;
+  score: 1 | -1;
+  comment: string;
+}

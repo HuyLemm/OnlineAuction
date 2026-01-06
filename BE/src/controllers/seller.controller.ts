@@ -155,55 +155,6 @@ export class SellerController {
   }
 
   // ===============================
-  // Rate winner of ended auction
-  // ===============================
-  static async rateWinner(req: AuthRequest, res: Response) {
-    try {
-      const sellerId = req.user!.userId;
-      const { productId } = req.params;
-      const { score, comment } = req.body;
-
-      if (!productId) {
-        return res.status(400).json({
-          success: false,
-          message: "Product id is required",
-        });
-      }
-
-      if (score !== 1 && score !== -1) {
-        return res.status(400).json({
-          success: false,
-          message: "Score must be +1 or -1",
-        });
-      }
-
-      if (!comment || !comment.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: "Comment is required",
-        });
-      }
-
-      const result = await SellerService.rateWinner({
-        sellerId,
-        productId,
-        score,
-        comment,
-      });
-
-      return res.json({
-        success: true,
-        data: result, // { message, score, created? updated? }
-      });
-    } catch (err: any) {
-      return res.status(400).json({
-        success: false,
-        message: err?.message ?? "Failed to rate winner",
-      });
-    }
-  }
-
-  // ===============================
   // Answer question (Seller)
   // POST /seller/questions/:questionId/answer
   // ===============================
@@ -443,7 +394,7 @@ export class SellerController {
         });
       }
 
-      if (!orderId){
+      if (!orderId) {
         return res.status(400).json({
           success: false,
           message: "orderId is required",
@@ -466,6 +417,51 @@ export class SellerController {
       return res.status(400).json({
         success: false,
         message: error.message,
+      });
+    }
+  }
+  static async rateBuyer(req: AuthRequest, res: Response) {
+    try {
+      const sellerId = req.user!.userId;
+      const { orderId } = req.params;
+      const { score, comment } = req.body;
+
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: "Order id is required",
+        });
+      }
+
+      if (score !== 1 && score !== -1) {
+        return res.status(400).json({
+          success: false,
+          message: "Score must be +1 or -1",
+        });
+      }
+
+      if (!comment || !comment.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Comment is required",
+        });
+      }
+
+      const result = await SellerService.rateBuyer({
+        sellerId,
+        orderId,
+        score,
+        comment,
+      });
+
+      return res.json({
+        success: true,
+        data: result,
+      });
+    } catch (err: any) {
+      return res.status(400).json({
+        success: false,
+        message: err?.message ?? "Failed to rate buyer",
       });
     }
   }

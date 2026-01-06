@@ -245,10 +245,7 @@ export class ProductController {
         });
       }
 
-      const data = await ProductService.getOrderDetail(
-        orderId,
-        userId
-      );
+      const data = await ProductService.getOrderDetail(orderId, userId);
 
       return res.json({ success: true, data });
     } catch (err: any) {
@@ -262,6 +259,35 @@ export class ProductController {
       return res.status(status).json({
         success: false,
         message: err.message,
+      });
+    }
+  }
+  // GET /users/orders/:orderId/rating
+  static async getMyRating(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user!.userId;
+      const { orderId } = req.params;
+
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: "orderId is required",
+        });
+      }
+
+      const rating = await ProductService.getMyRatingByOrder({
+        orderId,
+        fromUserId: userId,
+      });
+
+      return res.json({
+        success: true,
+        data: rating || null,
+      });
+    } catch (err: any) {
+      return res.status(400).json({
+        success: false,
+        message: err.message || "Failed to get rating",
       });
     }
   }

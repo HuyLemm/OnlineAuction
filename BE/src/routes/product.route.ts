@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { ProductController } from "../controllers/product.controller";
-import { authenticateOptional, authenticate } from "../middlewares/auth.middleware";
+import {
+  authenticateOptional,
+  authenticate,
+} from "../middlewares/auth.middleware";
 
 const router = Router();
 
@@ -12,5 +15,10 @@ router.get(
   ProductController.getProductDetail
 );
 router.get("/orders/:orderId", authenticate, ProductController.getOrderDetail);
+router.get(
+  "/orders/:orderId/rating",
+  authenticate,
+  ProductController.getMyRating
+);
 
 export default router;

@@ -248,68 +248,13 @@ var SellerController = /** @class */ (function () {
         });
     };
     // ===============================
-    // Rate winner of ended auction
-    // ===============================
-    SellerController.rateWinner = function (req, res) {
-        var _a;
-        return __awaiter(this, void 0, void 0, function () {
-            var sellerId, productId, _b, score, comment, result, err_6;
-            return __generator(this, function (_c) {
-                switch (_c.label) {
-                    case 0:
-                        _c.trys.push([0, 2, , 3]);
-                        sellerId = req.user.userId;
-                        productId = req.params.productId;
-                        _b = req.body, score = _b.score, comment = _b.comment;
-                        if (!productId) {
-                            return [2 /*return*/, res.status(400).json({
-                                    success: false,
-                                    message: "Product id is required"
-                                })];
-                        }
-                        if (score !== 1 && score !== -1) {
-                            return [2 /*return*/, res.status(400).json({
-                                    success: false,
-                                    message: "Score must be +1 or -1"
-                                })];
-                        }
-                        if (!comment || !comment.trim()) {
-                            return [2 /*return*/, res.status(400).json({
-                                    success: false,
-                                    message: "Comment is required"
-                                })];
-                        }
-                        return [4 /*yield*/, seller_service_1.SellerService.rateWinner({
-                                sellerId: sellerId,
-                                productId: productId,
-                                score: score,
-                                comment: comment
-                            })];
-                    case 1:
-                        result = _c.sent();
-                        return [2 /*return*/, res.json({
-                                success: true,
-                                data: result
-                            })];
-                    case 2:
-                        err_6 = _c.sent();
-                        return [2 /*return*/, res.status(400).json({
-                                success: false,
-                                message: (_a = err_6 === null || err_6 === void 0 ? void 0 : err_6.message) !== null && _a !== void 0 ? _a : "Failed to rate winner"
-                            })];
-                    case 3: return [2 /*return*/];
-                }
-            });
-        });
-    };
-    // ===============================
     // Answer question (Seller)
     // POST /seller/questions/:questionId/answer
     // ===============================
     SellerController.answerQuestion = function (req, res) {
         var _a;
         return __awaiter(this, void 0, void 0, function () {
-            var sellerId, questionId, content, result, err_7;
+            var sellerId, questionId, content, result, err_6;
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
@@ -341,10 +286,10 @@ var SellerController = /** @class */ (function () {
                                 data: result
                             })];
                     case 2:
-                        err_7 = _b.sent();
+                        err_6 = _b.sent();
                         return [2 /*return*/, res.status(400).json({
                                 success: false,
-                                message: (_a = err_7 === null || err_7 === void 0 ? void 0 : err_7.message) !== null && _a !== void 0 ? _a : "Failed to answer question"
+                                message: (_a = err_6 === null || err_6 === void 0 ? void 0 : err_6.message) !== null && _a !== void 0 ? _a : "Failed to answer question"
                             })];
                     case 3: return [2 /*return*/];
                 }
@@ -604,6 +549,58 @@ var SellerController = /** @class */ (function () {
                         return [2 /*return*/, res.status(400).json({
                                 success: false,
                                 message: error_5.message
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    SellerController.rateBuyer = function (req, res) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function () {
+            var sellerId, orderId, _b, score, comment, result, err_7;
+            return __generator(this, function (_c) {
+                switch (_c.label) {
+                    case 0:
+                        _c.trys.push([0, 2, , 3]);
+                        sellerId = req.user.userId;
+                        orderId = req.params.orderId;
+                        _b = req.body, score = _b.score, comment = _b.comment;
+                        if (!orderId) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "Order id is required"
+                                })];
+                        }
+                        if (score !== 1 && score !== -1) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "Score must be +1 or -1"
+                                })];
+                        }
+                        if (!comment || !comment.trim()) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "Comment is required"
+                                })];
+                        }
+                        return [4 /*yield*/, seller_service_1.SellerService.rateBuyer({
+                                sellerId: sellerId,
+                                orderId: orderId,
+                                score: score,
+                                comment: comment
+                            })];
+                    case 1:
+                        result = _c.sent();
+                        return [2 /*return*/, res.json({
+                                success: true,
+                                data: result
+                            })];
+                    case 2:
+                        err_7 = _c.sent();
+                        return [2 /*return*/, res.status(400).json({
+                                success: false,
+                                message: (_a = err_7 === null || err_7 === void 0 ? void 0 : err_7.message) !== null && _a !== void 0 ? _a : "Failed to rate buyer"
                             })];
                     case 3: return [2 /*return*/];
                 }

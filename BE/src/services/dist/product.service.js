@@ -734,6 +734,32 @@ var ProductService = /** @class */ (function () {
             });
         });
     };
+    ProductService.getMyRatingByOrder = function (params) {
+        return __awaiter(this, void 0, void 0, function () {
+            var orderId, fromUserId, order;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        orderId = params.orderId, fromUserId = params.fromUserId;
+                        return [4 /*yield*/, db_1.db("orders")
+                                .select("product_id")
+                                .where({ id: orderId })
+                                .first()];
+                    case 1:
+                        order = _a.sent();
+                        if (!order)
+                            throw new Error("Order not found");
+                        return [4 /*yield*/, db_1.db("ratings")
+                                .where({
+                                product_id: order.product_id,
+                                from_user: fromUserId
+                            })
+                                .first()];
+                    case 2: return [2 /*return*/, _a.sent()];
+                }
+            });
+        });
+    };
     return ProductService;
 }());
 exports.ProductService = ProductService;

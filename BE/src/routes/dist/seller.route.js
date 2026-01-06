@@ -10,11 +10,11 @@ router.get("/auto-extend-config", auth_middleware_1.authenticate, seller_control
 router.get("/listings-active", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.getMyActiveListings);
 router.post("/:productId/append-description", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.appendDescription);
 router.get("/listings-ended", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.getMyEndedAuctions);
-router.post("/rate-winner/:productId", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.rateWinner);
 router.post("/questions/:questionId/answer", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.answerQuestion);
 router.get("/:productId/bid-requests", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.getBidRequests);
 router.post("/bid-requests/:requestId", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.handleBidRequest);
 router.get("/products/:productId/active-bidders", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.getActiveBidders);
 router.post("/products/:productId/kick-bidder/:bidderId", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.kickBidder);
 router.post("/orders/:orderId/shipment", auth_middleware_1.authenticate, seller_controller_1.SellerController.submitShipment);
+router.post("/orders/:orderId/rate-buyer", auth_middleware_1.authenticate, authorize_middleware_1.authorize("seller"), seller_controller_1.SellerController.rateBuyer);
 exports["default"] = router;

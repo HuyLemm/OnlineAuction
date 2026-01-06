@@ -456,96 +456,6 @@ var SellerService = /** @class */ (function () {
         });
     };
     /* ===============================
-     * Rate winner of ended auction
-     * =============================== */
-    SellerService.rateWinner = function (input) {
-        return __awaiter(this, void 0, void 0, function () {
-            var sellerId, productId, score, comment;
-            var _this = this;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        sellerId = input.sellerId, productId = input.productId, score = input.score, comment = input.comment;
-                        if (![1, -1].includes(score)) {
-                            throw new Error("Invalid score");
-                        }
-                        if (!comment || !comment.trim()) {
-                            throw new Error("Comment is required");
-                        }
-                        return [4 /*yield*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
-                                var product, existing;
-                                return __generator(this, function (_a) {
-                                    switch (_a.label) {
-                                        case 0: return [4 /*yield*/, trx("products")
-                                                .select("id", "seller_id", "status", "highest_bidder_id")
-                                                .where({ id: productId })
-                                                .first()];
-                                        case 1:
-                                            product = _a.sent();
-                                            if (!product) {
-                                                throw new Error("Product not found");
-                                            }
-                                            if (product.seller_id !== sellerId) {
-                                                throw new Error("You are not the seller of this product");
-                                            }
-                                            if (product.status !== "closed") {
-                                                throw new Error("Auction is not ended");
-                                            }
-                                            if (!product.highest_bidder_id) {
-                                                throw new Error("This auction has no winner");
-                                            }
-                                            return [4 /*yield*/, trx("ratings")
-                                                    .where({
-                                                    from_user: sellerId,
-                                                    product_id: productId
-                                                })
-                                                    .first()];
-                                        case 2:
-                                            existing = _a.sent();
-                                            if (!existing) return [3 /*break*/, 4];
-                                            // 👉 UPDATE (EDIT rating)
-                                            return [4 /*yield*/, trx("ratings")
-                                                    .where({ id: existing.id })
-                                                    .update({
-                                                    score: score,
-                                                    comment: comment.trim(),
-                                                    created_at: trx.raw("NOW()")
-                                                })];
-                                        case 3:
-                                            // 👉 UPDATE (EDIT rating)
-                                            _a.sent();
-                                            return [2 /*return*/, {
-                                                    message: "Rating updated successfully",
-                                                    score: score,
-                                                    updated: true
-                                                }];
-                                        case 4: 
-                                        // 👉 INSERT (rate lần đầu)
-                                        return [4 /*yield*/, trx("ratings").insert({
-                                                from_user: sellerId,
-                                                to_user: product.highest_bidder_id,
-                                                product_id: productId,
-                                                score: score,
-                                                comment: comment.trim(),
-                                                created_at: trx.raw("NOW()")
-                                            })];
-                                        case 5:
-                                            // 👉 INSERT (rate lần đầu)
-                                            _a.sent();
-                                            return [2 /*return*/, {
-                                                    message: "Rating submitted successfully",
-                                                    score: score,
-                                                    created: true
-                                                }];
-                                    }
-                                });
-                            }); })];
-                    case 1: return [2 /*return*/, _a.sent()];
-                }
-            });
-        });
-    };
-    /* ===============================
      * Q&A - Seller answer question
      * =============================== */
     SellerService.answerQuestion = function (params) {
@@ -1084,6 +994,74 @@ var SellerService = /** @class */ (function () {
                             }); })];
                     case 1: return [2 /*return*/, _a.sent()];
                 }
+            });
+        });
+    };
+    SellerService.rateBuyer = function (_a) {
+        var sellerId = _a.sellerId, orderId = _a.orderId, score = _a.score, comment = _a.comment;
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_b) {
+                return [2 /*return*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
+                        var order, existing;
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0: return [4 /*yield*/, trx("orders")
+                                        .select("id", "seller_id", "buyer_id", "product_id", "status")
+                                        .where({ id: orderId })
+                                        .first()];
+                                case 1:
+                                    order = _a.sent();
+                                    if (!order) {
+                                        throw new Error("Order not found");
+                                    }
+                                    if (order.seller_id !== sellerId) {
+                                        throw new Error("You are not the seller of this order");
+                                    }
+                                    if (order.status !== "completed") {
+                                        throw new Error("Order is not completed yet");
+                                    }
+                                    return [4 /*yield*/, trx("ratings")
+                                            .where({
+                                            from_user: sellerId,
+                                            product_id: order.product_id
+                                        })
+                                            .first()];
+                                case 2:
+                                    existing = _a.sent();
+                                    if (!existing) return [3 /*break*/, 4];
+                                    return [4 /*yield*/, trx("ratings")
+                                            .where({ id: existing.id })
+                                            .update({
+                                            score: score,
+                                            comment: comment.trim(),
+                                            created_at: trx.raw("NOW()")
+                                        })];
+                                case 3:
+                                    _a.sent();
+                                    return [2 /*return*/, {
+                                            message: "Rating updated successfully",
+                                            score: score,
+                                            updated: true
+                                        }];
+                                case 4: return [4 /*yield*/, trx("ratings").insert({
+                                        from_user: sellerId,
+                                        to_user: order.buyer_id,
+                                        product_id: order.product_id,
+                                        score: score,
+                                        comment: comment.trim(),
+                                        created_at: trx.raw("NOW()")
+                                    })];
+                                case 5:
+                                    _a.sent();
+                                    return [2 /*return*/, {
+                                            message: "Rating submitted successfully",
+                                            score: score,
+                                            created: true
+                                        }];
+                            }
+                        });
+                    }); })];
             });
         });
     };

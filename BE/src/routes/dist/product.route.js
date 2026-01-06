@@ -8,4 +8,5 @@ router.get("/get-browse-product", product_controller_1.ProductController.getBrow
 router.get("/search-products", product_controller_1.ProductController.searchProducts);
 router.get("/:productId/get-product-detail", auth_middleware_1.authenticateOptional, product_controller_1.ProductController.getProductDetail);
 router.get("/orders/:orderId", auth_middleware_1.authenticate, product_controller_1.ProductController.getOrderDetail);
+router.get("/orders/:orderId/rating", auth_middleware_1.authenticate, product_controller_1.ProductController.getMyRating);
 exports["default"] = router;

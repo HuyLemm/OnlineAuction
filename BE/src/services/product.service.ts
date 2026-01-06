@@ -870,4 +870,25 @@ export class ProductService {
       currentUserId: viewerUserId,
     };
   }
+
+  static async getMyRatingByOrder(params: {
+    orderId: string;
+    fromUserId: string;
+  }) {
+    const { orderId, fromUserId } = params;
+
+    const order = await db("orders")
+      .select("product_id")
+      .where({ id: orderId })
+      .first();
+
+    if (!order) throw new Error("Order not found");
+
+    return await db("ratings")
+      .where({
+        product_id: order.product_id,
+        from_user: fromUserId,
+      })
+      .first();
+  }
 }
