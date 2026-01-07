@@ -27,14 +27,14 @@ const categoryIcons: Record<string, React.ReactNode> = {
 };
 
 const categoryImages: Record<string, string> = {
-  Watches: "../../src/images/Watches.jpg",
-  Jewelry: "../../src/images/Jewelry.jpg",
-  Collectibles: "../../src/images/Collectibles.jpg",
-  Vehicles: "../../src/images/Vehicles.jpg",
-  Sports: "../../src/images/Sports.jpg",
-  Fashion: "../../src/images/Fashion.jpg",
-  "Home & Garden": "../../src/images/Home&Garden.jpg",
-  Electronics: "../../src/images/Electronics.jpg",
+  Watches: "/images/Watches.jpg",
+  Jewelry: "/images/Jewelry.jpg",
+  Collectibles: "/images/Collectibles.jpg",
+  Vehicles: "/images/Vehicles.jpg",
+  Sports: "/images/Sports.jpg",
+  Fashion: "/images/Fashion.jpg",
+  "Home & Garden": "/images/Home&Garden.jpg",
+  Electronics: "/images/Electronics.jpg",
 };
 
 interface CategoryGridProps {
@@ -53,7 +53,7 @@ export function CategoryGrid({ onCategoryClick }: CategoryGridProps) {
         const formatted: CategoryDTO[] = json.data.map((cat: CategoryDTO) => ({
           ...cat,
           icon: categoryIcons[cat.name] || <Palette className="h-6 w-6" />,
-          image: categoryImages[cat.name] || "../../src/images/Placeholder.jpg",
+          image: categoryImages[cat.name] || "/images/Placeholder.jpg",
         }));
 
         setCategories(formatted);
@@ -88,7 +88,7 @@ export function CategoryGrid({ onCategoryClick }: CategoryGridProps) {
             {/* Background */}
             <div className="aspect-square relative overflow-hidden">
               <ImageWithFallback
-                src={category.image || "/images/placeholder.jpg"}
+                src={category.image || "/images/Placeholder.jpg"}
                 alt={category.name}
                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
               />
