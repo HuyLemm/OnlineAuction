@@ -1,0 +1,328 @@
+Commit: a407475
+Author: HuyLemm
+Date: 2025-11-15
+Title: Add baseline of app
+Description:
+
+------------------------
+Commit: ef1c6c5
+Author: HuyLemm
+Date: 2025-11-20
+Title: update homepage
+Description:
+Create the Home Page UI for this dark-theme online auction app, including a hero banner with search bar, category shortcuts, and three item sections: Top 5 Ending Soon, Top 5 Most Bids, and Top 5 Highest Price, using the same premium dark layout, rounded cards, soft shadows, bold typography, and consistent spacing
+
+------------------------
+Commit: b9c780b
+Author: HuyLemm
+Date: 2025-11-20
+Title: update browse page
+Description:
+full Browse Items page for this dark-theme auction app, including a left filter sidebar (categories, price range, rating, status), a top bar with search + sort dropdown + grid/list toggle, and a responsive product grid showing item cards
+
+------------------------
+Commit: cdd4cce
+Author: HuyLemm
+Date: 2025-11-22
+Title: extend Product Detail page
+Description:
+extend the interface by adding a fully integrated Product Detail page featuring large image gallery, product info, current bid, buy-now price, seller and bidder details, countdown timer, bid input, bid history, Q&A section, related items carousel, and action buttons, all maintaining the same premium visual style, component structure, layout consistency, and seamless SPA flow.
+
+------------------------
+Commit: df95cb7
+Author: HuyLemm
+Date: 2025-11-22
+Title: Dashboard User Feature update
+Description:
+integrated User Dashboard for bidders, including sections for My Bids, Watchlist, Active Auctions, Won Auctions, Bid History, Ratings & Reviews, Profile Settings, and Request to Become Seller
+
+------------------------
+Commit: ece80e3
+Author: HuyLemm
+Date: 2025-11-23
+Title: add Seller Panel and refactor folder structure
+Description:
+adding a fully integrated Seller Panel with Create Auction, Manage Active Listings, Ended Auctions, Buyer Ratings, and Q&A Management, while also restructuring the project architecture
+
+------------------------
+Commit: 54bad9b
+Author: HuyLemm
+Date: 2025-11-25
+Title: integrating a complete Order Completion Flow for won auctions
+Description:
+integrating a complete Order Completion Flow for won auctions, including a 4-step checkout process (Buyer Payment Submission, Seller Confirmation & Shipping Invoice, Buyer Delivery Confirmation, Mutual Rating & Review), accompanied by a real-time styled chat interface between buyer and seller, timeline progress indicators, transaction status panels, and rating modals
+
+------------------------
+Commit: ab8906e
+Author: HuyLemm
+Date: 2025-11-27
+Title: add Admin Dashboard
+Description:
+adding a fully integrated Admin Dashboard that includes category management, product moderation, user management, seller upgrade approval, and system overview analytics
+
+------------------------
+Commit: d5f51e0
+Author: HuyLemm
+Date: 2025-11-29
+Title: add Authentication Page
+Description:
+adding a complete Authentication Flow, including dedicated pages for Login, Register, OTP Email Verification, Forgot Password, and Reset Password
+
+------------------------
+Commit: 9867e73
+Author: HuyLemm
+Date: 2025-12-02
+Title: update ERD, Use case Diagram and Backend pipeline optimize
+Description:
+
+------------------------
+Commit: 75acece
+Author: HuyLemm
+Date: 2025-12-04
+Title: add Notification Page
+Description:
+adding a full Notification Center system integrated into the current Header, including a notification bell dropdown for quick previews and a dedicated Notifications Page under /pages for viewing all alerts
+
+------------------------
+Commit: 6fa6440
+Author: HuyLemm
+Date: 2025-12-05
+Title: add Search Results Page and complete UI Pipeline features
+Description:
+adding a complete Search Results Page under /pages that supports full-text search UI behavior, including a search bar with keyword highlighting, filter chips for category and price range, a sort dropdown (ending soon, price ascending, newest)
+
+------------------------
+Commit: b12d3b0
+Author: HuyLemm
+Date: 2025-12-09
+Title: update API for home and browse auction page
+Description:
+1. top-5-ending
+2. top-5-most-bid
+3. top-5-highest-price
+4. get-main-categories
+5. get-categories-for-menu
+6. get-categories-for-filterbar
+
+------------------------
+Commit: f26097b
+Author: HuyLemm
+Date: 2025-12-10
+Title: complete 3/4 for browse item page
+Description:
+missing menu direct to browse item page
+
+------------------------
+Commit: b13a25b
+Author: HuyLemm
+Date: 2025-12-11
+Title: update done BrowseItemPage, Menu in Header and SearchResultPage
+Description:
+
+------------------------
+Commit: 6b02601
+Author: HuyLemm
+Date: 2025-12-12
+Title: update done completely HomePage, BrowsePageItem and SearchResultPage
+Description:
+
+------------------------
+Commit: 11cf04e
+Author: HuyLemm
+Date: 2025-12-14
+Title: updating API for Product Detail Page
+Description:
+
+------------------------
+Commit: 03e2ae3
+Author: HuyLemm
+Date: 2025-12-16
+Title: update all using React Router instead of Set Current Page
+Description:
+
+------------------------
+Commit: fb57eca
+Author: HuyLemm
+Date: 2025-12-17
+Title: update done ProductDetailPage, continue to Login and Signup
+Description:
+
+------------------------
+Commit: 85ac705
+Author: HuyLemm
+Date: 2025-12-19
+Title: update login and register
+Description:
+
+------------------------
+Commit: a55fee0
+Author: HuyLemm
+Date: 2025-12-20
+Title: update Login and Register. Continue to do authorization
+Description:
+
+------------------------
+Commit: 81e2e89
+Author: HuyLemm
+Date: 2025-12-21
+Title: Update done Authentication and Authorization
+Description:
+
+------------------------
+Commit: 038c7fe
+Author: Huy Lâm
+Date: 2025-12-21
+Title: Delete FE/.env
+Description:
+
+------------------------
+Commit: d870f79
+Author: Huy Lâm
+Date: 2025-12-21
+Title: Delete BE/.env
+Description:
+
+------------------------
+Commit: dbd3aab
+Author: HuyLemm
+Date: 2025-12-21
+Title: Update .gitignore
+Description:
+
+------------------------
+Commit: e68bddc
+Author: HuyLemm
+Date: 2025-12-21
+Title: Merge branch 'master' of https://github.com/HuyLemm/OnlineAuction
+Description:
+
+------------------------
+Commit: 141c7a0
+Author: HuyLemm
+Date: 2025-12-21
+Title: update Bidder feature (edit profile and watchlist)
+Description:
+
+------------------------
+Commit: 05fee75
+Author: HuyLemm
+Date: 2025-12-23
+Title: update Dashboard Feature for user and seller. Not done
+Description:
+
+------------------------
+Commit: 7153165
+Author: HuyLemm
+Date: 2025-12-23
+Title: update Seller feature (create Auction and Seller Panel)
+Description:
+
+------------------------
+Commit: a604ff7
+Author: HuyLemm
+Date: 2025-12-24
+Title: update seller features (add ended auction and active auctions)
+Description:
+
+------------------------
+Commit: f5e9249
+Author: HuyLemm
+Date: 2025-12-25
+Title: update admin feature
+Description:
+
+------------------------
+Commit: 8fd5edc
+Author: HuyLemm
+Date: 2025-12-28
+Title: update admin feature
+Description:
+
+------------------------
+Commit: b8da693
+Author: HuyLemm
+Date: 2025-12-30
+Title: update done admin and some related features, attempting to do continue for bids
+Description:
+
+------------------------
+Commit: 8c3e06b
+Author: HuyLemm
+Date: 2025-12-30
+Title: update autobid features
+Description:
+
+------------------------
+Commit: 2877251
+Author: HuyLemm
+Date: 2026-01-01
+Title: update bid feature continue
+Description:
+
+------------------------
+Commit: 82246c3
+Author: HuyLemm
+Date: 2026-01-02
+Title: update add autobid features done completely
+Description:
+
+------------------------
+Commit: ded27c9
+Author: HuyLemm
+Date: 2026-01-03
+Title: UPDATE CRON CHECK STATUS
+Description:
+
+------------------------
+Commit: 0a478b2
+Author: HuyLemm
+Date: 2026-01-03
+Title: update
+Description:
+
+------------------------
+Commit: 70201b8
+Author: HuyLemm
+Date: 2026-01-05
+Title: update Delete Feature and Email System
+Description:
+update delete, not to use delete cascade or check, use soft delete to preserve old data
+update send email place autobid, block bidders from product
+
+------------------------
+Commit: b5c3166
+Author: HuyLemm
+Date: 2026-01-05
+Title: update done all Mail System features, continue to do Order Page Flow
+Description:
+
+------------------------
+Commit: 1209f8e
+Author: HuyLemm
+Date: 2026-01-06
+Title: update Order features
+Description:
+Adding for first and second step: bidder add detail and seller add detail. Also fix some others bug
+
+------------------------
+Commit: 71ee369
+Author: HuyLemm
+Date: 2026-01-06
+Title: update Done Order Page and logic features
+Description:
+
+------------------------
+Commit: 8a24f25
+Author: HuyLemm
+Date: 2026-01-06
+Title: update done OrderForm and fix delete soft features
+Description:
+
+------------------------
+Commit: fda349d
+Author: HuyLemm
+Date: 2026-01-07
+Title: update finally done all features for admin, and adding decoration for UI
+Description:
+
+------------------------
