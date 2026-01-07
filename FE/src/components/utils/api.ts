@@ -1,4 +1,4 @@
-export const API_BASE_URL = "https://luxe-auction-api.vercel.app";
+export const API_BASE_URL = "https://luxe-auction-api.up.railway.app";
 
 //Products
 export const SEARCH_PRODUCTS_API = `${API_BASE_URL}/products/search-products`;
