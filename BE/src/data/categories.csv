@@ -1,0 +1,23 @@
+id,name,parent_id
+1,Electronics,
+2,Fashion,
+3,Watches,
+4,Jewelry,
+5,Collectibles,
+6,Vehicles,
+7,Sports,
+8,Home & Garden,
+9,Smartphones,1
+10,Laptops,1
+11,Cameras,1
+12,Men Clothing,2
+13,Women Clothing,2
+14,Luxury Watches,3
+15,Sneakers,2
+16,Gold Jewelry,4
+17,Art,5
+18,Toys,5
+19,Motorbikes,6
+20,Cars,6
+21,Gym Equipment,7
+22,Kitchen ware,8

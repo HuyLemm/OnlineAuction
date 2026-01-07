@@ -1,0 +1,36 @@
+export interface RegisterDTO {
+  fullName: string;
+  email: string;
+  password: string;
+  address: string;
+}
+
+export interface VerifyOtpDTO {
+  email: string;
+  otp: string;
+  purpose: "verify_email";
+}
+
+export interface LoginDTO {
+  email: string;
+  password: string;
+}
+
+export interface ResendOtpDTO {
+  email: string;
+  purpose: "verify_email";
+}
+
+export interface RecaptchaV2VerifyResponseDTO {
+  success: boolean;
+  challenge_ts?: string;
+  hostname?: string;
+  "error-codes"?: string[];
+}
+
+export interface RateSellerInput {
+  buyerId: string;
+  orderId: string;
+  score: 1 | -1;
+  comment: string;
+}

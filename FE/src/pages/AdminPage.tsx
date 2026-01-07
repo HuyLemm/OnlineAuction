@@ -1,0 +1,36 @@
+import { useState } from "react";
+import { AdminLayout } from "../layouts/AdminLayout";
+import { ProfileSettingsSection } from "../components/dashboard/ProfileSettingsSection";
+import { CategoryManagementSection } from "../components/admin/CategoryManagementSection";
+import { ProductManagementSection } from "../components/admin/ProductManagementSection";
+import { UserManagementSection } from "../components/admin/UserManagementSection";
+import { SystemSettingsSection } from "../components/admin/SystemSettingsSection";
+
+export function AdminPage() {
+  const [activeTab, setActiveTab] = useState("profile");
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case "profile":
+        return <ProfileSettingsSection />;
+      case "categories":
+        return <CategoryManagementSection />;
+      case "products":
+        return <ProductManagementSection />;
+      case "users":
+        return <UserManagementSection />;
+
+      case "system":
+        return <SystemSettingsSection />;
+
+      default:
+        return <ProfileSettingsSection />;
+    }
+  };
+
+  return (
+    <AdminLayout activeTab={activeTab} onTabChange={setActiveTab}>
+      {renderContent()}
+    </AdminLayout>
+  );
+}

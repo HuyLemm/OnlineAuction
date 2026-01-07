@@ -1,0 +1,339 @@
+import { Request, Response } from "express";
+import { AuthRequest } from "../middlewares/auth.middleware";
+import dayjs from "dayjs";
+
+import { ProductService } from "../services/product.service";
+import { BrowseProductDTO, ProductDetailDTO } from "../dto/product.dto";
+
+// =====================================================
+// UTIL – map browse product
+// =====================================================
+function mapBrowseProduct(item: any): BrowseProductDTO {
+  const end = dayjs(item.end_time);
+  const now = dayjs();
+  const hoursLeft = end.diff(now, "hour");
+
+  return {
+    id: item.id,
+    title: item.title,
+    category: item.category,
+    image: item.image,
+    categoryId: String(item.categoryId ?? item.category_id ?? ""),
+    description: item.description,
+
+    postedDate: item.postedDate,
+    end_time: item.end_time,
+
+    auctionType: item.auctionType,
+    buyNowPrice: item.buyNowPrice,
+
+    currentBid: Number(item.currentBid),
+    bids: Number(item.bids),
+
+    highestBidderId: item.highestBidderId ?? null,
+    highestBidderName: item.highestBidderName ?? null,
+
+    isHot: Number(item.bids) > 7,
+    endingSoon: hoursLeft > 0 && hoursLeft < 72,
+  };
+}
+
+export class ProductController {
+  // ===============================
+  // GET /products/get-browse-product
+  // ===============================
+  static async getBrowseProducts(req: Request, res: Response) {
+    try {
+      const page = Number(req.query.page) || 1;
+      const limit = Number(req.query.limit) || 20;
+      const sort = (req.query.sort as string) || "default";
+
+      const categories = req.query.categories
+        ? (req.query.categories as string).split(",").filter((x) => x !== "")
+        : [];
+
+      const minPrice = Number(req.query.minPrice) || 0;
+      const maxPrice = Number(req.query.maxPrice) || 999999999;
+
+      const { data, total } = await ProductService.getBrowseProducts({
+        page,
+        limit,
+        sort,
+        categories,
+        minPrice,
+        maxPrice,
+      });
+
+      return res.json({
+        success: true,
+        page,
+        limit,
+        sort,
+        totalItems: total,
+        totalPages: Math.ceil(total / limit),
+        data: data.map(mapBrowseProduct),
+      });
+    } catch (error) {
+      console.error("❌ ProductController.browse:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal Server Error",
+      });
+    }
+  }
+
+  // ===============================
+  // GET /products/search-products
+  // ===============================
+  static async searchProducts(req: Request, res: Response) {
+    try {
+      const keyword = (req.query.keyword as string) || "";
+      const page = Math.max(Number(req.query.page) || 1, 1);
+      const limit = Math.min(Number(req.query.limit) || 12, 48);
+      const sort = (req.query.sort as string) || "default";
+      const newMinutes = req.query.newMinutes
+        ? Number(req.query.newMinutes)
+        : 60;
+
+      const categoryIds = req.query.categoryIds
+        ? (req.query.categoryIds as string).split(",").map(Number)
+        : undefined;
+
+      const result = await ProductService.searchProducts({
+        keyword,
+        categoryIds,
+        page,
+        limit,
+        sort,
+        newMinutes,
+      });
+
+      return res.json(result);
+    } catch (error) {
+      console.error("❌ ProductController.search:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal Server Error",
+      });
+    }
+  }
+
+  // ===============================
+  // GET /products/:productId/get-product-detail
+  // ===============================
+  static async getProductDetail(req: AuthRequest, res: Response) {
+    try {
+      const viewerUserId = req.user?.userId;
+      const { productId } = req.params;
+
+      if (!productId) {
+        return res.status(400).json({
+          success: false,
+          message: "productId is required",
+        });
+      }
+
+      const raw = await ProductService.getProductDetail(
+        productId,
+        viewerUserId
+      );
+
+      const dto: ProductDetailDTO = {
+        product: {
+          id: raw.product.id,
+          title: raw.product.title,
+          description: raw.product.description,
+          postedDate: raw.product.postedDate,
+          endTime: raw.product.endTime,
+          auctionType: raw.product.auctionType,
+          buyNowPrice: raw.product.buyNowPrice,
+          categoryId: raw.product.categoryId,
+          categoryName: raw.product.categoryName,
+          currentBid: raw.product.currentBid,
+          bidStep: raw.product.bidStep,
+          highestBidderId: raw.product.highestBidderId,
+          bidRequirement: raw.product.bidRequirement,
+          status: raw.product.status,
+        },
+
+        viewer: raw.viewer ?? null,
+
+        myAutoBid: raw.myAutoBid
+          ? {
+              maxPrice: raw.myAutoBid.maxPrice,
+              createdAt: raw.myAutoBid.createdAt.toISOString(),
+            }
+          : null,
+
+        isWinning: raw.isWinning ?? false,
+
+        order: raw.order ?? null,
+
+        images: {
+          primary: raw.images.find((i: any) => i.is_main)?.image_url || "",
+          gallery: raw.images
+            .filter((i: any) => !i.is_main)
+            .map((i: any) => i.image_url),
+        },
+
+        seller: {
+          id: raw.seller.id,
+          name: raw.seller.name,
+          rating: raw.seller.rating,
+          totalSales: raw.seller.totalSales,
+          positive: raw.seller.positive,
+        },
+
+        ...(raw.highestBidder && {
+          highestBidder: {
+            id: raw.highestBidder.id,
+            name: raw.highestBidder.name,
+            rating: raw.highestBidder.rating,
+          },
+        }),
+
+        autoBids: raw.autoBids,
+        autoBidEvents: raw.autoBidEvents,
+
+        bidHistory: raw.bidHistory,
+        questions: raw.questions,
+        blockedBidderIds: raw.blockedBidderIds,
+
+        relatedProducts: raw.relatedProducts.map((p: any) => ({
+          id: p.id,
+          title: p.title,
+          image: p.image,
+          currentBid: Number(p.currentBid),
+          bids: Number(p.bids),
+          endTime: p.endTime,
+          auctionType: p.auctionType,
+          buyNowPrice: p.buyNowPrice ?? null,
+          postedDate: p.postedDate,
+          category: p.category,
+          categoryId: Number(p.categoryId),
+          highestBidderName: p.highestBidderName ?? null,
+        })),
+      };
+
+      return res.json({
+        success: true,
+        data: dto,
+      });
+    } catch (error: any) {
+      console.error("❌ ProductController.detail:", error);
+      return res.status(404).json({
+        success: false,
+        message: error.message || "Product not found",
+      });
+    }
+  }
+
+  static async getOrderDetail(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.userId;
+      const { orderId } = req.params;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
+      }
+
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: "orderId is required",
+        });
+      }
+
+      const data = await ProductService.getOrderDetail(orderId, userId);
+
+      return res.json({ success: true, data });
+    } catch (err: any) {
+      const status =
+        err.message === "Forbidden"
+          ? 403
+          : err.message === "Order not found"
+          ? 404
+          : 500;
+
+      return res.status(status).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+  // GET /users/orders/:orderId/rating
+  static async getMyRating(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user!.userId;
+      const { orderId } = req.params;
+
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: "orderId is required",
+        });
+      }
+
+      const rating = await ProductService.getMyRatingByOrder({
+        orderId,
+        fromUserId: userId,
+      });
+
+      return res.json({
+        success: true,
+        data: rating || null,
+      });
+    } catch (err: any) {
+      return res.status(400).json({
+        success: false,
+        message: err.message || "Failed to get rating",
+      });
+    }
+  }
+
+  // GET /ratings/profile/:role/:userId
+  static async getProfile(req: Request, res: Response) {
+    try {
+      const { role, userId } = req.params;
+
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: "userId is required",
+        });
+      }
+
+      if (!role) {
+        return res.status(400).json({
+          success: false,
+          message: "role is required",
+        });
+      }
+
+      if (!["seller", "bidder"].includes(role)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid role",
+        });
+      }
+
+      const data = await ProductService.getUserRatingsProfile(
+        role as "seller" | "bidder",
+        userId
+      );
+
+      return res.status(200).json({
+        success: true,
+        data,
+      });
+    } catch (err: any) {
+      return res.status(404).json({
+        success: false,
+        message: err.message || "Failed to load rating profile",
+      });
+    }
+  }
+}

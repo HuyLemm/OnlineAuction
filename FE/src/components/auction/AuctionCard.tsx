@@ -1,0 +1,221 @@
+import { Heart, Clock, TrendingUp, User } from "lucide-react";
+import { Card } from "../ui/card";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { NewBadge } from "../ui/NewBadge";
+import { ImageWithFallback } from "../check/ImageWithFallback";
+import {
+  calculateTimeLeft,
+  formatPostedDate,
+  isNewItem,
+} from "../../components/utils/timeUtils";
+import { useNavigate } from "react-router-dom";
+import { formatCurrency } from "../../lib/utils";
+import { useState } from "react";
+
+interface AuctionCardProps {
+  id: string;
+  title: string;
+  image: string;
+  currentBid: number;
+  bids: number;
+  end_time: string;
+
+  category: string;
+  categoryId?: string;
+
+  auctionType?: "traditional" | "buy_now";
+  isHot?: boolean;
+  endingSoon?: boolean;
+
+  highestBidderName?: string | null;
+  buyNowPrice?: number | null;
+  postedDate?: Date | string;
+
+  onCategoryClick?: (categoryId: string) => void;
+
+  showCategory?: boolean;
+
+  isFavorite: boolean;
+  onToggleFavorite: (productId: string, isFavorite: boolean) => void;
+
+  hideFavorite?: boolean;
+}
+
+export function AuctionCard({
+  id,
+  title,
+  image,
+  currentBid,
+  bids,
+  end_time,
+  category,
+  categoryId,
+  auctionType = "traditional",
+  isHot = false,
+  endingSoon = false,
+  highestBidderName,
+  buyNowPrice,
+  postedDate,
+  showCategory = true,
+  isFavorite,
+  onToggleFavorite,
+  hideFavorite = false,
+}: AuctionCardProps) {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const isNew = isNewItem(postedDate ? new Date(postedDate) : undefined, 60);
+  const timeLeft = calculateTimeLeft(end_time);
+  const postedAt = formatPostedDate(postedDate);
+
+  const handleCategoryClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (categoryId) {
+      navigate(`/browse?category=${categoryId}`);
+    }
+  };
+
+  return (
+    <Card
+      onClick={() => navigate(`/product/${id}`)}
+      className="group overflow-hidden border border-border/50 bg-card
+                 hover:border-[#fbbf24]/50 transition-all duration-300
+                 hover:shadow-2xl hover:shadow-[#fbbf24]/10
+                 cursor-pointer flex flex-col"
+    >
+      {/* Image */}
+      <div className="relative aspect-[4/3] overflow-hidden bg-secondary/20">
+        <ImageWithFallback
+          src={image}
+          alt={title}
+          className="h-full w-full object-cover transition-transform
+                     duration-500 group-hover:scale-110"
+        />
+
+        {/* Top Badges */}
+        <div className="absolute top-2 left-2 flex gap-1.5">
+          {isHot && (
+            <Badge className="bg-[#ef4444] text-white text-[10px] px-1.5 py-0.5">
+              <TrendingUp className="w-3 h-3 mr-1" /> Hot
+            </Badge>
+          )}
+          {endingSoon && (
+            <Badge className="bg-[#f59e0b] text-white text-[10px] px-1.5 py-0.5">
+              <Clock className="w-3 h-3 mr-1" /> Ending Soon
+            </Badge>
+          )}
+        </div>
+
+        {/* Favorite */}
+        {!hideFavorite && (
+          <button
+            className="absolute top-2 right-2 h-10 w-10 rounded-full
+                     bg-black/40 flex items-center justify-center
+                     hover:bg-black/60"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite(id, isFavorite);
+            }}
+          >
+            <Heart
+              className={`h-8 w-8 transition ${
+                isFavorite
+                  ? "fill-red-500 text-red-500 fill-current  "
+                  : "text-gray-400"
+              }`}
+            />
+          </button>
+        )}
+
+        {/* Bottom Overlay */}
+        <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+          <div className="flex items-center gap-1 rounded bg-black/60 px-2 py-0.5 text-white text-xs">
+            <Clock className="h-3 w-3" />
+            <span>{timeLeft}</span>
+          </div>
+
+          {isNew && postedDate && (
+            <NewBadge
+              postedDate={new Date(postedDate)}
+              minutesThreshold={60}
+              variant="minimal"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-5 flex flex-col flex-1 gap-3">
+        {/* Category & Posted */}
+        <div className="flex items-center justify-between">
+          {showCategory && (
+            <Badge
+              variant="outline"
+              className="cursor-pointer text-muted-foreground
+                         hover:bg-[#fbbf24]/10 hover:text-[#fbbf24]"
+              onClick={handleCategoryClick}
+            >
+              {category}
+            </Badge>
+          )}
+          <span className="text-xs text-muted-foreground">{postedAt}</span>
+        </div>
+
+        {/* Title */}
+        <h3 className="line-clamp-2 min-h-[3rem] group-hover:text-[#fbbf24] transition-colors">
+          {title}
+        </h3>
+
+        {/* Current Bid */}
+        <div className="flex items-baseline justify-between">
+          <span className="text-sm text-muted-foreground">Current Bid</span>
+          <span className="text-xl bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] bg-clip-text text-transparent">
+            {formatCurrency(currentBid ?? 0)}
+          </span>
+        </div>
+
+        {/* Highest Bidder */}
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-secondary/30 border border-border/30">
+          <div className="h-6 w-6 rounded-full bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] flex items-center justify-center">
+            <User className="h-3 w-3 text-black" />
+          </div>
+          <span className="text-sm truncate">
+            {highestBidderName ?? "No bid yet"}
+          </span>
+        </div>
+
+        {/* Buy Now */}
+        <div className="min-h-[42px]">
+          {auctionType === "buy_now" && buyNowPrice && (
+            <div className="flex justify-between p-2 rounded-lg bg-[#10b981]/10 border border-[#10b981]/20">
+              <span className="text-sm text-[#10b981]">Buy Now Price</span>
+              <span className="text-[#10b981]">
+                {formatCurrency(buyNowPrice)}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-between text-sm text-muted-foreground pt-2 border-t border-border/30 mt-auto">
+          <span>{bids} bids placed</span>
+          <div className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            <span>{timeLeft}</span>
+          </div>
+        </div>
+
+        <Button
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/product/${id}`);
+          }}
+          className="w-full bg-gradient-to-r from-[#fbbf24] to-[#f59e0b]
+                     text-black hover:opacity-90 mt-3 cursor-pointer"
+        >
+          View Details
+        </Button>
+      </div>
+    </Card>
+  );
+}

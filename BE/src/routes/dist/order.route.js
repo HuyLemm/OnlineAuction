@@ -1,0 +1,11 @@
+"use strict";
+exports.__esModule = true;
+var express_1 = require("express");
+var order_controller_1 = require("../controllers/order.controller");
+var auth_middleware_1 = require("../middlewares/auth.middleware");
+var router = express_1.Router();
+router.get("/:orderId/messages", auth_middleware_1.authenticate, order_controller_1.OrderController.getMessages);
+router.post("/:orderId/messages", auth_middleware_1.authenticate, order_controller_1.OrderController.sendMessage);
+router.get("/:orderId/payment", auth_middleware_1.authenticate, order_controller_1.OrderController.getPaymentInfo);
+router.get("/:orderId/shipping", auth_middleware_1.authenticate, order_controller_1.OrderController.getShipping);
+exports["default"] = router;
