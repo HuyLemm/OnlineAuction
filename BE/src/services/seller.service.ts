@@ -15,6 +15,7 @@ import path from "path";
 import {
   sendQuestionNotificationMail,
   sendBidRejectedMail,
+  sendAutoBidProductUpdatedMail,
 } from "../utils/sendOtpMail";
 import { getDbNowMs } from "../utils/time";
 
@@ -372,8 +373,9 @@ export class SellerService {
     const { sellerId, productId, content } = params;
 
     return await db.transaction(async (trx) => {
+      // 1. Get product
       const product = await trx("products")
-        .select("id", "description", "seller_id", "status")
+        .select("id", "description", "seller_id", "status", "title")
         .where({ id: productId })
         .first();
 
@@ -382,6 +384,7 @@ export class SellerService {
       if (product.status !== "active")
         throw new Error("Cannot edit inactive auction");
 
+      // 2. Append description
       const [{ now }] = (await trx.raw("SELECT NOW()")).rows;
       const today = new Date(now).toLocaleDateString("vi-VN");
 
@@ -392,9 +395,35 @@ export class SellerService {
 
       const newDescription = (product.description ?? "") + appendedBlock;
 
-      await trx("products").where({ id: productId }).update({
-        description: newDescription,
-      });
+      await trx("products")
+        .where({ id: productId })
+        .update({ description: newDescription });
+
+      // 3. Find auto-bid users (DISTINCT)
+      const autoBidUsers = await trx("auto_bids as ab")
+        .join("users as u", "u.id", "ab.bidder_id")
+        .select("u.email", "u.full_name")
+        .where("ab.product_id", productId)
+        .groupBy("u.id", "u.email", "u.full_name");
+
+      // 4. Send mail (outside DB logic, but still awaited)
+      for (const user of autoBidUsers) {
+        try {
+          await sendAutoBidProductUpdatedMail({
+            to: user.email,
+            bidderName: user.full_name,
+            productTitle: product.title,
+            productId,
+            updateContent: content,
+          });
+        } catch (err) {
+          // log nhưng KHÔNG throw → tránh rollback transaction
+          console.error(
+            `Failed to send auto-bid update mail to ${user.email}`,
+            err
+          );
+        }
+      }
 
       return { success: true };
     });

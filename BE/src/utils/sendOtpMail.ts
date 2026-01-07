@@ -496,3 +496,56 @@ export async function sendPasswordChangedByAdminMail({
     `,
   });
 }
+
+export async function sendAutoBidProductUpdatedMail({
+  to,
+  bidderName,
+  productTitle,
+  productId,
+  updateContent,
+}: {
+  to: string;
+  bidderName: string;
+  productTitle: string;
+  productId: string;
+  updateContent: string;
+}) {
+  const link = `${env.FRONTEND_URL}/product/${productId}`;
+
+  await mailer.sendMail({
+    from: env.MAIL_FROM,
+    to,
+    subject: `Update on auction you're auto-bidding – "${productTitle}"`,
+    html: `
+      <div style="font-family: Arial; line-height:1.6">
+        <h2>Hello ${bidderName},</h2>
+
+        <p>
+          The seller has <b>updated the product description</b> for an auction
+          you are currently auto-bidding on:
+        </p>
+
+        <p><b>${productTitle}</b></p>
+
+        <blockquote style="
+          border-left:4px solid #d4a446;
+          padding-left:12px;
+          margin:16px 0;
+        ">
+          ${updateContent}
+        </blockquote>
+
+        <p>Please review the update to decide if you want to continue bidding.</p>
+
+        <a href="${link}"
+           style="display:inline-block;margin-top:16px;
+           padding:10px 16px;background:#d4a446;color:black;
+           text-decoration:none;font-weight:bold;border-radius:6px;">
+          View auction
+        </a>
+
+        <p style="margin-top:24px">— LuxeAuction Team</p>
+      </div>
+    `,
+  });
+}

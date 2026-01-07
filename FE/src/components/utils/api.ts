@@ -1,4 +1,4 @@
-export const API_BASE_URL = "http://localhost:3000";
+export const API_BASE_URL = "https://luxe-auction-api.vercel.app";
 
 //Products
 export const SEARCH_PRODUCTS_API = `${API_BASE_URL}/products/search-products`;

@@ -381,12 +381,12 @@ var SellerService = /** @class */ (function () {
                     case 0:
                         sellerId = params.sellerId, productId = params.productId, content = params.content;
                         return [4 /*yield*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
-                                var product, now, today, appendedBlock, newDescription;
+                                var product, now, today, appendedBlock, newDescription, autoBidUsers, _i, autoBidUsers_1, user, err_1;
                                 var _a;
                                 return __generator(this, function (_b) {
                                     switch (_b.label) {
                                         case 0: return [4 /*yield*/, trx("products")
-                                                .select("id", "description", "seller_id", "status")
+                                                .select("id", "description", "seller_id", "status", "title")
                                                 .where({ id: productId })
                                                 .first()];
                                         case 1:
@@ -403,12 +403,45 @@ var SellerService = /** @class */ (function () {
                                             today = new Date(now).toLocaleDateString("vi-VN");
                                             appendedBlock = "\n      <hr />\n      <p><strong>" + today + "</strong> - " + content + "</p>\n    ";
                                             newDescription = ((_a = product.description) !== null && _a !== void 0 ? _a : "") + appendedBlock;
-                                            return [4 /*yield*/, trx("products").where({ id: productId }).update({
-                                                    description: newDescription
-                                                })];
+                                            return [4 /*yield*/, trx("products")
+                                                    .where({ id: productId })
+                                                    .update({ description: newDescription })];
                                         case 3:
                                             _b.sent();
-                                            return [2 /*return*/, { success: true }];
+                                            return [4 /*yield*/, trx("auto_bids as ab")
+                                                    .join("users as u", "u.id", "ab.bidder_id")
+                                                    .select("u.email", "u.full_name")
+                                                    .where("ab.product_id", productId)
+                                                    .groupBy("u.id", "u.email", "u.full_name")];
+                                        case 4:
+                                            autoBidUsers = _b.sent();
+                                            _i = 0, autoBidUsers_1 = autoBidUsers;
+                                            _b.label = 5;
+                                        case 5:
+                                            if (!(_i < autoBidUsers_1.length)) return [3 /*break*/, 10];
+                                            user = autoBidUsers_1[_i];
+                                            _b.label = 6;
+                                        case 6:
+                                            _b.trys.push([6, 8, , 9]);
+                                            return [4 /*yield*/, sendOtpMail_1.sendAutoBidProductUpdatedMail({
+                                                    to: user.email,
+                                                    bidderName: user.full_name,
+                                                    productTitle: product.title,
+                                                    productId: productId,
+                                                    updateContent: content
+                                                })];
+                                        case 7:
+                                            _b.sent();
+                                            return [3 /*break*/, 9];
+                                        case 8:
+                                            err_1 = _b.sent();
+                                            // log nhưng KHÔNG throw → tránh rollback transaction
+                                            console.error("Failed to send auto-bid update mail to " + user.email, err_1);
+                                            return [3 /*break*/, 9];
+                                        case 9:
+                                            _i++;
+                                            return [3 /*break*/, 5];
+                                        case 10: return [2 /*return*/, { success: true }];
                                     }
                                 });
                             }); })];

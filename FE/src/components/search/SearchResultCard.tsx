@@ -5,6 +5,8 @@ import { NewBadge } from "../ui/NewBadge";
 import { calculateTimeLeft, formatPostedDate } from "../utils/timeUtils";
 import { Button } from "../ui/button";
 import { formatCurrency } from "../../lib/utils";
+import { isNewItem } from "../utils/timeUtils";
+
 export interface SearchResult {
   id: string;
   title: string;
@@ -19,7 +21,6 @@ export interface SearchResult {
   highestBidderName?: string | null;
   buyNowPrice?: number | null;
   auctionType?: "traditional" | "buy_now";
-  isNew?: boolean;
 }
 
 interface SearchResultCardProps {
@@ -37,6 +38,14 @@ export function SearchResultCard({
 }: SearchResultCardProps) {
   const timeLeft = calculateTimeLeft(item.end_time);
   const postedAt = formatPostedDate(item.postedDate);
+  const postedDate: Date | undefined =
+    item.postedDate instanceof Date
+      ? item.postedDate
+      : item.postedDate
+      ? new Date(item.postedDate)
+      : undefined;
+
+  const isNew = isNewItem(postedDate);
 
   const highlightText = (text: string) => {
     if (!searchKeyword) return text;
@@ -79,7 +88,7 @@ export function SearchResultCard({
             />
 
             {/* NEW Badge */}
-            {item.isNew && (
+            {isNew && (
               <Badge
                 className="absolute top-2 left-2 text-[11px] font-semibold 
     bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black 
@@ -192,7 +201,7 @@ export function SearchResultCard({
             <span>{timeLeft}</span>
           </div>
 
-          {item.isNew && item.postedDate && (
+          {isNew && item.postedDate && (
             <Badge
               className="text-[11px] font-semibold 
     bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black 

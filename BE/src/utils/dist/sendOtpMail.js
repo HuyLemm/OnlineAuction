@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.sendPasswordChangedByAdminMail = exports.sendAuctionSoldMail = exports.sendAuctionWonMail = exports.sendAuctionExpiredNoBidMail = exports.sendAutoBidUpdatedMail = exports.sendBidRejectedMail = exports.sendOutbidMail = exports.sendWinningBidMail = exports.sendSellerBidUpdateMail = exports.sendQuestionNotificationMail = exports.sendOtpMail = void 0;
+exports.sendAutoBidProductUpdatedMail = exports.sendPasswordChangedByAdminMail = exports.sendAuctionSoldMail = exports.sendAuctionWonMail = exports.sendAuctionExpiredNoBidMail = exports.sendAutoBidUpdatedMail = exports.sendBidRejectedMail = exports.sendOutbidMail = exports.sendWinningBidMail = exports.sendSellerBidUpdateMail = exports.sendQuestionNotificationMail = exports.sendOtpMail = void 0;
 var mailer_1 = require("../config/mailer");
 var env_1 = require("../config/env");
 function sendOtpMail(email, otp) {
@@ -267,3 +267,25 @@ function sendPasswordChangedByAdminMail(_a) {
     });
 }
 exports.sendPasswordChangedByAdminMail = sendPasswordChangedByAdminMail;
+function sendAutoBidProductUpdatedMail(_a) {
+    var to = _a.to, bidderName = _a.bidderName, productTitle = _a.productTitle, productId = _a.productId, updateContent = _a.updateContent;
+    return __awaiter(this, void 0, void 0, function () {
+        var link;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    link = env_1.env.FRONTEND_URL + "/product/" + productId;
+                    return [4 /*yield*/, mailer_1.mailer.sendMail({
+                            from: env_1.env.MAIL_FROM,
+                            to: to,
+                            subject: "Update on auction you're auto-bidding \u2013 \"" + productTitle + "\"",
+                            html: "\n      <div style=\"font-family: Arial; line-height:1.6\">\n        <h2>Hello " + bidderName + ",</h2>\n\n        <p>\n          The seller has <b>updated the product description</b> for an auction\n          you are currently auto-bidding on:\n        </p>\n\n        <p><b>" + productTitle + "</b></p>\n\n        <blockquote style=\"\n          border-left:4px solid #d4a446;\n          padding-left:12px;\n          margin:16px 0;\n        \">\n          " + updateContent + "\n        </blockquote>\n\n        <p>Please review the update to decide if you want to continue bidding.</p>\n\n        <a href=\"" + link + "\"\n           style=\"display:inline-block;margin-top:16px;\n           padding:10px 16px;background:#d4a446;color:black;\n           text-decoration:none;font-weight:bold;border-radius:6px;\">\n          View auction\n        </a>\n\n        <p style=\"margin-top:24px\">\u2014 LuxeAuction Team</p>\n      </div>\n    "
+                        })];
+                case 1:
+                    _b.sent();
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+exports.sendAutoBidProductUpdatedMail = sendAutoBidProductUpdatedMail;
