@@ -10,7 +10,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: "https://luxe-auction.vercel.app",
+    origin: "https://online-auction-tw92.vercel.app",
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,

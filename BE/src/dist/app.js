@@ -8,7 +8,7 @@ var seller_upload_route_1 = require("./routes/seller.upload.route");
 require("./cron/cron");
 var app = express_1["default"]();
 app.use(cors_1["default"]({
-    origin: "https://luxe-auction.vercel.app",
+    origin: "https://online-auction-tw92.vercel.app",
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true
