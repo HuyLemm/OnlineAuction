@@ -551,4 +551,108 @@ export class AdminController {
       });
     }
   }
+  /* ===============================
+   * GET /admin/system-settings
+   * =============================== */
+  static async getSystemSettings(req: Request, res: Response) {
+    try {
+      const settings = await AdminService.getSystemSettings();
+
+      return res.status(200).json({
+        success: true,
+        data: settings,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Failed to load system settings",
+      });
+    }
+  }
+
+  /* ===============================
+   * PUT /admin/system-settings
+   * =============================== */
+  static async updateSystemSettings(req: Request, res: Response) {
+    try {
+      const { auto_extend_duration_minutes, auto_extend_threshold_minutes } =
+        req.body;
+
+      /* ---------- validation ---------- */
+      if (
+        typeof auto_extend_duration_minutes !== "number" ||
+        typeof auto_extend_threshold_minutes !== "number"
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Settings must be numbers",
+        });
+      }
+
+      if (auto_extend_duration_minutes <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Duration must be greater than 0",
+        });
+      }
+
+      if (auto_extend_threshold_minutes <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Threshold must be greater than 0",
+        });
+      }
+
+      if (auto_extend_threshold_minutes >= auto_extend_duration_minutes) {
+        return res.status(400).json({
+          success: false,
+          message: "Threshold must be smaller than duration",
+        });
+      }
+
+      await AdminService.updateSystemSettings({
+        auto_extend_duration_minutes,
+        auto_extend_threshold_minutes,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "System settings updated successfully",
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Failed to update system settings",
+      });
+    }
+  }
+
+  /* ===============================
+   * PATCH /admin/users/:id/change-password
+   * =============================== */
+  static async changeUserPassword(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const { password } = req.body;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "User id is required",
+        });
+      }
+
+      await AdminService.changeUserPassword(id, password);
+
+      return res.status(200).json({
+        success: true,
+        message: "Password updated successfully",
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        success: false,
+        message: error.message || "Change password failed",
+      });
+    }
+  }
 }

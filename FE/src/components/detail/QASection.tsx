@@ -12,6 +12,7 @@ import {
   BIDDER_REPLY_QUESTION_API,
 } from "../utils/api";
 import { LoadingSpinner } from "../state";
+import { useNavigate } from "react-router-dom";
 
 /* ===============================
  * TYPES
@@ -52,6 +53,8 @@ export function QASection({
   currentUserRole,
   onQuestionSubmitted,
 }: QASectionProps) {
+  const navigate = useNavigate();
+
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Ask question (bidder)
@@ -210,11 +213,27 @@ export function QASection({
                   </Avatar>
 
                   <div className="flex-1">
-                    <div className="text-sm flex gap-2 mb-1">
+                    <div className="text-sm flex items-center gap-2 mb-1">
+                      {/* Tên người hỏi */}
                       <p className="font-medium text-yellow-500">
                         {q.question.askedBy.name}
                       </p>
+
+                      {currentUserRole === "seller" && (
+                        <Badge
+                          variant="outline"
+                          className="cursor-pointer text-xs border-green-500/20 bg-green-500/5 text-green-500"
+                          onClick={() =>
+                            navigate(`/profile/bidder/${q.question.askedBy.id}`)
+                          }
+                        >
+                          View Legit
+                        </Badge>
+                      )}
+
                       <span className="text-muted-foreground">•</span>
+
+                      {/* Thời gian hỏi */}
                       <p className="text-muted-foreground">
                         {new Date(q.question.askedAt).toLocaleDateString()}
                       </p>

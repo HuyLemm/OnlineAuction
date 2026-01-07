@@ -63,6 +63,11 @@ export interface ProductDetailDTO {
     };
   } | null;
 
+  order: {
+    id: string;
+    status: string;
+  } | null;
+
   blockedBidderIds: string[];
 
   myAutoBid: {
@@ -326,4 +331,9 @@ export interface ConfirmDeliveryInput {
   orderId: string;
   buyerId: string;
   note?: string;
+}
+
+export interface SystemSettingsDTO {
+  auto_extend_duration_minutes: number;
+  auto_extend_threshold_minutes: number;
 }

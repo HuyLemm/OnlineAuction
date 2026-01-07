@@ -37,6 +37,7 @@ export function AutoBidPanel({
   onSetMaxBid,
 }: AutoBidPanelProps) {
   const bidStepNum = Number(bidStep) || 0;
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const minimumBid = useMemo(
     () => Math.max(0, Number(currentBid) + bidStepNum),
@@ -68,7 +69,6 @@ export function AutoBidPanel({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    // ❌ FE validation → toast NGAY
     if (!Number.isFinite(maxBidValue)) {
       toast.error("Please enter a valid number");
       return;
@@ -81,14 +81,17 @@ export function AutoBidPanel({
 
     if (userMaxBid && maxBidValue <= userMaxBid) {
       toast.error(
-        `New maximum bid must be higher than your current max (${formatCurrency(
-          userMaxBid
-        )})`
+        `New maximum bid must be higher than ${formatCurrency(userMaxBid)}`
       );
       return;
     }
 
-    // ✅ Backend → chờ xong, toast sẽ nằm ở parent
+    // 🔥 mở modal thay vì submit
+    setShowConfirm(true);
+  };
+
+  const handleConfirmBid = async () => {
+    setShowConfirm(false);
     await onSetMaxBid?.(maxBidValue);
   };
 
@@ -291,6 +294,46 @@ export function AutoBidPanel({
           ✓ Always respects bid increments
         </p>
       </div>
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-card rounded-xl w-full max-w-md p-6 space-y-5 border border-border">
+            <h3 className="text-xl font-semibold text-foreground">
+              Confirm Auto Bidding
+            </h3>
+
+            <p className="text-muted-foreground">
+              You are about to set your <strong>maximum bid</strong> to:
+            </p>
+
+            <div className="text-center text-3xl font-bold text-[#fbbf24]">
+              {formatCurrency(maxBidValue)}
+            </div>
+
+            <div className="bg-secondary/40 rounded-lg p-4 text-sm text-muted-foreground space-y-1">
+              <p>• System will bid automatically for you</p>
+              <p>• Will never exceed this amount</p>
+              <p>• You may still be outbid by others</p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowConfirm(false)}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                className="flex-1 bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black"
+                onClick={handleConfirmBid}
+              >
+                Confirm
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -82,30 +82,30 @@ function getActionButton(
   auction: WonAuction,
   navigate: ReturnType<typeof useNavigate>
 ) {
-  const handleClick = () => {
+  const handleOrderClick = () => {
     navigate(`/order/${auction.id}`);
   };
 
-  if (auction.orderStatus === "cancelled") {
-    return (
-      <Button size="sm" onClick={handleClick}>
-        View Details
-      </Button>
-    );
-  }
+  const handleViewAuction = () => {
+    navigate(`/product/${auction.itemId}`);
+  };
 
-  if (auction.orderStatus === "completed") {
-    return (
-      <Button size="sm" onClick={handleClick}>
-        View & Review
-      </Button>
-    );
-  }
+  let orderLabel = "Continue Order";
+  if (auction.orderStatus === "completed") orderLabel = "View & Review";
+  if (auction.orderStatus === "cancelled") orderLabel = "View Details";
 
   return (
-    <Button size="sm" onClick={handleClick}>
-      Continue Order
-    </Button>
+    <div className="flex items-center gap-2">
+      {/* View Auction */}
+      <Button size="sm" onClick={handleViewAuction}>
+        View Auction
+      </Button>
+
+      {/* Order button */}
+      <Button size="sm" onClick={handleOrderClick}>
+        {orderLabel}
+      </Button>
+    </div>
   );
 }
 

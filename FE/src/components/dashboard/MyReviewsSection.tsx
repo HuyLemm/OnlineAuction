@@ -80,6 +80,11 @@ export function MyReviewsSection() {
     );
   }
 
+  const positiveRate =
+    summary.totalVotes > 0
+      ? Math.round((summary.plus / summary.totalVotes) * 100)
+      : 0;
+
   /* ================= RENDER ================= */
 
   return (
@@ -93,32 +98,48 @@ export function MyReviewsSection() {
       </div>
 
       {/* ================= SUMMARY ================= */}
-      <div className="bg-card border border-border/50 rounded-xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
-        <div className="flex items-center gap-4">
-          <div className="h-14 w-14 rounded-full bg-[#fbbf24]/20 flex items-center justify-center">
-            <Star className="h-7 w-7 text-[#fbbf24] fill-current" />
+      <div className="bg-card border border-border/50 rounded-xl p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="h-14 w-14 rounded-full bg-[#fbbf24]/20 flex items-center justify-center">
+              <Star className="h-7 w-7 text-[#fbbf24] fill-current" />
+            </div>
+
+            <div>
+              <p className="text-yellow-500">Reputation Score</p>
+              <p className="text-3xl font-bold text-foreground">
+                {positiveRate}%
+              </p>
+              <p className="text-muted-foreground">
+                Based on {summary.totalVotes} reviews
+              </p>
+            </div>
           </div>
 
-          <div>
-            <p className="text-yellow-500">Total Score</p>
-            <p className="text-3xl font-bold text-foreground">
-              {summary.totalScore}
-            </p>
-            <p className="text-muted-foreground">
-              ({summary.plus} plus score on total {summary.totalVotes} votes)
-            </p>
+          <div className="flex gap-8">
+            <div className="flex items-center gap-2 text-green-500">
+              <ThumbsUp className="h-5 w-5" />
+              <span className="font-medium">+{summary.plus}</span>
+            </div>
+
+            <div className="flex items-center gap-2 text-red-500">
+              <ThumbsDown className="h-5 w-5" />
+              <span className="font-medium">-{summary.minus}</span>
+            </div>
           </div>
         </div>
 
-        <div className="flex gap-8">
-          <div className="flex items-center gap-2 text-green-500">
-            <ThumbsUp className="h-5 w-5" />
-            <span className="font-medium">+{summary.plus}</span>
+        {/* ===== Progress bar ===== */}
+        <div>
+          <div className="flex justify-start text-sm text-muted-foreground mb-1">
+            <span className="mr-2">Positive feedback: </span>
+            <span className="text-green-500">{positiveRate}%</span>
           </div>
-
-          <div className="flex items-center gap-2 text-red-500">
-            <ThumbsDown className="h-5 w-5" />
-            <span className="font-medium">-{summary.minus}</span>
+          <div className="h-2 w-full rounded-full bg-secondary/40 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-[#22c55e] to-[#16a34a]"
+              style={{ width: `${positiveRate}%` }}
+            />
           </div>
         </div>
       </div>

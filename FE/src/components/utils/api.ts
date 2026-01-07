@@ -12,6 +12,9 @@ export const GET_ORDER_DETAIL_API = (orderId: string) =>
 export const GET_RATING_API = (orderId: string) =>
   `${API_BASE_URL}/products/orders/${orderId}/rating`;
 
+export const GET_PROFILE_RATINGS_API = (role: string, id: string) =>
+  `${API_BASE_URL}/products/ratings/${role}/${id}`;
+
 //Categories
 export const GET_CATEGORIES_FOR_SIDEBAR_API = `${API_BASE_URL}/categories/get-categories-for-sidebar`;
 export const GET_MAIN_CATEGORIES_API = `${API_BASE_URL}/categories/get-main-categories`;
@@ -140,6 +143,12 @@ export const TOGGLE_BAN_USER_API = (id: string) =>
   `${API_BASE_URL}/admin/users/${id}/ban`;
 export const TOGGLE_DELETE_USER_API = (id: string) =>
   `${API_BASE_URL}/admin/users/${id}/delete`;
+
+export const GET_SYSTEM_SETTINGS_API = `${API_BASE_URL}/admin/system-settings`;
+export const UPDATE_SYSTEM_SETTINGS_API = `${API_BASE_URL}/admin/system-settings`;
+
+export const CHANGE_USER_PASSWORD_API = (id: string) =>
+  `${API_BASE_URL}/admin/users/${id}/change-password`;
 
 // Order
 export const GET_MESSAGE_ORDER_API = (orderId: string) =>

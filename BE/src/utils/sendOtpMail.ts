@@ -446,3 +446,53 @@ export async function sendAuctionSoldMail({
     `,
   });
 }
+
+export async function sendPasswordChangedByAdminMail({
+  to,
+  userName,
+}: {
+  to: string;
+  userName: string;
+}) {
+  await mailer.sendMail({
+    from: env.MAIL_FROM,
+    to,
+    subject: "Your password has been changed – LuxeAuction",
+    html: `
+      <div style="font-family: Arial; line-height:1.6">
+        <h2>Hello ${userName},</h2>
+
+        <p>
+          Your account password has been <b>changed by an administrator</b>.
+        </p>
+
+        <p>
+          If you recognize this action, no further steps are required.
+        </p>
+
+        <p style="color:#b91c1c">
+          ⚠️ If you did <b>NOT</b> request this change, please reset your password
+          immediately and contact our support team.
+        </p>
+
+        <a href="${env.FRONTEND_URL}/forgot-password"
+           style="
+             display:inline-block;
+             margin-top:16px;
+             padding:10px 16px;
+             background:#d4a446;
+             color:black;
+             text-decoration:none;
+             font-weight:bold;
+             border-radius:6px;
+           ">
+          Secure my account
+        </a>
+
+        <p style="margin-top:24px">
+          — LuxeAuction Security Team
+        </p>
+      </div>
+    `,
+  });
+}

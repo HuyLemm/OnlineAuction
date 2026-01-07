@@ -36,6 +36,7 @@ export function AdminLayout({
     { id: "categories", label: "Category Management", icon: FolderTree },
     { id: "products", label: "Product Management", icon: Package },
     { id: "users", label: "User Management", icon: Users },
+    { id: "system", label: "System Settings", icon: Shield },
   ];
 
   const NavContent = () => (

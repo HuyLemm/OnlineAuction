@@ -405,6 +405,31 @@ export class ProductService {
     }
 
     // ----------------------------
+    // Order (buyer OR seller đều thấy)
+    // ----------------------------
+    let order: { id: string; status: string } | null = null;
+
+    if (viewerUserId) {
+      const orderRaw = await db("orders")
+        .select("id", "status")
+        .where("product_id", product.id)
+        .andWhere(function () {
+          this.where("buyer_id", viewerUserId).orWhere(
+            "seller_id",
+            viewerUserId
+          );
+        })
+        .first();
+
+      if (orderRaw) {
+        order = {
+          id: orderRaw.id,
+          status: orderRaw.status,
+        };
+      }
+    }
+
+    // ----------------------------
     // myAutoBid (max_price của viewer)
     // ----------------------------
     let myAutoBid: {
@@ -727,6 +752,8 @@ export class ProductService {
       myAutoBid,
       isWinning,
 
+      order,
+
       images,
       seller: sellerDTO,
 
@@ -890,5 +917,132 @@ export class ProductService {
         from_user: fromUserId,
       })
       .first();
+  }
+
+  static async getUserRatingsProfile(
+    role: "seller" | "bidder",
+    userId: string
+  ) {
+    /* ===============================
+     * 1. USER INFO
+     * =============================== */
+    const user = await db("users")
+      .select("id", "full_name", "created_at", "is_verified")
+      .where({ id: userId, is_deleted: false })
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    /* ===============================
+     * 2. RATINGS + PRODUCT + IMAGE + ORDER + CATEGORY
+     * =============================== */
+    const rawRatings = await db("ratings as r")
+      .leftJoin("users as u", "u.id", "r.from_user")
+      .leftJoin("products as p", "p.id", "r.product_id")
+
+      // 👉 main image
+      .leftJoin("product_images as img", function () {
+        this.on("img.product_id", "p.id").andOn("img.is_main", db.raw("true"));
+      })
+
+      // 👉 order (final price)
+      .leftJoin("orders as o", function () {
+        this.on("o.product_id", "p.id").andOn(
+          "o.status",
+          db.raw("?", ["completed"])
+        );
+      })
+
+      // 👉 category
+      .leftJoin("categories as c", "c.id", "p.category_id")
+      .leftJoin("categories as pc", "pc.id", "c.parent_id")
+
+      .where("r.to_user", userId)
+      .select(
+        "r.id",
+        "r.score",
+        "r.comment",
+        "r.created_at",
+
+        "u.full_name as reviewer_name",
+        "u.is_verified as reviewer_verified",
+
+        "p.title as item_title",
+        "img.image_url as item_image",
+
+        "o.final_price as transaction_amount",
+
+        "c.name as category_name",
+        "pc.name as parent_category_name"
+      )
+      .orderBy("r.created_at", "desc");
+
+    /* ===============================
+     * 3. MAP → FE FORMAT
+     * =============================== */
+    const ratings = rawRatings.map((r) => ({
+      id: r.id,
+      buyerName: r.reviewer_name ?? "Anonymous",
+      buyerAvatar: null,
+
+      rating: r.score >= 0 ? 1 : -1, // eBay-style
+      comment: r.comment,
+      date: r.created_at,
+
+      itemTitle: r.item_title,
+      itemImage: r.item_image ?? "/placeholder.png",
+      transactionAmount: r.transaction_amount ?? 0,
+
+      category: r.parent_category_name
+        ? `${r.parent_category_name} > ${r.category_name}`
+        : r.category_name,
+
+      verified: true,
+    }));
+
+    /* ===============================
+     * 4. STATS
+     * =============================== */
+    const totalRatings = ratings.length;
+    const positiveRatings = ratings.filter((r) => r.rating === 1).length;
+    const negativeRatings = ratings.filter((r) => r.rating === -1).length;
+
+    const positivePercentage =
+      totalRatings === 0 ? 0 : (positiveRatings / totalRatings) * 100;
+
+    const overallScore = positiveRatings - negativeRatings;
+
+    /* ===============================
+     * 5. TOTAL TRANSACTIONS
+     * =============================== */
+    const transactionsAgg = await db("orders")
+      .where({ status: "completed" })
+      .andWhere((qb) => {
+        role === "seller"
+          ? qb.where("seller_id", userId)
+          : qb.where("buyer_id", userId);
+      })
+      .count("* as total");
+
+    return {
+      profile: {
+        id: user.id,
+        name: user.full_name,
+        role,
+        verified: user.is_verified,
+        memberSince: user.created_at,
+      },
+      stats: {
+        totalRatings,
+        positiveRatings,
+        negativeRatings,
+        positivePercentage,
+        overallScore,
+        totalTransactions: Number(transactionsAgg[0]?.total ?? 0),
+      },
+      ratings,
+    };
   }
 }

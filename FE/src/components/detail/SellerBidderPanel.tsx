@@ -42,7 +42,6 @@ export function SellerBidderPanel({
       console.log(json);
       setBidders(json.data ?? []);
     } catch {
-      toast.error("Failed to load bidders");
     } finally {
       setLoading(false);
     }
@@ -127,7 +126,7 @@ export function SellerBidderPanel({
                       </span>
 
                       {isHighest && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/20 px-2 py-0.5 text-xs font-medium text-yellow-400">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/20 px-2 py-0.5 text-xs font-medium text-yellow-500">
                           👑 Highest
                         </span>
                       )}

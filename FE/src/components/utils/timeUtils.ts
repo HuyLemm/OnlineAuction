@@ -50,20 +50,15 @@ export function getRelativeTime(
 
 export function isNewItem(
   postedDate?: Date,
-  daysThreshold: number = 7,
-  minutesThreshold?: number
+  minutesThreshold: number = 60
 ): boolean {
   if (!postedDate) return false;
-  const now = new Date();
-  const diffMs = now.getTime() - postedDate.getTime();
 
-  if (minutesThreshold !== undefined) {
-    const diffMinutes = diffMs / (1000 * 60);
-    return diffMinutes <= minutesThreshold;
-  }
+  const localNow = Date.now();
+  const localPosted =
+    postedDate.getTime() + new Date().getTimezoneOffset() * -60 * 1000;
 
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  return diffDays <= daysThreshold;
+  return localNow - localPosted <= minutesThreshold * 60 * 1000;
 }
 
 export function formatPostedDate(postedDate?: Date | string): string {

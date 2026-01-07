@@ -38,6 +38,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 exports.AdminService = void 0;
 var db_1 = require("../config/db");
+var sendOtpMail_1 = require("../utils/sendOtpMail");
+var bcrypt_1 = require("bcrypt");
 var AdminService = /** @class */ (function () {
     function AdminService() {
     }
@@ -763,6 +765,121 @@ var AdminService = /** @class */ (function () {
                             });
                         }); })];
                     case 1: return [2 /*return*/, _a.sent()];
+                }
+            });
+        });
+    };
+    /* ===============================
+     * GET system settings
+     * =============================== */
+    AdminService.getSystemSettings = function () {
+        var _a, _b;
+        return __awaiter(this, void 0, Promise, function () {
+            var rows, map, _i, rows_1, r;
+            return __generator(this, function (_c) {
+                switch (_c.label) {
+                    case 0: return [4 /*yield*/, db_1.db("system_settings").select("key", "value")];
+                    case 1:
+                        rows = _c.sent();
+                        map = new Map();
+                        for (_i = 0, rows_1 = rows; _i < rows_1.length; _i++) {
+                            r = rows_1[_i];
+                            map.set(r.key, Number(r.value));
+                        }
+                        return [2 /*return*/, {
+                                auto_extend_duration_minutes: (_a = map.get("auto_extend_duration_minutes")) !== null && _a !== void 0 ? _a : 10,
+                                auto_extend_threshold_minutes: (_b = map.get("auto_extend_threshold_minutes")) !== null && _b !== void 0 ? _b : 5
+                            }];
+                }
+            });
+        });
+    };
+    /* ===============================
+     * UPDATE system settings
+     * =============================== */
+    AdminService.updateSystemSettings = function (payload) {
+        return __awaiter(this, void 0, Promise, function () {
+            var now;
+            var _this = this;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        now = db_1.db.fn.now();
+                        return [4 /*yield*/, db_1.db.transaction(function (trx) { return __awaiter(_this, void 0, void 0, function () {
+                                var _i, _a, _b, key, value;
+                                return __generator(this, function (_c) {
+                                    switch (_c.label) {
+                                        case 0:
+                                            _i = 0, _a = Object.entries(payload);
+                                            _c.label = 1;
+                                        case 1:
+                                            if (!(_i < _a.length)) return [3 /*break*/, 4];
+                                            _b = _a[_i], key = _b[0], value = _b[1];
+                                            return [4 /*yield*/, trx("system_settings")
+                                                    .insert({
+                                                    key: key,
+                                                    value: value,
+                                                    updated_at: now
+                                                })
+                                                    .onConflict("key")
+                                                    .merge({
+                                                    value: value,
+                                                    updated_at: now
+                                                })];
+                                        case 2:
+                                            _c.sent();
+                                            _c.label = 3;
+                                        case 3:
+                                            _i++;
+                                            return [3 /*break*/, 1];
+                                        case 4: return [2 /*return*/];
+                                    }
+                                });
+                            }); })];
+                    case 1:
+                        _a.sent();
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
+    /* ===============================
+     * CHANGE USER PASSWORD
+     * =============================== */
+    AdminService.changeUserPassword = function (userId, newPassword, adminName) {
+        return __awaiter(this, void 0, void 0, function () {
+            var user, passwordHash;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (!newPassword || newPassword.length < 8) {
+                            throw new Error("Password must be at least 8 characters");
+                        }
+                        return [4 /*yield*/, db_1.db("users")
+                                .select("id", "email", "full_name", "is_deleted")
+                                .where({ id: userId })
+                                .first()];
+                    case 1:
+                        user = _a.sent();
+                        if (!user)
+                            throw new Error("User not found");
+                        if (user.is_deleted)
+                            throw new Error("Cannot change password for deleted user");
+                        return [4 /*yield*/, bcrypt_1["default"].hash(newPassword, 10)];
+                    case 2:
+                        passwordHash = _a.sent();
+                        return [4 /*yield*/, db_1.db("users")
+                                .update({ password_hash: passwordHash })
+                                .where({ id: userId })];
+                    case 3:
+                        _a.sent();
+                        return [4 /*yield*/, sendOtpMail_1.sendPasswordChangedByAdminMail({
+                                to: user.email,
+                                userName: user.full_name || "User"
+                            })];
+                    case 4:
+                        _a.sent();
+                        return [2 /*return*/, true];
                 }
             });
         });

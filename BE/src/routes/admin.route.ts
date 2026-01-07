@@ -119,4 +119,26 @@ router.patch(
   AdminController.toggleDeleteUser
 );
 
+router.get(
+  "/system-settings",
+  authenticate,
+  authorize("admin"),
+  AdminController.getSystemSettings
+);
+
+
+router.put(
+  "/system-settings",
+  authenticate,
+  authorize("admin"),
+  AdminController.updateSystemSettings
+);
+
+router.patch(
+  "/users/:id/change-password",
+  authenticate,
+  authorize("admin"),
+  AdminController.changeUserPassword
+);
+
 export default router;

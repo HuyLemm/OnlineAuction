@@ -75,6 +75,11 @@ export interface ProductDetailDTO {
     };
   } | null;
 
+  order?: {
+    id: string;
+    status: string;
+  };
+
   blockedBidderIds: string[];
 
   /* ================= My Auto Bid ================= */

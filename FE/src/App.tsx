@@ -16,6 +16,7 @@ import { BrowseItemsPage } from "./pages/BrowseItemsPage";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
 import { SearchResultsPage } from "./pages/SearchResultsPage";
 import { StateExamplesPage } from "./pages/StateExamplesPage";
+import { RatingsProfilePage } from "./pages/RatingsProfilePage";
 
 /* =====================
    AUTH PAGES
@@ -53,6 +54,10 @@ export default function App() {
               <Route path="product/:id" element={<ProductDetailPage />} />
               <Route path="search" element={<SearchResultsPage />} />
               <Route path="state-examples" element={<StateExamplesPage />} />
+              <Route
+                path="profile/:role/:userId"
+                element={<RatingsProfilePage />}
+              />
 
               {/* ---------- Auth routes ---------- */}
               <Route path="login" element={<LoginPage />} />
@@ -62,7 +67,9 @@ export default function App() {
               {/* =====================
                  AUTHENTICATED USERS
               ===================== */}
-              <Route element={<ProtectedRoute allowedRoles={["bidder", "seller"]} />}>
+              <Route
+                element={<ProtectedRoute allowedRoles={["bidder", "seller"]} />}
+              >
                 {/* Logged-in users (any role) */}
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="order/:orderId" element={<OrderPage />} />

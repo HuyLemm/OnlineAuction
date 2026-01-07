@@ -21,4 +21,6 @@ router.get(
   ProductController.getMyRating
 );
 
+router.get("/ratings/:role/:userId", ProductController.getProfile);
+
 export default router;

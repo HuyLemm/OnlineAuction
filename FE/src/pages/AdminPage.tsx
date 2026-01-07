@@ -4,6 +4,7 @@ import { ProfileSettingsSection } from "../components/dashboard/ProfileSettingsS
 import { CategoryManagementSection } from "../components/admin/CategoryManagementSection";
 import { ProductManagementSection } from "../components/admin/ProductManagementSection";
 import { UserManagementSection } from "../components/admin/UserManagementSection";
+import { SystemSettingsSection } from "../components/admin/SystemSettingsSection";
 
 export function AdminPage() {
   const [activeTab, setActiveTab] = useState("profile");
@@ -18,6 +19,10 @@ export function AdminPage() {
         return <ProductManagementSection />;
       case "users":
         return <UserManagementSection />;
+
+      case "system":
+        return <SystemSettingsSection />;
+
       default:
         return <ProfileSettingsSection />;
     }

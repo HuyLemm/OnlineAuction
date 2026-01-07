@@ -117,9 +117,7 @@ export function ProductDetailPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.message);
 
-      toast.success("🎉 Purchase successful!", {
-        description: "Redirecting to checkout...",
-      });
+      toast.success("🎉 Purchase successful!");
 
       // refresh product
       const refreshed = await fetchWithAuth(GET_PRODUCT_DETAIL_API(productId!));
@@ -404,6 +402,9 @@ export function ProductDetailPage() {
               highestBidderId={data.product.highestBidderId}
               highestBidderName={highestBidderName}
               isWinner={data.product.highestBidderId === currentUserId}
+              canProceedToOrder={!!data.order}
+              onProceedToOrder={() => navigate(`/order/${data.order!.id}`)}
+              viewerRole={data.viewer?.role}
             />
           )}
 
@@ -481,7 +482,7 @@ export function ProductDetailPage() {
 
       {/* 🔥 Comparison + Auto Bid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <BidComparisonChart bidders={bidders} />
+        <BidComparisonChart bidders={bidders} viewerRole={currentUserRole} />
         <AutoBidHistory
           events={data.autoBidEvents}
           currentUserId={currentUserId}
@@ -501,6 +502,8 @@ export function ProductDetailPage() {
           <BidHistory
             bids={data.bidHistory}
             blockedBidderIds={data.blockedBidderIds}
+            viewerRole={currentUserRole}
+            currentUserId={currentUserId}
           />
 
           <QASection
@@ -514,6 +517,7 @@ export function ProductDetailPage() {
         </div>
 
         <SellerInfo
+          sellerId={data.seller.id}
           name={data.seller.name}
           rating={data.seller.rating}
           totalSales={data.seller.totalSales}

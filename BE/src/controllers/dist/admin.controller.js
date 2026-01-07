@@ -706,6 +706,128 @@ var AdminController = /** @class */ (function () {
             });
         });
     };
+    /* ===============================
+     * GET /admin/system-settings
+     * =============================== */
+    AdminController.getSystemSettings = function (req, res) {
+        return __awaiter(this, void 0, void 0, function () {
+            var settings, error_10;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 2, , 3]);
+                        return [4 /*yield*/, admin_service_1.AdminService.getSystemSettings()];
+                    case 1:
+                        settings = _a.sent();
+                        return [2 /*return*/, res.status(200).json({
+                                success: true,
+                                data: settings
+                            })];
+                    case 2:
+                        error_10 = _a.sent();
+                        return [2 /*return*/, res.status(500).json({
+                                success: false,
+                                message: error_10.message || "Failed to load system settings"
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    /* ===============================
+     * PUT /admin/system-settings
+     * =============================== */
+    AdminController.updateSystemSettings = function (req, res) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _a, auto_extend_duration_minutes, auto_extend_threshold_minutes, error_11;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        _b.trys.push([0, 2, , 3]);
+                        _a = req.body, auto_extend_duration_minutes = _a.auto_extend_duration_minutes, auto_extend_threshold_minutes = _a.auto_extend_threshold_minutes;
+                        /* ---------- validation ---------- */
+                        if (typeof auto_extend_duration_minutes !== "number" ||
+                            typeof auto_extend_threshold_minutes !== "number") {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "Settings must be numbers"
+                                })];
+                        }
+                        if (auto_extend_duration_minutes <= 0) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "Duration must be greater than 0"
+                                })];
+                        }
+                        if (auto_extend_threshold_minutes <= 0) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "Threshold must be greater than 0"
+                                })];
+                        }
+                        if (auto_extend_threshold_minutes >= auto_extend_duration_minutes) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "Threshold must be smaller than duration"
+                                })];
+                        }
+                        return [4 /*yield*/, admin_service_1.AdminService.updateSystemSettings({
+                                auto_extend_duration_minutes: auto_extend_duration_minutes,
+                                auto_extend_threshold_minutes: auto_extend_threshold_minutes
+                            })];
+                    case 1:
+                        _b.sent();
+                        return [2 /*return*/, res.status(200).json({
+                                success: true,
+                                message: "System settings updated successfully"
+                            })];
+                    case 2:
+                        error_11 = _b.sent();
+                        return [2 /*return*/, res.status(500).json({
+                                success: false,
+                                message: error_11.message || "Failed to update system settings"
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    /* ===============================
+     * PATCH /admin/users/:id/change-password
+     * =============================== */
+    AdminController.changeUserPassword = function (req, res) {
+        return __awaiter(this, void 0, void 0, function () {
+            var id, password, error_12;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 2, , 3]);
+                        id = req.params.id;
+                        password = req.body.password;
+                        if (!id) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "User id is required"
+                                })];
+                        }
+                        return [4 /*yield*/, admin_service_1.AdminService.changeUserPassword(id, password)];
+                    case 1:
+                        _a.sent();
+                        return [2 /*return*/, res.status(200).json({
+                                success: true,
+                                message: "Password updated successfully"
+                            })];
+                    case 2:
+                        error_12 = _a.sent();
+                        return [2 /*return*/, res.status(400).json({
+                                success: false,
+                                message: error_12.message || "Change password failed"
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
     return AdminController;
 }());
 exports.AdminController = AdminController;

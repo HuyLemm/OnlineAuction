@@ -2,6 +2,7 @@ import { TrendingUp, Users, Crown, Star } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { formatCurrency } from "../../lib/utils";
+import { useNavigate } from "react-router-dom";
 
 const getLastChar = (name: string) => {
   if (!name) return "?";
@@ -26,9 +27,15 @@ interface Bidder {
 
 interface BidComparisonChartProps {
   bidders: Bidder[];
+  viewerRole?: "seller" | "bidder" | "admin";
 }
 
-export function BidComparisonChart({ bidders }: BidComparisonChartProps) {
+export function BidComparisonChart({
+  bidders,
+  viewerRole,
+}: BidComparisonChartProps) {
+  const navigate = useNavigate();
+
   /* ===============================
    * Sort: WINNER FIRST
    * =============================== */
@@ -126,6 +133,18 @@ export function BidComparisonChart({ bidders }: BidComparisonChartProps) {
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="text-foreground">{bidder.name}</p>
+
+                      {viewerRole === "seller" && (
+                        <Badge
+                          variant="outline"
+                          className="cursor-pointer text-xs border-green-500/20 bg-green-500/5 text-green-500"
+                          onClick={() =>
+                            navigate(`/profile/bidder/${bidder.id}`)
+                          }
+                        >
+                          View Legit
+                        </Badge>
+                      )}
 
                       {bidder.isWinning && (
                         <Crown className="h-4 w-4 text-[#10b981]" />

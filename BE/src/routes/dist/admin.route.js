@@ -22,4 +22,7 @@ router.get("/users/:id", auth_middleware_1.authenticate, authorize_middleware_1.
 router.put("/users/:id", auth_middleware_1.authenticate, authorize_middleware_1.authorize("admin"), admin_controller_1.AdminController.updateUser);
 router.patch("/users/:id/ban", auth_middleware_1.authenticate, authorize_middleware_1.authorize("admin"), admin_controller_1.AdminController.toggleBanUser);
 router.patch("/users/:id/delete", auth_middleware_1.authenticate, authorize_middleware_1.authorize("admin"), admin_controller_1.AdminController.toggleDeleteUser);
+router.get("/system-settings", auth_middleware_1.authenticate, authorize_middleware_1.authorize("admin"), admin_controller_1.AdminController.getSystemSettings);
+router.put("/system-settings", auth_middleware_1.authenticate, authorize_middleware_1.authorize("admin"), admin_controller_1.AdminController.updateSystemSettings);
+router.patch("/users/:id/change-password", auth_middleware_1.authenticate, authorize_middleware_1.authorize("admin"), admin_controller_1.AdminController.changeUserPassword);
 exports["default"] = router;

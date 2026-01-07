@@ -64,7 +64,7 @@ export function AuctionCard({
 }: AuctionCardProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const isNew = isNewItem(postedDate ? new Date(postedDate) : undefined, 7);
+  const isNew = isNewItem(postedDate ? new Date(postedDate) : undefined, 60);
   const timeLeft = calculateTimeLeft(end_time);
   const postedAt = formatPostedDate(postedDate);
 
@@ -137,7 +137,7 @@ export function AuctionCard({
           {isNew && postedDate && (
             <NewBadge
               postedDate={new Date(postedDate)}
-              daysThreshold={7}
+              minutesThreshold={60}
               variant="minimal"
             />
           )}

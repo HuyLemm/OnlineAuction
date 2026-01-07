@@ -11,6 +11,7 @@ import {
   UserCheck,
   X,
   Trash2,
+  Lock,
 } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
@@ -49,17 +50,17 @@ import {
   UPDATE_USER_DETAILS_API,
   TOGGLE_BAN_USER_API,
   TOGGLE_DELETE_USER_API,
+  CHANGE_USER_PASSWORD_API,
 } from "../utils/api";
 
 import { LoadingSpinner } from "../state";
-
 
 interface UserData {
   id: string;
   name: string;
   email: string;
-  role: "buyer" | "seller" | "admin";
-  status: "active" | "suspended" | "banned";
+  role: "bidder" | "seller" | "admin";
+  status: "active" | "banned";
   joinedDate: string;
 
   totalBids: number; // products_joined
@@ -90,6 +91,10 @@ export function UserManagementSection() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<UserData | null>(null);
   const [deleteMode, setDeleteMode] = useState<"delete" | "restore">("delete");
+  const [passwordUser, setPasswordUser] = useState<UserData | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   /* ================= FETCH USERS ================= */
 
@@ -232,8 +237,6 @@ export function UserManagementSection() {
     }
   };
 
-
-
   const getDeletedBadge = () => (
     <Badge className="bg-red-500/20 text-red-400 border-0 text-xs">
       Deleted
@@ -251,6 +254,12 @@ export function UserManagementSection() {
   const openRestoreDialog = (user: UserData) => {
     setDeleteMode("restore");
     setDeleteTarget(user);
+  };
+
+  const openChangePasswordDialog = (user: UserData) => {
+    setPasswordUser(user);
+    setNewPassword("");
+    setConfirmPassword("");
   };
 
   /* ================= API ACTIONS ================= */
@@ -329,6 +338,44 @@ export function UserManagementSection() {
       toast.error(e.message || "Action failed");
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordUser) return;
+
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    try {
+      setPasswordLoading(true);
+
+      const res = await fetchWithAuth(
+        CHANGE_USER_PASSWORD_API(passwordUser.id),
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: newPassword }),
+        }
+      );
+
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message);
+
+      toast.success("Password updated successfully");
+      setPasswordUser(null);
+    } catch (e: any) {
+      console.error("CHANGE PASSWORD ERROR:", e.message);
+      toast.error(e.message || "Change password failed");
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -739,6 +786,17 @@ export function UserManagementSection() {
                         Update User
                       </DropdownMenuItem>
 
+                      {/* CHANGE PASSWORD */}
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          openChangePasswordDialog(user);
+                        }}
+                      >
+                        <Lock className="h-4 w-4 mr-2" />
+                        Change Password
+                      </DropdownMenuItem>
+
                       {/* BAN */}
                       {user.status !== "banned" && (
                         <DropdownMenuItem
@@ -995,6 +1053,85 @@ export function UserManagementSection() {
                   <>
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Save Changes
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {passwordUser && (
+        <Dialog
+          open={!!passwordUser}
+          onOpenChange={() => setPasswordUser(null)}
+        >
+          <DialogContent className="bg-[#0a0a0a] border-[#fbbf24]/20 max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-[#d4a446]">
+                <Lock className="h-5 w-5" />
+                Change Password
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-black to-[#d4a446]/20 rounded-lg border border-[#d4a446]/50">
+                <Avatar>
+                  <AvatarFallback className="bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] text-black">
+                    {passwordUser.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-white font-semibold">
+                    {passwordUser.name}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {passwordUser.email}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-yellow-500 font-semibold">
+                  New Password
+                </label>
+                <Input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-yellow-500 font-semibold">
+                  Confirm Password
+                </label>
+                <Input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPasswordUser(null)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleChangePassword}
+                disabled={passwordLoading}
+                className="bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black"
+              >
+                {passwordLoading ? (
+                  <LoadingSpinner size="sm" />
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Update Password
                   </>
                 )}
               </Button>

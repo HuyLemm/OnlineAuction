@@ -2,6 +2,7 @@ import { TrendingUp, Star } from "lucide-react";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { formatCurrency } from "../../lib/utils";
+import { useNavigate } from "react-router-dom";
 
 const getLastChar = (name: string) => {
   if (!name) return "?";
@@ -24,14 +25,22 @@ interface BidHistoryItem {
 
 interface BidHistoryProps {
   bids: BidHistoryItem[];
-  blockedBidderIds?: string[]; // 👈 QUAN TRỌNG
+  blockedBidderIds?: string[];
+  viewerRole?: "seller" | "bidder" | "admin";
+  currentUserId?: string;
 }
 
 function formatTime(date: string) {
   return new Date(date).toLocaleString();
 }
 
-export function BidHistory({ bids, blockedBidderIds = [] }: BidHistoryProps) {
+export function BidHistory({
+  bids,
+  blockedBidderIds = [],
+  viewerRole,
+  currentUserId,
+}: BidHistoryProps) {
+  const navigate = useNavigate();
   if (!bids || bids.length === 0) {
     return (
       <div className="bg-card border border-border/50 rounded-xl p-6">
@@ -114,6 +123,18 @@ export function BidHistory({ bids, blockedBidderIds = [] }: BidHistoryProps) {
                     <p className="text-foreground font-medium">
                       {bid.bidder.name}
                     </p>
+
+                    {viewerRole === "seller" && (
+                      <Badge
+                        variant="outline"
+                        className="cursor-pointer text-xs border-green-500/20 bg-green-500/5 text-green-500"
+                        onClick={() =>
+                          navigate(`/profile/bidder/${bid.bidder.id}`)
+                        }
+                      >
+                        View Legit
+                      </Badge>
+                    )}
 
                     {isLeading && (
                       <TrendingUp className="h-4 w-4 text-[#fbbf24]" />

@@ -1,5 +1,6 @@
 import { Trophy, Clock, Lock } from "lucide-react";
 import { formatCurrency } from "../../lib/utils";
+import { Button } from "../ui/button";
 
 interface AuctionEndedPanelProps {
   status: "closed" | "expired";
@@ -7,6 +8,11 @@ interface AuctionEndedPanelProps {
   highestBidderId?: string | null;
   highestBidderName?: string | null;
   isWinner?: boolean;
+
+  canProceedToOrder?: boolean;
+  onProceedToOrder?: () => void;
+
+  viewerRole?: "seller" | "bidder" | "admin";
 }
 
 export function AuctionEndedPanel({
@@ -15,6 +21,9 @@ export function AuctionEndedPanel({
   highestBidderId,
   highestBidderName,
   isWinner,
+  canProceedToOrder,
+  viewerRole,
+  onProceedToOrder,
 }: AuctionEndedPanelProps) {
   const isSold = Boolean(highestBidderId);
 
@@ -65,6 +74,16 @@ export function AuctionEndedPanel({
         <div className="rounded-lg bg-green-500/10 border border-green-500/30 p-3 text-green-500 text-sm">
           🎉 Congratulations! You won this auction.
         </div>
+      )}
+
+      {/* 🔥 ACTION BUTTON */}
+      {canProceedToOrder && onProceedToOrder && (
+        <Button
+          onClick={onProceedToOrder}
+          className="w-full bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-black hover:opacity-90"
+        >
+          {viewerRole === "seller" ? "View Order" : "Continue to Pay Product"}
+        </Button>
       )}
 
       {!isSold && (

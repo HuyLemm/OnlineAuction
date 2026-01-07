@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.sendAuctionSoldMail = exports.sendAuctionWonMail = exports.sendAuctionExpiredNoBidMail = exports.sendAutoBidUpdatedMail = exports.sendBidRejectedMail = exports.sendOutbidMail = exports.sendWinningBidMail = exports.sendSellerBidUpdateMail = exports.sendQuestionNotificationMail = exports.sendOtpMail = void 0;
+exports.sendPasswordChangedByAdminMail = exports.sendAuctionSoldMail = exports.sendAuctionWonMail = exports.sendAuctionExpiredNoBidMail = exports.sendAutoBidUpdatedMail = exports.sendBidRejectedMail = exports.sendOutbidMail = exports.sendWinningBidMail = exports.sendSellerBidUpdateMail = exports.sendQuestionNotificationMail = exports.sendOtpMail = void 0;
 var mailer_1 = require("../config/mailer");
 var env_1 = require("../config/env");
 function sendOtpMail(email, otp) {
@@ -248,3 +248,22 @@ function sendAuctionSoldMail(_a) {
     });
 }
 exports.sendAuctionSoldMail = sendAuctionSoldMail;
+function sendPasswordChangedByAdminMail(_a) {
+    var to = _a.to, userName = _a.userName;
+    return __awaiter(this, void 0, void 0, function () {
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0: return [4 /*yield*/, mailer_1.mailer.sendMail({
+                        from: env_1.env.MAIL_FROM,
+                        to: to,
+                        subject: "Your password has been changed – LuxeAuction",
+                        html: "\n      <div style=\"font-family: Arial; line-height:1.6\">\n        <h2>Hello " + userName + ",</h2>\n\n        <p>\n          Your account password has been <b>changed by an administrator</b>.\n        </p>\n\n        <p>\n          If you recognize this action, no further steps are required.\n        </p>\n\n        <p style=\"color:#b91c1c\">\n          \u26A0\uFE0F If you did <b>NOT</b> request this change, please reset your password\n          immediately and contact our support team.\n        </p>\n\n        <a href=\"" + env_1.env.FRONTEND_URL + "/forgot-password\"\n           style=\"\n             display:inline-block;\n             margin-top:16px;\n             padding:10px 16px;\n             background:#d4a446;\n             color:black;\n             text-decoration:none;\n             font-weight:bold;\n             border-radius:6px;\n           \">\n          Secure my account\n        </a>\n\n        <p style=\"margin-top:24px\">\n          \u2014 LuxeAuction Security Team\n        </p>\n      </div>\n    "
+                    })];
+                case 1:
+                    _b.sent();
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+exports.sendPasswordChangedByAdminMail = sendPasswordChangedByAdminMail;

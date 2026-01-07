@@ -1,4 +1,7 @@
 import { db } from "../config/db";
+import { SystemSettingsDTO } from "../dto/product.dto";
+import { sendPasswordChangedByAdminMail } from "../utils/sendOtpMail";
+import bcrypt from "bcrypt";
 
 export class AdminService {
   // ===============================
@@ -741,5 +744,82 @@ export class AdminService {
           : "User restored successfully",
       };
     });
+  }
+  /* ===============================
+   * GET system settings
+   * =============================== */
+  static async getSystemSettings(): Promise<SystemSettingsDTO> {
+    const rows = await db("system_settings").select("key", "value");
+
+    const map = new Map<string, number>();
+
+    for (const r of rows) {
+      map.set(r.key, Number(r.value));
+    }
+
+    return {
+      auto_extend_duration_minutes:
+        map.get("auto_extend_duration_minutes") ?? 10,
+      auto_extend_threshold_minutes:
+        map.get("auto_extend_threshold_minutes") ?? 5,
+    };
+  }
+
+  /* ===============================
+   * UPDATE system settings
+   * =============================== */
+  static async updateSystemSettings(payload: SystemSettingsDTO): Promise<void> {
+    const now = db.fn.now();
+
+    await db.transaction(async (trx) => {
+      for (const [key, value] of Object.entries(payload)) {
+        await trx("system_settings")
+          .insert({
+            key,
+            value,
+            updated_at: now,
+          })
+          .onConflict("key")
+          .merge({
+            value,
+            updated_at: now,
+          });
+      }
+    });
+  }
+
+  /* ===============================
+   * CHANGE USER PASSWORD
+   * =============================== */
+  static async changeUserPassword(
+    userId: string,
+    newPassword: string,
+    adminName?: string
+  ) {
+    if (!newPassword || newPassword.length < 8) {
+      throw new Error("Password must be at least 8 characters");
+    }
+
+    const user = await db("users")
+      .select("id", "email", "full_name", "is_deleted")
+      .where({ id: userId })
+      .first();
+
+    if (!user) throw new Error("User not found");
+    if (user.is_deleted)
+      throw new Error("Cannot change password for deleted user");
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await db("users")
+      .update({ password_hash: passwordHash })
+      .where({ id: userId });
+
+    await sendPasswordChangedByAdminMail({
+      to: user.email,
+      userName: user.full_name || "User",
+    });
+
+    return true;
   }
 }

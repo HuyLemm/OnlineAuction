@@ -3,8 +3,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { formatPostedDate } from "../utils/timeUtils";
+import { useNavigate } from "react-router-dom";
 
 interface SellerInfoProps {
+  sellerId: string;
   name: string;
   avatar?: string;
 
@@ -28,6 +30,7 @@ interface SellerInfoProps {
 }
 
 export function SellerInfo({
+  sellerId,
   name,
   avatar,
   rating,
@@ -39,6 +42,7 @@ export function SellerInfo({
   topRated,
 }: SellerInfoProps) {
   const formattedMemberSince = formatPostedDate(memberSince);
+  const navigate = useNavigate();
 
   return (
     <div className="bg-card border border-border/50 rounded-xl p-6 space-y-4">
@@ -104,9 +108,13 @@ export function SellerInfo({
       </div>
 
       {/* Action Button */}
-      <Button variant="outline" className="w-full border-border/50">
-        <MessageCircle className="h-4 w-4 mr-2" />
-        Contact Seller
+      <Button
+        variant="outline"
+        className="w-full border-border/50"
+        onClick={() => navigate(`/profile/seller/${sellerId}`)}
+      >
+        <Shield className="h-4 w-4 mr-2" />
+        View Legit Seller
       </Button>
 
       {/* Quick Stats */}

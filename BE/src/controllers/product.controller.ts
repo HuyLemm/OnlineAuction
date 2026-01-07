@@ -167,6 +167,8 @@ export class ProductController {
 
         isWinning: raw.isWinning ?? false,
 
+        order: raw.order ?? null,
+
         images: {
           primary: raw.images.find((i: any) => i.is_main)?.image_url || "",
           gallery: raw.images
@@ -288,6 +290,49 @@ export class ProductController {
       return res.status(400).json({
         success: false,
         message: err.message || "Failed to get rating",
+      });
+    }
+  }
+
+  // GET /ratings/profile/:role/:userId
+  static async getProfile(req: Request, res: Response) {
+    try {
+      const { role, userId } = req.params;
+
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: "userId is required",
+        });
+      }
+
+      if (!role) {
+        return res.status(400).json({
+          success: false,
+          message: "role is required",
+        });
+      }
+
+      if (!["seller", "bidder"].includes(role)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid role",
+        });
+      }
+
+      const data = await ProductService.getUserRatingsProfile(
+        role as "seller" | "bidder",
+        userId
+      );
+
+      return res.status(200).json({
+        success: true,
+        data,
+      });
+    } catch (err: any) {
+      return res.status(404).json({
+        success: false,
+        message: err.message || "Failed to load rating profile",
       });
     }
   }

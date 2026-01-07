@@ -176,13 +176,13 @@ var ProductController = /** @class */ (function () {
     // GET /products/:productId/get-product-detail
     // ===============================
     ProductController.getProductDetail = function (req, res) {
-        var _a, _b, _c, _d;
+        var _a, _b, _c, _d, _e;
         return __awaiter(this, void 0, void 0, function () {
             var viewerUserId, productId, raw, dto, error_3;
-            return __generator(this, function (_e) {
-                switch (_e.label) {
+            return __generator(this, function (_f) {
+                switch (_f.label) {
                     case 0:
-                        _e.trys.push([0, 2, , 3]);
+                        _f.trys.push([0, 2, , 3]);
                         viewerUserId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
                         productId = req.params.productId;
                         if (!productId) {
@@ -193,7 +193,7 @@ var ProductController = /** @class */ (function () {
                         }
                         return [4 /*yield*/, product_service_1.ProductService.getProductDetail(productId, viewerUserId)];
                     case 1:
-                        raw = _e.sent();
+                        raw = _f.sent();
                         dto = __assign(__assign({ product: {
                                 id: raw.product.id,
                                 title: raw.product.title,
@@ -214,8 +214,8 @@ var ProductController = /** @class */ (function () {
                                     maxPrice: raw.myAutoBid.maxPrice,
                                     createdAt: raw.myAutoBid.createdAt.toISOString()
                                 }
-                                : null, isWinning: (_c = raw.isWinning) !== null && _c !== void 0 ? _c : false, images: {
-                                primary: ((_d = raw.images.find(function (i) { return i.is_main; })) === null || _d === void 0 ? void 0 : _d.image_url) || "",
+                                : null, isWinning: (_c = raw.isWinning) !== null && _c !== void 0 ? _c : false, order: (_d = raw.order) !== null && _d !== void 0 ? _d : null, images: {
+                                primary: ((_e = raw.images.find(function (i) { return i.is_main; })) === null || _e === void 0 ? void 0 : _e.image_url) || "",
                                 gallery: raw.images
                                     .filter(function (i) { return !i.is_main; })
                                     .map(function (i) { return i.image_url; })
@@ -253,7 +253,7 @@ var ProductController = /** @class */ (function () {
                                 data: dto
                             })];
                     case 2:
-                        error_3 = _e.sent();
+                        error_3 = _f.sent();
                         console.error("❌ ProductController.detail:", error_3);
                         return [2 /*return*/, res.status(404).json({
                                 success: false,
@@ -337,6 +337,51 @@ var ProductController = /** @class */ (function () {
                         return [2 /*return*/, res.status(400).json({
                                 success: false,
                                 message: err_2.message || "Failed to get rating"
+                            })];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    // GET /ratings/profile/:role/:userId
+    ProductController.getProfile = function (req, res) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _a, role, userId, data, err_3;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        _b.trys.push([0, 2, , 3]);
+                        _a = req.params, role = _a.role, userId = _a.userId;
+                        if (!userId) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "userId is required"
+                                })];
+                        }
+                        if (!role) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "role is required"
+                                })];
+                        }
+                        if (!["seller", "bidder"].includes(role)) {
+                            return [2 /*return*/, res.status(400).json({
+                                    success: false,
+                                    message: "Invalid role"
+                                })];
+                        }
+                        return [4 /*yield*/, product_service_1.ProductService.getUserRatingsProfile(role, userId)];
+                    case 1:
+                        data = _b.sent();
+                        return [2 /*return*/, res.status(200).json({
+                                success: true,
+                                data: data
+                            })];
+                    case 2:
+                        err_3 = _b.sent();
+                        return [2 /*return*/, res.status(404).json({
+                                success: false,
+                                message: err_3.message || "Failed to load rating profile"
                             })];
                     case 3: return [2 /*return*/];
                 }
