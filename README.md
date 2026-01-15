@@ -1,4 +1,4 @@
-﻿# OnlineAuction
+# OnlineAuction
 
 OnlineAuction is a full-stack web application for an online auction marketplace. It supports multiple roles (Guest, Bidder, Seller, Admin), auction workflows, notifications, and post-auction processes.
 
